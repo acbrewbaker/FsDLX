@@ -1,0 +1,66 @@
+<ProjectConfiguration>
+  <BuildPriority>1000</BuildPriority>
+  <CopyReferencedAssembliesToWorkspace>false</CopyReferencedAssembliesToWorkspace>
+  <ConsiderInconclusiveTestsAsPassing>false</ConsiderInconclusiveTestsAsPassing>
+  <PreloadReferencedAssemblies>false</PreloadReferencedAssemblies>
+  <AllowDynamicCodeContractChecking>true</AllowDynamicCodeContractChecking>
+  <AllowStaticCodeContractChecking>false</AllowStaticCodeContractChecking>
+  <AllowCodeAnalysis>false</AllowCodeAnalysis>
+  <IgnoreThisComponentCompletely>false</IgnoreThisComponentCompletely>
+  <RunPreBuildEvents>false</RunPreBuildEvents>
+  <RunPostBuildEvents>false</RunPostBuildEvents>
+  <PreviouslyBuiltSuccessfully>true</PreviouslyBuiltSuccessfully>
+  <InstrumentAssembly>true</InstrumentAssembly>
+  <PreventSigningOfAssembly>false</PreventSigningOfAssembly>
+  <AnalyseExecutionTimes>true</AnalyseExecutionTimes>
+  <DetectStackOverflow>true</DetectStackOverflow>
+  <IncludeStaticReferencesInWorkspace>true</IncludeStaticReferencesInWorkspace>
+  <DefaultTestTimeout>60000</DefaultTestTimeout>
+  <UseBuildConfiguration></UseBuildConfiguration>
+  <UseBuildPlatform></UseBuildPlatform>
+  <ProxyProcessPath></ProxyProcessPath>
+  <UseCPUArchitecture>AutoDetect</UseCPUArchitecture>
+  <MSTestThreadApartmentState>STA</MSTestThreadApartmentState>
+  <BuildProcessArchitecture>x86</BuildProcessArchitecture>
+  <IgnoredTests>
+    <NamedTestSelector>
+      <TestName>Test.FsDLX.Assembler.Directives+DLX2HEX.data directive - dlx to hex</TestName>
+    </NamedTestSelector>
+    <FixtureTestSelector>
+      <FixtureName>Test.FsDLX.Assembler.Directives+SimpleRegexPatternTests</FixtureName>
+    </FixtureTestSelector>
+    <FixtureTestSelector>
+      <FixtureName>Test.FsDLX.Assembler.Simple</FixtureName>
+    </FixtureTestSelector>
+    <FixtureTestSelector>
+      <FixtureName>Test.FsDLX.Assembler.Types</FixtureName>
+    </FixtureTestSelector>
+    <NamedTestSelector>
+      <TestName>Test.FsDLX.Assembler.Directives+DLX2HEX.double directive - dlx to hex</TestName>
+    </NamedTestSelector>
+    <NamedTestSelector>
+      <TestName>Test.FsDLX.Assembler.Directives+DLX2HEX.float directive - dlx to hex</TestName>
+    </NamedTestSelector>
+    <NamedTestSelector>
+      <TestName>Test.FsDLX.Assembler.Directives+DLX2HEX.text directive - dlx to hex</TestName>
+    </NamedTestSelector>
+    <NamedTestSelector>
+      <TestName>Test.FsDLX.Assembler.Directives+DLX2HEX.word directive - dlx to hex</TestName>
+    </NamedTestSelector>
+    <NamedTestSelector>
+      <TestName>Test.FsDLX.Assembler.Directives+DLX2HEX.space directive - dlx to hex</TestName>
+    </NamedTestSelector>
+    <NamedTestSelector>
+      <TestName>Test.FsDLX.Assembler.Directives+DLX2HEX.align directive - dlx to hex</TestName>
+    </NamedTestSelector>
+    <NamedTestSelector>
+      <TestName>Test.FsDLX.Assembler.Misc.parse support files</TestName>
+    </NamedTestSelector>
+    <NamedTestSelector>
+      <TestName>Test.FsDLX.Assembler.Directives+DLX2HEX.asciiz directive - dlx to hex</TestName>
+    </NamedTestSelector>
+    <NamedTestSelector>
+      <TestName>Test.FsDLX.Assembler.Directives.directives 1</TestName>
+    </NamedTestSelector>
+  </IgnoredTests>
+</ProjectConfiguration>

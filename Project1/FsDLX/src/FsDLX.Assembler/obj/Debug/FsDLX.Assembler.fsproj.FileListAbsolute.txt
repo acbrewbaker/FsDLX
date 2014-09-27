@@ -1,0 +1,10 @@
+X:\OneDrive\CS5483\FsDLX\Src\FsDLX.Assembler\bin\Debug\FsDLX.Assembler.dll
+X:\OneDrive\CS5483\FsDLX\Src\FsDLX.Assembler\bin\Debug\FsDLX.Assembler.pdb
+X:\OneDrive\CS5483\FsDLX\Src\FsDLX.Assembler\obj\Debug\FsDLX.Assembler.fsprojResolveAssemblyReference.cache
+X:\OneDrive\CS5483\FsDLX\Src\FsDLX.Assembler\obj\Debug\FsDLX.Assembler.dll
+X:\OneDrive\CS5483\FsDLX\Src\FsDLX.Assembler\obj\Debug\FsDLX.Assembler.pdb
+C:\Users\User\OneDrive\CS5483\Project1\FsDLX\src\FsDLX.Assembler\obj\Debug\FsDLX.Assembler.fsprojResolveAssemblyReference.cache
+C:\Users\User\OneDrive\CS5483\Project1\FsDLX\src\FsDLX.Assembler\obj\Debug\FsDLX.Assembler.dll
+C:\Users\User\OneDrive\CS5483\Project1\FsDLX\src\FsDLX.Assembler\obj\Debug\FsDLX.Assembler.pdb
+C:\Users\User\OneDrive\CS5483\Project1\FsDLX\src\FsDLX.Assembler\bin\Debug\FsDLX.Assembler.dll
+C:\Users\User\OneDrive\CS5483\Project1\FsDLX\src\FsDLX.Assembler\bin\Debug\FsDLX.Assembler.pdb

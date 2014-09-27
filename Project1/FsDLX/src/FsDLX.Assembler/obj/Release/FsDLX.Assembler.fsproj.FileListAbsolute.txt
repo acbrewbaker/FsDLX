@@ -1,0 +1,3 @@
+C:\Users\User\OneDrive\CS5483\Project1\FsDLX\src\FsDLX.Assembler\bin\Release\FsDLX.Assembler.dll
+C:\Users\User\OneDrive\CS5483\Project1\FsDLX\src\FsDLX.Assembler\obj\Release\FsDLX.Assembler.dll
+C:\Users\User\OneDrive\CS5483\Project1\FsDLX\src\FsDLX.Assembler\bin\Release\NCrunch.Framework.dll
