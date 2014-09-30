@@ -115,6 +115,115 @@ let ``immediate patterns`` () =
     printfn "ip6: %A" m
 
 [<Test>]
+let ``immediate patterns 2`` () =
+    let regs = 
+        List.init 32 (fun i -> 
+            "r" + i.ToString(), 
+            Convert.ToString(i, 2).PadLeft(5, '0'))
+        |> Map.ofList
+    //printfn "%A" regs
+    
+    //let rmap = Map.ofList [ "r1", ]
+    let str = "
+        add r1, r2, r3
+        addf f1, f2, f31
+        seq r1, r24, r3
+        jal label2
+        seqi f23, f6, 8
+        subi r3, r10, 4(label3)"
+
+//    let (|RType|_|) input =
+//        let m = Regex(@"(?<reg>r\d\d?)").Match(input)
+//        if m.Success then Some(List.tail [for g in m.Groups -> g.Value])
+//        else None
+
+    let (|Regis|_|) input =
+        let m = Regex(@"r(?<reg>\d\d?)").Match(input)
+        if m.Success then (Convert.ToString(int m.Groups.["reg"].Value, 2).PadLeft(5, '0'), input) |> Some
+        else None
+
+    let (|Rtype|_|) input =
+        let m = Regex(Patterns.Opcode.rtypecg).Match(input)
+        if m.Success then (m.Groups.["rtype"].Value, input) |> Some
+        else None
+
+//    str |> function
+////    | RType str -> printfn "RType: %A" str
+//    | Regis x -> printfn "Regis: %A" x
+//    | _ -> printfn "no match" 
+
+    let rec f strlist = strlist |> function
+        | Rtype head :: tail ->
+            printfn "%s" (fst head)
+            f tail
+        | Regis head :: tail -> 
+            printfn "%s" (fst head)
+            f tail
+        | head :: tail -> f tail
+        | [] -> printfn "donezord"
+
+    let str = 
+        [
+            "add r1, r2, r3"
+            "addf f1, f2, f31"
+            "seq r1, r24, r3"
+            "jal label2"
+            "seqi f23, f6, 8"
+            "subi r3, r10, 4(label3)"
+        ]
+
+    f str
+
+
+    printfn "******************asciiz stuff********************"
+    let asc = ".asciiz \"hello\", \"greetings\", \"earthling\""
+    //let pat1 = @".asciiz (?<ascii>.*)"
+    let pat = @"[\.asciiz ]?""(?<str>[^""]+)"""
+    let matches = Regex(pat).Matches(asc)
+    printfn "Num Matches: %d" matches.Count
+    for m in matches do 
+        //printfn "%s" (m.Groups.["ascii"].Value)
+        printfn "%s" (m.Groups.["str"].Value)
+
+//    let rec (|Instruction|_|) = function
+//        | RType(rrid, rs1, rd, func) ->
+//            let rec aux e1 = function
+//              | "add"::RType(e2, t) -> aux (e1 + e2) t
+//              | "r"::RType(e2, t) -> aux (e1 - e2) t
+//              | t -> Some(e1, t)
+//            aux e1 t
+//        | _ -> None
+//      and (|RType|_|) = function
+//        | _ -> None
+//      and (|IType|_|) = function
+//        | _ -> None
+//      and (|JType|_|) = function
+//        | _ -> None
+//
+////        let m = Regex(pattern).Match(input)
+////        if m.Success then Some(List.tail [for g in m.Groups -> g.Value])
+////        else None
+//    let (Instruction ins) = ["add r1, r2, r3"]
+//    printfn "%A" ins
+    
+    let str = "seqi r5, r21, 4(label5)"
+    let pats = [@"(\d\d?^\()"; @"(\d\(\w+\))"]
+    ()
+//    pats |> List.map (fun pat ->
+//        str |> function
+//        | Immediate pat [label] -> sprintf "%s" label
+//        | _ -> sprintf "Not a match")
+//    |> printfn "%A"
+    
+//    let parsef str = 
+//        match str with
+//        | BasePlusOffset @"(\d\d?\(\w+\))" [label] -> label
+//        | _ -> "no match"
+//
+//    let r = parsef str
+//    printfn "%s" (r.ToString())
+
+[<Test>]
 let ``match any opcode`` () =
     let pat = Patterns.Opcode.itypecg + "|" + Patterns.Opcode.rtypecg + "|" + Patterns.Opcode.jtypecg
     let str = "
@@ -149,12 +258,18 @@ let ``match any operands`` () =
     let matches = Regex(pat).Matches(str)
 
     printfn "Matches:\n%A" matches
-
+    
     printfn "Groups:"
     for m in matches do printfn "%A" m.Groups
 
     printfn "IType Operands:"
     for m in matches do printfn "%A" (m.Groups.["rd"], m.Groups.["rs1"], m.Groups.["imm"])
+
+    printfn "IType Operands # 2:"
+    for m in matches do
+        printfn "%A" m.Captures
+        let imm = m.Groups.["label"]
+        printfn "%A" imm //.["baseplusoffset"]
 
 [<Test>]
 let ``match any instruction`` () =

@@ -62,5 +62,11 @@
     <NamedTestSelector>
       <TestName>Test.FsDLX.Assembler.Directives.directives 1</TestName>
     </NamedTestSelector>
+    <FixtureTestSelector>
+      <FixtureName>Test.FsDLX.Patterns</FixtureName>
+    </FixtureTestSelector>
+    <FixtureTestSelector>
+      <FixtureName>Test.FsDLX.SimpleIO</FixtureName>
+    </FixtureTestSelector>
   </IgnoredTests>
 </ProjectConfiguration>
