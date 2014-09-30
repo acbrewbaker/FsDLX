@@ -25,13 +25,13 @@ let ``%s to %s`` () =
     hex |> should equal expected" dlx hex dlxfile hexfile
 
 
-[<Test>]
-let ``get file names`` () =
-    for f in dlxfiles do 
-        let testfile = f |> Path.GetFileNameWithoutExtension
-        let dlxfile = testfile + ".dlx"
-        let hexfile = testfile + ".hex"
-        printfn "%s" (teststr dlxfile hexfile)
+//[<Test>]
+//let ``get file names`` () =
+//    for f in dlxfiles do 
+//        let testfile = f |> Path.GetFileNameWithoutExtension
+//        let dlxfile = testfile + ".dlx"
+//        let hexfile = testfile + ".hex"
+//        printfn "%s" (teststr dlxfile hexfile)
 
 let printContent dlx expected actual =
     printfn "DLX:\n%s" dlx

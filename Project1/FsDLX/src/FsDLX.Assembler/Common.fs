@@ -55,8 +55,155 @@ module Support =
         member o.Lookup(code) = lookup.[code]
 
         static member ParseTypeFile filepath = parseTypeFile filepath
+//
+type Immediate =
+    | Val of string
+    | Register of string
+    | Label of string
+    //| BasePlusOffset of string
+//
+//    static member Match str = 
+//        let pat = @"r\d\d?^\(|^\d\w+|\d\d?\(\w+\)"
+//        let matches = Regex(pat).Match(str)
+//        printfn "%A" matches
+    
+//        imm |> function
+//        | Val str -> ()
+//        | Register str -> ()
+//        | Label str -> ()
+//        | BasePlusOffset str -> ()
 
-            
+let divup num den = (num + den - 1) / den
+
+let bytes2hex (b:byte[]) =
+    (b |> Array.rev |> BitConverter.ToString)
+        .Replace("-","").ToLower()
+
+let str2hex (str:string) =
+    (Encoding.Default.GetBytes(str) |> BitConverter.ToString).Replace("-","").ToLower() + "00"
+
+let WORD_SIZE = 32
+
+type PC =
+    | String of string
+    | Val of uint32
+
+    override pc.ToString() = pc |> function
+        | String pc -> pc
+        | Val pc -> pc.ToString("x8")
+
+type Primitive = 
+    | Int of int
+    | UInt of uint32
+    | Single of float32
+    | Double of float
+    | Hex of string
+
+    member dp.ToHex = dp |> function
+        | Int x ->      x |> BitConverter.GetBytes |> bytes2hex
+        | UInt x ->     x |> BitConverter.GetBytes |> bytes2hex
+        | Single x ->   x |> BitConverter.GetBytes |> bytes2hex
+        | Double x ->   x |> BitConverter.GetBytes |> bytes2hex
+        | Hex x -> x
+
+    static member AsHex = function
+        | Int x ->      x |> BitConverter.GetBytes |> bytes2hex |> Primitive.Hex
+        | UInt x ->     x |> BitConverter.GetBytes |> bytes2hex |> Primitive.Hex
+        | Single x ->   x |> BitConverter.GetBytes |> bytes2hex |> Primitive.Hex
+        | Double x ->   x |> BitConverter.GetBytes |> bytes2hex |> Primitive.Hex
+        | Hex x ->      x                                       |> Primitive.Hex
+
+module Conversions =
+
+    let pc2hex (pc:uint32) = pc.ToString("x8")
+    let strAsComment str = "\t#\"" + str + "\""
+    let asComment str = "    \t# " + str
+    let addLeadingZero (str:string) =
+        str |> function
+        | _ when str.StartsWith("-.") -> str.Insert(str.IndexOf("-.") + 1, "0")
+        | _ when str.StartsWith("+.") -> str.Insert(str.IndexOf("+.") + 1, "0")
+        | _ when str.StartsWith(".") -> str.Insert(str.IndexOf("."), "0")
+        | _ -> str
+    let floatingPointAsComment = addLeadingZero >> asComment
+
+    let dlx2hex (convert:uint32 -> string -> uint32*string) (matches:string list) (pcAndHexState:uint32*(string list)) =
+        (pcAndHexState, matches) 
+        ||> List.fold (fun (pc, hex) str -> 
+            let newpc, newhex = convert pc str
+            (newpc, hex @ [newhex]))
+ 
+    module Directive =
+        let map = 
+            [
+                ".text", fun (pc:uint32) (str:string) ->
+                    let newpc = uint32 str
+                    let newstr =
+                        pc2hex pc + ": " +
+                        str +
+                        asComment str
+                    (newpc, newstr)
+ 
+                ".data", fun (pc:uint32) (str:string) -> 0u, ""
+
+                ".align", fun (pc:uint32) (str:string) ->
+                    let n = Double.Parse str
+                    let bytes = (2.0 ** n) |> int
+                    printfn "%A" bytes
+                    let align = (divup bytes WORD_SIZE) |> uint32
+                    let newpc = pc + align    
+                    let newstr = 
+                        pc2hex pc + ": " +
+                        (align |> BitConverter.GetBytes |> bytes2hex) +
+                        asComment str
+                    (newpc, newstr)
+
+                ".asciiz", fun (pc:uint32) (str:string) ->
+                    let bytes = Encoding.Default.GetBytes(str)
+                    let newstr =
+                        pc2hex pc + ": " + 
+                        str2hex str +
+                        strAsComment str
+                    let newpc = pc + uint32 bytes.Length + 1u
+                    (newpc, newstr)
+
+                ".double", fun (pc:uint32) (str:string) ->
+                    let newpc = pc + 8u
+                    let newstr = 
+                        pc2hex pc + ": " +
+                        (Double.Parse(str) |> BitConverter.GetBytes |> bytes2hex) +
+                        floatingPointAsComment str
+                    (newpc, newstr)
+
+                ".float", fun (pc:uint32) (str:string) -> 
+                    let newpc = pc + 4u
+                    let newstr = 
+                        pc2hex pc + ": " +
+                        (Single.Parse(str) |> BitConverter.GetBytes |> bytes2hex) +
+                        floatingPointAsComment str
+                    (newpc, newstr)
+
+                ".word", fun (pc:uint32) (str:string) ->
+                    let newpc = pc + 4u
+                    let str, isNeg = if str.StartsWith("-") then str.Replace("-",""), true else str, false
+                    let base' = if str.StartsWith("0x") then 16 else 10
+                    let word = Convert.ToInt32(str, base') * (if isNeg then -1 else 1)
+                    let newstr =
+                        pc2hex pc + ": " +
+                        (word |> BitConverter.GetBytes |> bytes2hex) +
+                        asComment (string word)
+                    (newpc, newstr)
+
+                ".space", fun (pc:uint32) (str:string) -> 0u, ""
+            ] |> Map.ofList
+ 
+        let dlx2hex (directive:string) = dlx2hex (map.[directive])
+
+    type Label(label:string, reference:string) =
+        let v = reference |> uint32
+        member val String = label with get, set
+        member val Reference = v with get, set
+
+
 
 module Patterns =
     let comment = @"(?<comment>.+;.*)"
@@ -64,38 +211,113 @@ module Patterns =
     let reg = @"r\d\d?"
     let freg = @"f\d\d?"
     let label = @"\w+:"
-    let imm = @"\d+|\w+|\d+\x40r\d\d?|\w+\x41"
+    let imm = @"\d+|\w+|\d+\x40[r\d\d?|\w+]\x41"
+
+    let matchLabel input =
+        let matches = Regex(@"(?<=(label:).*)(?<label>\w+)").Matches(input)
+        ([for m in matches -> m.Groups.["label"].Value], matches.Count > 0)
 
     module Directive =
-        let text = @".text (?<text>\d+)?"
-        let data = @".data (?<data>\d+)?"
-        let align = @".align (?<align>\d+)"
-        let asciiz = @".asciiz (?<asciiz>"".*""+)"
-        let double = @".double (?<double>\d*.\d+)+"
-        let float = @".float (?<float>\d*.\d+)+"
-        let word = @".word (?<word>[+-]?\d+,? ?)+"
-        let space = @".space (?<space>\d+){1}"
+        let matchText input = 
+            let matches = Regex(@"(?<=\.(text).*)(?<text>\d+)").Matches(input)
+            ([for m in matches -> m.Groups.["text"].Value], matches.Count > 0)
+        
+        let matchData input = 
+            let matches = Regex(@"(?<=\.(data).*)(?<data>\d+)").Matches(input)
+            ([for m in matches -> m.Groups.["space"].Value], matches.Count > 0)
+        
+        let matchAlign input = 
+            let matches = Regex(@"(?<=\.(align) )(?<align>\d)").Matches(input)
+            ([for m in matches -> m.Groups.["align"].Value], matches.Count > 0)
+        
+        let matchAsciiz input = 
+            let matches = Regex(@"(\.asciiz )?""(?<asciiz>[^""]+)""").Matches(input)
+            ([for m in matches -> m.Groups.["asciiz"].Value], matches.Count > 0)
+        
+        let matchDouble (input:string) = 
+            let matches = Regex(@"(?<=\.(double).*)(?<double>[+-]?\d*\.\d+)").Matches(input)
+            ([for m in matches -> m.Groups.["double"].Value], matches.Count > 0)
+        
+        let matchFloat input = 
+            let matches = Regex(@"(?<=\.(float).*)(?<float>[+-]?\d*\.\d+)").Matches(input)
+            ([for m in matches -> m.Groups.["float"].Value.Replace(",", "")], matches.Count > 0)
+        
+        let matchWord input = 
+            let matches = Regex(@"(?<=\.(word).*)(?<word>(-)?(0x)?\d+)").Matches(input)
+            ([for m in matches -> m.Groups.["word"].Value], matches.Count > 0)
+        
+        let matchSpace input = 
+            let matches = Regex(@"(?<=\.(space).*)(?<space>\d+)").Matches(input)
+            ([for m in matches -> m.Groups.["space"].Value], matches.Count > 0)
+
+
         let directive = @".(text|data|align|asciiz|double|float|word|space)"
+
+        let (|Text|_|) (pc:uint32) (hex:string list) input =
+            matchText input |> function
+            | matches, true -> Conversions.Directive.dlx2hex ".text" matches (pc, hex) |> Some
+            | _ -> None
+
+        let (|Data|_|) (pc:uint32) (hex:string list) input =
+            matchData input |> function
+            | matches, true -> Conversions.Directive.dlx2hex ".data" matches (pc, hex) |> Some
+            | _ -> None
+
+        let (|Align|_|) (pc:uint32) (hex:string list) input =
+            matchAlign input |> function
+            | matches, true -> Conversions.Directive.dlx2hex ".align" matches (pc, hex) |> Some
+            | _ -> None
+
+        let (|Asciiz|_|) (pc:uint32) (hex:string list) input =
+            matchAsciiz input |> function
+            | matches, true -> Conversions.Directive.dlx2hex ".asciiz" matches (pc, hex) |> Some
+            | _ -> None
+
+        let (|Double|_|) (pc:uint32) (hex:string list) input =
+            matchDouble input |> function
+            | matches, true -> Conversions.Directive.dlx2hex ".double" matches (pc, hex) |> Some
+            | _ -> None
+
+        let (|Float|_|) (pc:uint32) (hex:string list) input =
+            matchFloat input |> function
+            | matches, true -> Conversions.Directive.dlx2hex ".float" matches (pc, hex) |> Some
+            | _ -> None
+
+        let (|Word|_|) (pc:uint32) (hex:string list) input =
+            matchWord input |> function
+            | matches, true -> Conversions.Directive.dlx2hex ".word" matches (pc, hex) |> Some
+            | _ -> None
+
+        let (|Space|_|) (pc:uint32) (hex:string list) input =
+            matchSpace input |> function
+            | matches, true -> Conversions.Directive.dlx2hex ".space" matches (pc, hex) |> Some
+            | _ -> None
 
     module Opcode =
         let itype = @"beqz|bnez|addi|addui|subi|subui|andi|ori|xori|lhi|trap|jr|jalr|slli|srli|srai|seqi|snei|slti|sgti|slei|sgei|lb|lh|lw|lbu|lhu|lf|ld|sb|sh|sw|sf|sd"
         let rtype = @"nop|sll|srl|sra|add|addu|sub|subu|and|or|xor|seq|sne|slt|sgt|sle|sge|movf|movd|movfp2i|movi2fp|addf|subf|multf|divf|addd|subd|multd|divd|cvtf2d|cvtf2i|cvtd2f|cvtd2i|cvti2f|cvti2d|mult|div|multu|divu"
         let jtype = @"j|jal"
 
-        let itypecg = @"(?<itype>" + itype + @")"
-        let rtypecg = @"(?<rtype>" + rtype + @")"
-        let jtypecg = @"(?<jtype>" + jtype + @")"
+        let itypecg = @"(?<itype>" + itype + @")\s"
+        let rtypecg = @"(?<rtype>" + rtype + @")\s"
+        let jtypecg = @"(?<jtype>" + jtype + @")\s"
 
     module Operands =
         module Immediate =
-            let ty1 = @"\d+"
-            let ty2 = @"\d+\x40\d+\x41"
-            let ty3 = @"\d+\x40" + reg + @"\x41"
-            let ty4 = @"\d+\x40\w+\x41"
-            let ty5 = @"\w+"
-            //let any = @"(?<imm>" + imm + @")"
-            let any = @"(?<imm>[" + ty1 + "|" + ty2 + "|" + ty3 + "|" + ty4 + "|" + ty5 + "])"
+            let immLabel = @"(?<label>^\(\w+)"
+            let immReg = reg
+            let immVal = @"(?<val>\d\d?^[\(])"
+            let immBasePlusOffset = @"(?<baseplusoffset>(?<label>\d\d?\(\w+\))|(?<register>\d\d?\(r\d\d?\)))"
+            let any = @"(?<imm>" + immLabel + "|" + immReg + "|" + immVal + "|" + immBasePlusOffset + ")"
+            
+            let (|BasePlusOffset|_|) str =
+                let m = Regex.Match(@"\d\d?\(\w+\)", str)
+                if m.Success then Some(List.tail [for g in m.Groups -> g.Value])
+                else None
 
+            //let any = @"(?<imm>" + imm + @")"
+            //let any = @"(?<imm>" + ty1 + "|" + ty2 + "|" + ty3 + "|" + ty4 + "|" + ty5 + "|" + ty6 + ")"
+            //let any = @"(?<imm>\d\(\w+\))|r\d\d?"
         let rrr = @"(?<rd>" + reg + "), (?<rs1>" + reg + "), (?<rs2>" + reg + ")"
         let fff = @"(?<rd>" + freg + "), (?<rs1>" + freg + "), (?<rs2>" + freg + ")"
         let rri = @"(?<rd>" + reg + "), (?<rs1>" + reg + "), " + Immediate.any //"(?<imm>" + imm + ")" //Immediate.any
@@ -106,44 +328,23 @@ module Patterns =
         
         @"(?<opcode>" + Opcode.itypecg + "|" + Opcode.rtypecg + "|" + Opcode.jtypecg + @"])\s" + Operands.any
 
-module Conversions =
-    module DLX2HEX =
-        let text _ = ""
-        let data _ = ""
-        let align (str:string) (pc:uint32) =
-            let bits = uint32 str
-            ((((pc - bits) ||| 32u) + bits) - pc
-            |> BitConverter.GetBytes
-            |> Array.rev
-            |> BitConverter.ToString)
-                .Replace("-", "")
-                .ToLower()
 
-        let asciiz (pc:uint32) (str:string) =
-            let bytes       = str |> Encoding.Default.GetBytes
-            let newpc       = pc + uint32 bytes.Length
-            let hex         = BitConverter.ToString(bytes).Replace("-","").ToLower() + "00"
-            let newstr      = sprintf "%s: %s #\"%s\"" (pc.ToString("x8")) hex str
-            (newpc, newstr)
+    let (|Directive|_|) pc hex = function
+        | Directive.Text pc hex result -> Some result
+        | Directive.Data pc hex result -> Some result
+        | Directive.Align pc hex result -> Some result
+        | Directive.Asciiz pc hex result -> Some result
+        | Directive.Double pc hex result -> Some result
+        | Directive.Float pc hex result -> Some result
+        | Directive.Word pc hex result -> Some result
+        | Directive.Space pc hex result -> Some result
+        | _ -> None
 
-        let double (str:string) =
-            (Double.Parse(str)
-            |> BitConverter.GetBytes
-            |> Array.rev
-            |> BitConverter.ToString)
-                .Replace("-", "")
-                .ToLower()
-
-        let float _ = ""
-        let word _ = ""
-        let space _ = ""
-
-        let outputLine (pc:uint32) (hex:string) (str:string) =
-            sprintf "%s: %s\t #%s"
-                (pc.ToString("x8"))
-                hex
-                str
-
+    let (|Label|_|) pc hex input =
+        matchLabel input |> function
+        | matches, true -> Some "derp"
+        | _ -> None
+        
 
 let unused = "000000"
 
@@ -181,9 +382,9 @@ type Register =
         | Val reg -> reg.Value <- v
 
 
-type Immediate =
-    | String of string
-    | Val of uint32
+//type Immediate =
+//    | String of string
+//    | Val of uint32
 
 type RRid =
     | String of string
