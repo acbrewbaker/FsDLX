@@ -23,23 +23,71 @@ let ``get opcode regex`` () =
     printfn "%A" jtypecodes
 
 
-[<Test>]
-let ``itype opcode patterns`` () =
-    let it1 = "addi r1, r2, 4"
-    let m = Regex(Patterns.Opcode.itype).Matches(it1)
-    printfn "%A" m
 
 [<Test>]
-let ``rtype opcode patterns`` () =
-    let rt1 = "add r1, r2, r3"
-    let m = Regex(Patterns.Opcode.rtype).Matches(rt1)
-    printfn "%A" m
+let ``match itype`` () = 
+    let str1 = "addi r1, r21, 4(r5)"
+    let str2 = "seqi r4, r5, 4(label3)"
+
+    let matchIType input =
+        let opcode, operands = [
+            for m in Regex(Patterns.Instruction.itypecg).Matches(input) -> 
+                m.Groups.["itype"].Value, 
+                (m.Groups.["rd"].Value,
+                 m.Groups.["rs1"].Value,
+                 m.Groups.["imm"].Value)] |> List.unzip
+        (opcode.Head, operands, opcode.Length <> 0)
+
+    let r = matchIType str1
+    printfn "Result: %A" r
+
+    let opcode, operands, opvalid = matchIType str1 //Patterns.Instruction.matchIType str1
+    
+    printfn "Opcode:\t%A" opcode
+    printfn "Operands:\t%A" operands
+    printfn "Op Valid?:\t%A" opvalid
+
+    let rd, rs1, imm = operands.Head
+    printfn "Operands Separated:\t%A, %A, %A" rd rs1 imm
 
 [<Test>]
-let ``jtype opcode patterns`` () =
-    let jt1 = "jal label1"
-    let m = Regex(Patterns.Opcode.jtype).Matches(jt1)
-    printfn "%A" m
+let ``match rtype`` () = 
+    let str1 = "add r2, r3, r7"
+    let str2 = "nop"
+
+    let opcode, operands, opvalid = Patterns.Instruction.matchRType str1
+    
+    printfn "Opcode:\t%A" opcode
+    printfn "Operands:\t%A" operands
+    printfn "Op Valid?:\t%A" opvalid
+
+[<Test>]
+let ``match jtype`` () = 
+    let str = "jal label3"
+    
+    let opcode, operands, opvalid = Patterns.Instruction.matchJType str
+    
+    printfn "Opcode:\t%A" opcode
+    printfn "Operands:\t%A" operands
+    printfn "Op Valid?:\t%A" opvalid
+
+//[<Test>]
+//let ``itype opcode patterns`` () =
+//    let it1 = "addi r1, r2, 4"
+//    let m = Regex(Patterns.Opcode.itype).Matches(it1)
+//    printfn "%A" m
+//
+//[<Test>]
+//let ``rtype opcode patterns`` () =
+//    let rt1 = "add r1, r2, r3"
+//    let m = Regex(Patterns.Opcode.rtype).Matches(rt1)
+//    printfn "%A" m
+//
+//[<Test>]
+//let ``jtype opcode patterns`` () =
+//    let jt1 = "jal label1"
+//    let m = Regex(Patterns.Opcode.jtype).Matches(jt1)
+//    printfn "%A" m
 
 [<Test>]
 let ``comment patterns`` () =
@@ -107,12 +155,12 @@ let ``immediate patterns`` () =
     let m = Regex(Patterns.imm).Matches(ip5)
     printfn "ip5: %A" m
 
-    let m = Regex(Patterns.Operands.Immediate.any).Matches(ip5)
-    printfn "ip5: %A" m
-    printfn "%A" ([for m' in m -> m'.Groups.["imm"]])
-
-    let m = Regex(Patterns.Operands.Immediate.any).Matches(ip6)
-    printfn "ip6: %A" m
+//    let m = Regex(Patterns.Operands.Immediate.any).Matches(ip5)
+//    printfn "ip5: %A" m
+//    printfn "%A" ([for m' in m -> m'.Groups.["imm"]])
+//
+//    let m = Regex(Patterns.Operands.Immediate.any).Matches(ip6)
+//    printfn "ip6: %A" m
 
 [<Test>]
 let ``immediate patterns 2`` () =
@@ -142,48 +190,48 @@ let ``immediate patterns 2`` () =
         if m.Success then (Convert.ToString(int m.Groups.["reg"].Value, 2).PadLeft(5, '0'), input) |> Some
         else None
 
-    let (|Rtype|_|) input =
-        let m = Regex(Patterns.Opcode.rtypecg).Match(input)
-        if m.Success then (m.Groups.["rtype"].Value, input) |> Some
-        else None
+//    let (|Rtype|_|) input =
+//        let m = Regex(Patterns.Opcode.rtypecg).Match(input)
+//        if m.Success then (m.Groups.["rtype"].Value, input) |> Some
+//        else None
 
 //    str |> function
 ////    | RType str -> printfn "RType: %A" str
 //    | Regis x -> printfn "Regis: %A" x
 //    | _ -> printfn "no match" 
 
-    let rec f strlist = strlist |> function
-        | Rtype head :: tail ->
-            printfn "%s" (fst head)
-            f tail
-        | Regis head :: tail -> 
-            printfn "%s" (fst head)
-            f tail
-        | head :: tail -> f tail
-        | [] -> printfn "donezord"
-
-    let str = 
-        [
-            "add r1, r2, r3"
-            "addf f1, f2, f31"
-            "seq r1, r24, r3"
-            "jal label2"
-            "seqi f23, f6, 8"
-            "subi r3, r10, 4(label3)"
-        ]
-
-    f str
-
-
-    printfn "******************asciiz stuff********************"
-    let asc = ".asciiz \"hello\", \"greetings\", \"earthling\""
-    //let pat1 = @".asciiz (?<ascii>.*)"
-    let pat = @"[\.asciiz ]?""(?<str>[^""]+)"""
-    let matches = Regex(pat).Matches(asc)
-    printfn "Num Matches: %d" matches.Count
-    for m in matches do 
-        //printfn "%s" (m.Groups.["ascii"].Value)
-        printfn "%s" (m.Groups.["str"].Value)
+//    let rec f strlist = strlist |> function
+//        | Rtype head :: tail ->
+//            printfn "%s" (fst head)
+//            f tail
+//        | Regis head :: tail -> 
+//            printfn "%s" (fst head)
+//            f tail
+//        | head :: tail -> f tail
+//        | [] -> printfn "donezord"
+//
+//    let str = 
+//        [
+//            "add r1, r2, r3"
+//            "addf f1, f2, f31"
+//            "seq r1, r24, r3"
+//            "jal label2"
+//            "seqi f23, f6, 8"
+//            "subi r3, r10, 4(label3)"
+//        ]
+//
+//    f str
+//
+//
+//    printfn "******************asciiz stuff********************"
+//    let asc = ".asciiz \"hello\", \"greetings\", \"earthling\""
+//    //let pat1 = @".asciiz (?<ascii>.*)"
+//    let pat = @"[\.asciiz ]?""(?<str>[^""]+)"""
+//    let matches = Regex(pat).Matches(asc)
+//    printfn "Num Matches: %d" matches.Count
+//    for m in matches do 
+//        //printfn "%s" (m.Groups.["ascii"].Value)
+//        printfn "%s" (m.Groups.["str"].Value)
 
 //    let rec (|Instruction|_|) = function
 //        | RType(rrid, rs1, rd, func) ->
@@ -223,64 +271,64 @@ let ``immediate patterns 2`` () =
 //    let r = parsef str
 //    printfn "%s" (r.ToString())
 
-[<Test>]
-let ``match any opcode`` () =
-    let pat = Patterns.Opcode.itypecg + "|" + Patterns.Opcode.rtypecg + "|" + Patterns.Opcode.jtypecg
-    let str = "
-        add r1, r2, r3
-        addf f1, f2, f31
-        seq r1, r24, r3
-        jal label2
-        seqi f23, f6, 8
-        subi r3, r10, 4(label3)"
-    
-    let matches = Regex(pat).Matches(str)
-
-    printfn "Matches:\n%A" matches
-
-    printfn "Groups:"
-    for m in matches do printfn "%A" m.Groups
-
-    printfn "Derps:\n%A"
-        [for m in matches ->
-            (m.Groups.["itype"], m.Groups.["rtype"], m.Groups.["jtype"])]
-
-[<Test>]
-let ``match any operands`` () =
-    let pat = Patterns.Operands.any //Operands.fff + "|" + Operands.rrr + "|" + Operands.rri  
+//[<Test>]
+//let ``match any opcode`` () =
+//    let pat = Patterns.Opcode.itypecg + "|" + Patterns.Opcode.rtypecg + "|" + Patterns.Opcode.jtypecg
+//    let str = "
+//        add r1, r2, r3
+//        addf f1, f2, f31
+//        seq r1, r24, r3
+//        jal label2
+//        seqi f23, f6, 8
+//        subi r3, r10, 4(label3)"
+//    
+//    let matches = Regex(pat).Matches(str)
+//
+//    printfn "Matches:\n%A" matches
+//
+//    printfn "Groups:"
+//    for m in matches do printfn "%A" m.Groups
+//
+//    printfn "Derps:\n%A"
+//        [for m in matches ->
+//            (m.Groups.["itype"], m.Groups.["rtype"], m.Groups.["jtype"])]
+//
+//[<Test>]
+//let ``match any operands`` () =
+//    let pat = Patterns.Operands.any //Operands.fff + "|" + Operands.rrr + "|" + Operands.rri  
+////    let str = "
+////        add r1, r2, r3
+////        addf f1, f2, f31
+////        seqi r1, r24, 4(label1)
+////        jal label2
+////        seqi f23, f6, 8"
+//    let str = "seqi r1, r24, 4(label2)"
+//    let matches = Regex(pat).Matches(str)
+//
+//    printfn "Matches:\n%A" matches
+//    
+//    printfn "Groups:"
+//    for m in matches do printfn "%A" m.Groups
+//
+//    printfn "IType Operands:"
+//    for m in matches do printfn "%A" (m.Groups.["rd"], m.Groups.["rs1"], m.Groups.["imm"])
+//
+//    printfn "IType Operands # 2:"
+//    for m in matches do
+//        printfn "%A" m.Captures
+//        let imm = m.Groups.["label"]
+//        printfn "%A" imm //.["baseplusoffset"]
+//
+//[<Test>]
+//let ``match any instruction`` () =
+//    let pat = Patterns.instruction
 //    let str = "
 //        add r1, r2, r3
 //        addf f1, f2, f31
 //        seqi r1, r24, 4(label1)
 //        jal label2
 //        seqi f23, f6, 8"
-    let str = "seqi r1, r24, 4(label2)"
-    let matches = Regex(pat).Matches(str)
-
-    printfn "Matches:\n%A" matches
-    
-    printfn "Groups:"
-    for m in matches do printfn "%A" m.Groups
-
-    printfn "IType Operands:"
-    for m in matches do printfn "%A" (m.Groups.["rd"], m.Groups.["rs1"], m.Groups.["imm"])
-
-    printfn "IType Operands # 2:"
-    for m in matches do
-        printfn "%A" m.Captures
-        let imm = m.Groups.["label"]
-        printfn "%A" imm //.["baseplusoffset"]
-
-[<Test>]
-let ``match any instruction`` () =
-    let pat = Patterns.instruction
-    let str = "
-        add r1, r2, r3
-        addf f1, f2, f31
-        seqi r1, r24, 4(label1)
-        jal label2
-        seqi f23, f6, 8"
-
-    let matches = Regex(pat).Matches(str)
-    printfn "Matches:\n%A" matches
-
+//
+//    let matches = Regex(pat).Matches(str)
+//    printfn "Matches:\n%A" matches
+//

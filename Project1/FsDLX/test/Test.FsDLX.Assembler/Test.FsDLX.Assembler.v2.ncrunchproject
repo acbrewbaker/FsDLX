@@ -62,11 +62,26 @@
     <NamedTestSelector>
       <TestName>Test.FsDLX.Assembler.Directives.directives 1</TestName>
     </NamedTestSelector>
-    <FixtureTestSelector>
-      <FixtureName>Test.FsDLX.Patterns</FixtureName>
-    </FixtureTestSelector>
+    <NamedTestSelector>
+      <TestName>Test.FsDLX.Patterns.register patterns</TestName>
+    </NamedTestSelector>
     <FixtureTestSelector>
       <FixtureName>Test.FsDLX.SimpleIO</FixtureName>
     </FixtureTestSelector>
+    <NamedTestSelector>
+      <TestName>Test.FsDLX.Patterns.label patterns</TestName>
+    </NamedTestSelector>
+    <NamedTestSelector>
+      <TestName>Test.FsDLX.Patterns.immediate patterns</TestName>
+    </NamedTestSelector>
+    <NamedTestSelector>
+      <TestName>Test.FsDLX.Patterns.get opcode regex</TestName>
+    </NamedTestSelector>
+    <NamedTestSelector>
+      <TestName>Test.FsDLX.Patterns.comment patterns</TestName>
+    </NamedTestSelector>
+    <NamedTestSelector>
+      <TestName>Test.FsDLX.Patterns.immediate patterns 2</TestName>
+    </NamedTestSelector>
   </IgnoredTests>
 </ProjectConfiguration>
