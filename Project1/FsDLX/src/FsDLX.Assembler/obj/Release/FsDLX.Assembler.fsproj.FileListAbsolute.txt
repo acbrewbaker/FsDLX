@@ -4,3 +4,6 @@ C:\Users\User\OneDrive\CS5483\Project1\FsDLX\src\FsDLX.Assembler\bin\Release\NCr
 D:\GitHub\FsDLX\Project1\FsDLX\src\FsDLX.Assembler\bin\Release\FsDLX.Assembler.dll
 D:\GitHub\FsDLX\Project1\FsDLX\src\FsDLX.Assembler\bin\Release\NCrunch.Framework.dll
 D:\GitHub\FsDLX\Project1\FsDLX\src\FsDLX.Assembler\obj\Release\FsDLX.Assembler.dll
+X:\GitHub\FsDLX\Project1\FsDLX\src\FsDLX.Assembler\bin\Release\FsDLX.Assembler.dll
+X:\GitHub\FsDLX\Project1\FsDLX\src\FsDLX.Assembler\bin\Release\NCrunch.Framework.dll
+X:\GitHub\FsDLX\Project1\FsDLX\src\FsDLX.Assembler\obj\Release\FsDLX.Assembler.dll

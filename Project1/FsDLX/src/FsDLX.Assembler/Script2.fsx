@@ -19,3 +19,5 @@ for m in matches do
 printfn "%A" (Convert.ToUInt32(cvtf2dBinary, 2))
 
 printfn "%A" (Convert.ToUInt32(cvtf2dBinary,2).ToString("x8"))
+
+

@@ -38,38 +38,141 @@ let ``match itype`` () =
                  m.Groups.["imm"].Value)] |> List.unzip
         (opcode.Head, operands, opcode.Length <> 0)
 
-    let r = matchIType str1
-    printfn "Result: %A" r
+//    let r = Patterns.Instruction.matchIType str1 |||> Conversions.Instruction.itype
+//    printfn "Result: %A" r
 
     let opcode, operands, opvalid = matchIType str1 //Patterns.Instruction.matchIType str1
     
     printfn "Opcode:\t%A" opcode
     printfn "Operands:\t%A" operands
+    printfn "Operands Count:\t%A" (operands.Head)
     printfn "Op Valid?:\t%A" opvalid
 
-    let rd, rs1, imm = operands.Head
-    printfn "Operands Separated:\t%A, %A, %A" rd rs1 imm
+    //printfn "Conversion: %A" ((4u, opcode, operands.Head) |||> Conversions.Instruction.itype)
+
+//    let rd, rs1, imm = operands.Head
+//    printfn "Operands Separated:\t%A, %A, %A" rd rs1 imm
+
+//
+//[<Test>]
+//let ``match itype 2`` () =
+//    let str1 = "addi r1, r21, 4(r5)"
+//    let str2 = "seqi r4, r5, 4(label3)"
+
+let opcodes = Opcodes()
 
 [<Test>]
-let ``match rtype`` () = 
-    let str1 = "add r2, r3, r7"
-    let str2 = "nop"
-
-    let opcode, operands, opvalid = Patterns.Instruction.matchRType str1
+let ``itype conversion`` () =
+    let dlx = File.ReadAllText(Path.Combine(inputdir, "setImmed.dlx"), Text.Encoding.UTF8)
     
-    printfn "Opcode:\t%A" opcode
-    printfn "Operands:\t%A" operands
-    printfn "Op Valid?:\t%A" opvalid
+    
+    let itregex = Regex(Patterns.Instruction.itypecg)
+    
+    let matchInstruction (regex:Regex) (input:string) =
+        let matches = regex.Matches(input.Trim())
+        let opcode, operands = [
+            for m in matches ->
+                m.Groups.["itype"].Value, 
+                (m.Groups.["rd"].Value,
+                 m.Groups.["rs1"].Value,
+                 m.Groups.["imm"].Value)] |> List.unzip
+        (opcode.Head, operands.Head, matches.Count > 0)
+
+    
+    let conversion (pc:uint32) (opcode:string) (operands:string*string*string) =
+        let rd, rs1, imm = operands
+        let encoding = opcodes.Lookup(opcode)
+        encoding.PadLeft(6,'0') +
+        rd.PadLeft(5, '0') +
+        rs1.PadLeft(5, '0') +
+        imm.PadLeft(16, '0')
+
+    let (|IType|_|) (pc:uint32) (hex:string list) input =
+        matchInstruction itregex input |> function
+        | opcode, operands, true -> conversion pc opcode operands |> Some
+        | _ -> None
+
+//    let pchex = 0u, List.empty<string>
+//    let r = (pchex,strs) ||> Seq.fold(fun (pc,hex) line ->
+//        line |> function
+//        | IType pc hex line -> 
+//            printfn "%A" line
+//            (pc, hex @ [line])
+//        | _ -> 
+//            (pc + 1u, hex))
+
+//    let pc, lines = r
+//    printfn "%A" lines
+    ()
 
 [<Test>]
-let ``match jtype`` () = 
-    let str = "jal label3"
+let ``match rtype`` () = ()
+
+[<Test>]
+let ``match jtype`` () = ()
+
+[<Test>]
+let ``match label`` () =
+    let newLabel = Regex(@"(?<=(\w+):.*)(\w+)")
     
-    let opcode, operands, opvalid = Patterns.Instruction.matchJType str
-    
-    printfn "Opcode:\t%A" opcode
-    printfn "Operands:\t%A" operands
-    printfn "Op Valid?:\t%A" opvalid
+
+
+    let matchLabel (regex:Regex) input =
+        let matches = regex.Matches(input)
+        ([for m in matches -> m.Groups.[0].Value], matches.Count > 0)
+
+    let (|Label|_|) (symbolTable:Map<string, string>) (pc:uint32) (hex:string list) input =
+        matchLabel newLabel input |> function
+        | matches, true -> 
+            (symbolTable.Add(matches.Head, Conversions.pc2hex pc), pc, hex) |> Some
+        | _ -> 
+            None
+
+//    let (|Label|_|) pc hex = function
+//        | NewLabel pc hex result -> Some result
+//        | _ -> None
+
+    let pc = 0u
+    let hex = List.empty<string>
+    let str = "label1: j label3"
+    let strs = [str]
+
+    let r symbolTable = ((pc,hex), strs) ||> Seq.fold (fun (pc:uint32, hex:string list) line ->
+        line |> function
+        | Label symbolTable pc hex result -> 
+            printfn "Result: %A" result
+            (pc + 1u, hex)
+        | _ -> 
+            (pc + 1u, hex)
+            ) //(0u, hex)
+
+    let st = Map.empty<string, string>
+    printfn "%A" (r st)
+
+
+//
+//
+//
+//[<Test>]
+//let ``match rtype`` () = 
+//    let str1 = "add r2, r3, r7"
+//    let str2 = "nop"
+//
+//    let opcode, operands, opvalid = Patterns.Instruction.matchRType str1
+//    
+//    printfn "Opcode:\t%A" opcode
+//    printfn "Operands:\t%A" operands
+//    printfn "Op Valid?:\t%A" opvalid
+//
+//[<Test>]
+//let ``match jtype`` () = 
+//    let str = "jal label3"
+//    
+//    let opcode, operands, opvalid = Patterns.Instruction.matchJType str
+//    
+//    printfn "Opcode:\t%A" opcode
+//    printfn "Operands:\t%A" operands
+//    printfn "Op Valid?:\t%A" opvalid
 
 //[<Test>]
 //let ``itype opcode patterns`` () =

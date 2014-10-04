@@ -2,6 +2,7 @@
 
 open System
 open System.IO
+open System.Text
 open NCrunch.Framework
 open NUnit.Framework
 open FsUnit
@@ -18,20 +19,20 @@ let teststr dlxfile hexfile =
 let ``%s to %s`` () =
     let dlxfile = Path.Combine(inputdir, \"%s\")
     let hexfile = Path.Combine(inputdir, \"%s\")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace(\"\\r\",\"\")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected" dlx hex dlxfile hexfile
 
 
-//[<Test>]
-//let ``get file names`` () =
-//    for f in dlxfiles do 
-//        let testfile = f |> Path.GetFileNameWithoutExtension
-//        let dlxfile = testfile + ".dlx"
-//        let hexfile = testfile + ".hex"
-//        printfn "%s" (teststr dlxfile hexfile)
+[<Test>]
+let ``get file names`` () =
+    for f in dlxfiles do 
+        let testfile = f |> Path.GetFileNameWithoutExtension
+        let dlxfile = testfile + ".dlx"
+        let hexfile = testfile + ".hex"
+        printfn "%s" (teststr dlxfile hexfile)
 
 let printContent dlx expected actual =
     printfn "DLX:\n%s" dlx
@@ -42,9 +43,9 @@ let printContent dlx expected actual =
 let ``align.dlx to align.hex`` () =
     let dlxfile = Path.Combine(inputdir, "align.dlx")
     let hexfile = Path.Combine(inputdir, "align.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -52,9 +53,9 @@ let ``align.dlx to align.hex`` () =
 let ``arithImmed.dlx to arithImmed.hex`` () =
     let dlxfile = Path.Combine(inputdir, "arithImmed.dlx")
     let hexfile = Path.Combine(inputdir, "arithImmed.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -62,9 +63,9 @@ let ``arithImmed.dlx to arithImmed.hex`` () =
 let ``asciiz1.dlx to asciiz1.hex`` () =
     let dlxfile = Path.Combine(inputdir, "asciiz1.dlx")
     let hexfile = Path.Combine(inputdir, "asciiz1.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -72,9 +73,9 @@ let ``asciiz1.dlx to asciiz1.hex`` () =
 let ``asciiz2.dlx to asciiz2.hex`` () =
     let dlxfile = Path.Combine(inputdir, "asciiz2.dlx")
     let hexfile = Path.Combine(inputdir, "asciiz2.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -82,9 +83,9 @@ let ``asciiz2.dlx to asciiz2.hex`` () =
 let ``branches.dlx to branches.hex`` () =
     let dlxfile = Path.Combine(inputdir, "branches.dlx")
     let hexfile = Path.Combine(inputdir, "branches.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -92,9 +93,9 @@ let ``branches.dlx to branches.hex`` () =
 let ``convert.dlx to convert.hex`` () =
     let dlxfile = Path.Combine(inputdir, "convert.dlx")
     let hexfile = Path.Combine(inputdir, "convert.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -102,9 +103,9 @@ let ``convert.dlx to convert.hex`` () =
 let ``data.dlx to data.hex`` () =
     let dlxfile = Path.Combine(inputdir, "data.dlx")
     let hexfile = Path.Combine(inputdir, "data.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -112,9 +113,9 @@ let ``data.dlx to data.hex`` () =
 let ``directives1.dlx to directives1.hex`` () =
     let dlxfile = Path.Combine(inputdir, "directives1.dlx")
     let hexfile = Path.Combine(inputdir, "directives1.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -122,9 +123,9 @@ let ``directives1.dlx to directives1.hex`` () =
 let ``directives2.dlx to directives2.hex`` () =
     let dlxfile = Path.Combine(inputdir, "directives2.dlx")
     let hexfile = Path.Combine(inputdir, "directives2.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -132,9 +133,9 @@ let ``directives2.dlx to directives2.hex`` () =
 let ``double1.dlx to double1.hex`` () =
     let dlxfile = Path.Combine(inputdir, "double1.dlx")
     let hexfile = Path.Combine(inputdir, "double1.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -142,9 +143,9 @@ let ``double1.dlx to double1.hex`` () =
 let ``double2.dlx to double2.hex`` () =
     let dlxfile = Path.Combine(inputdir, "double2.dlx")
     let hexfile = Path.Combine(inputdir, "double2.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -152,9 +153,9 @@ let ``double2.dlx to double2.hex`` () =
 let ``float1.dlx to float1.hex`` () =
     let dlxfile = Path.Combine(inputdir, "float1.dlx")
     let hexfile = Path.Combine(inputdir, "float1.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -162,9 +163,9 @@ let ``float1.dlx to float1.hex`` () =
 let ``float2.dlx to float2.hex`` () =
     let dlxfile = Path.Combine(inputdir, "float2.dlx")
     let hexfile = Path.Combine(inputdir, "float2.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -172,9 +173,9 @@ let ``float2.dlx to float2.hex`` () =
 let ``fpArith.dlx to fpArith.hex`` () =
     let dlxfile = Path.Combine(inputdir, "fpArith.dlx")
     let hexfile = Path.Combine(inputdir, "fpArith.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -182,9 +183,9 @@ let ``fpArith.dlx to fpArith.hex`` () =
 let ``intArith.dlx to intArith.hex`` () =
     let dlxfile = Path.Combine(inputdir, "intArith.dlx")
     let hexfile = Path.Combine(inputdir, "intArith.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -192,9 +193,9 @@ let ``intArith.dlx to intArith.hex`` () =
 let ``intLogical.dlx to intLogical.hex`` () =
     let dlxfile = Path.Combine(inputdir, "intLogical.dlx")
     let hexfile = Path.Combine(inputdir, "intLogical.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -202,9 +203,9 @@ let ``intLogical.dlx to intLogical.hex`` () =
 let ``intSets.dlx to intSets.hex`` () =
     let dlxfile = Path.Combine(inputdir, "intSets.dlx")
     let hexfile = Path.Combine(inputdir, "intSets.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -212,9 +213,9 @@ let ``intSets.dlx to intSets.hex`` () =
 let ``intShift.dlx to intShift.hex`` () =
     let dlxfile = Path.Combine(inputdir, "intShift.dlx")
     let hexfile = Path.Combine(inputdir, "intShift.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -222,9 +223,9 @@ let ``intShift.dlx to intShift.hex`` () =
 let ``jump.dlx to jump.hex`` () =
     let dlxfile = Path.Combine(inputdir, "jump.dlx")
     let hexfile = Path.Combine(inputdir, "jump.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -232,9 +233,9 @@ let ``jump.dlx to jump.hex`` () =
 let ``jumpR.dlx to jumpR.hex`` () =
     let dlxfile = Path.Combine(inputdir, "jumpR.dlx")
     let hexfile = Path.Combine(inputdir, "jumpR.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -242,9 +243,9 @@ let ``jumpR.dlx to jumpR.hex`` () =
 let ``loadImmed.dlx to loadImmed.hex`` () =
     let dlxfile = Path.Combine(inputdir, "loadImmed.dlx")
     let hexfile = Path.Combine(inputdir, "loadImmed.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -252,9 +253,9 @@ let ``loadImmed.dlx to loadImmed.hex`` () =
 let ``loads.dlx to loads.hex`` () =
     let dlxfile = Path.Combine(inputdir, "loads.dlx")
     let hexfile = Path.Combine(inputdir, "loads.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -262,9 +263,9 @@ let ``loads.dlx to loads.hex`` () =
 let ``logicalImmed.dlx to logicalImmed.hex`` () =
     let dlxfile = Path.Combine(inputdir, "logicalImmed.dlx")
     let hexfile = Path.Combine(inputdir, "logicalImmed.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -272,9 +273,9 @@ let ``logicalImmed.dlx to logicalImmed.hex`` () =
 let ``move.dlx to move.hex`` () =
     let dlxfile = Path.Combine(inputdir, "move.dlx")
     let hexfile = Path.Combine(inputdir, "move.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -282,9 +283,9 @@ let ``move.dlx to move.hex`` () =
 let ``nop.dlx to nop.hex`` () =
     let dlxfile = Path.Combine(inputdir, "nop.dlx")
     let hexfile = Path.Combine(inputdir, "nop.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -292,9 +293,9 @@ let ``nop.dlx to nop.hex`` () =
 let ``setImmed.dlx to setImmed.hex`` () =
     let dlxfile = Path.Combine(inputdir, "setImmed.dlx")
     let hexfile = Path.Combine(inputdir, "setImmed.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -302,9 +303,9 @@ let ``setImmed.dlx to setImmed.hex`` () =
 let ``shiftImmed.dlx to shiftImmed.hex`` () =
     let dlxfile = Path.Combine(inputdir, "shiftImmed.dlx")
     let hexfile = Path.Combine(inputdir, "shiftImmed.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -312,9 +313,9 @@ let ``shiftImmed.dlx to shiftImmed.hex`` () =
 let ``space.dlx to space.hex`` () =
     let dlxfile = Path.Combine(inputdir, "space.dlx")
     let hexfile = Path.Combine(inputdir, "space.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -322,9 +323,9 @@ let ``space.dlx to space.hex`` () =
 let ``stores.dlx to stores.hex`` () =
     let dlxfile = Path.Combine(inputdir, "stores.dlx")
     let hexfile = Path.Combine(inputdir, "stores.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -332,9 +333,9 @@ let ``stores.dlx to stores.hex`` () =
 let ``text1.dlx to text1.hex`` () =
     let dlxfile = Path.Combine(inputdir, "text1.dlx")
     let hexfile = Path.Combine(inputdir, "text1.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -342,9 +343,9 @@ let ``text1.dlx to text1.hex`` () =
 let ``text2.dlx to text2.hex`` () =
     let dlxfile = Path.Combine(inputdir, "text2.dlx")
     let hexfile = Path.Combine(inputdir, "text2.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -352,9 +353,9 @@ let ``text2.dlx to text2.hex`` () =
 let ``trap.dlx to trap.hex`` () =
     let dlxfile = Path.Combine(inputdir, "trap.dlx")
     let hexfile = Path.Combine(inputdir, "trap.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -362,9 +363,9 @@ let ``trap.dlx to trap.hex`` () =
 let ``word1.dlx to word1.hex`` () =
     let dlxfile = Path.Combine(inputdir, "word1.dlx")
     let hexfile = Path.Combine(inputdir, "word1.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
 
@@ -372,9 +373,8 @@ let ``word1.dlx to word1.hex`` () =
 let ``word2.dlx to word2.hex`` () =
     let dlxfile = Path.Combine(inputdir, "word2.dlx")
     let hexfile = Path.Combine(inputdir, "word2.hex")
-    let dlx = dlxfile |> File.ReadAllText
-    let expected = hexfile |> File.ReadAllText
-    let hex = dlxfile |> assemble
+    let dlx = File.ReadAllText(dlxfile)
+    let expected = File.ReadAllText(hexfile).Replace("\r","")
+    let symbols, pc, hex = dlxfile |> assemble
     printContent dlx expected hex
     hex |> should equal expected
-

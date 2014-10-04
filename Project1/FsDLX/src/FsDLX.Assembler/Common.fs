@@ -19,6 +19,9 @@ let bytes2hex (b:byte[]) =
 let str2hex (str:string) =
     (Encoding.Default.GetBytes(str) |> BitConverter.ToString).Replace("-","").ToLower() + "00"
 
+type SymbolTable = Map<string, string>
+type ProgramCounter = uint32
+type Hex = string list
 
 module Support =
     let srcdir = 
@@ -227,6 +230,9 @@ module Conversions =
         | _ -> str
     let floatingPointAsComment = addLeadingZero >> asComment
 
+    let reg2bin (r:string) =
+        Convert.ToString(r.Substring(1) |> int, 2)
+
     let dlx2hex (convert:uint32 -> string -> uint32*string) (matches:string list) (pcAndHexState:uint32*(string list)) =
         (pcAndHexState, matches) 
         ||> List.fold (fun (pc, hex) str -> 
@@ -301,15 +307,41 @@ module Conversions =
 
     module Instruction =
         let opcodes = Support.Opcodes()
+        let itype (pc:uint32) (opcode:string) (operands:GroupCollection) =
+            let op = opcodes.ITypes.[opcode]
+            printfn "OpCode: %A" (Convert.ToString(op |> int, 2))
+            let rd, rs1, imm =
+                operands.["rd"].Value |> reg2bin,
+                operands.["rs1"].Value |> reg2bin,
+                operands.["imm"].Value
+            Convert.ToString(opcodes.ITypes.[opcode] |> int, 2) +
+            rs1.PadLeft(5, '0') +
+            rd.PadLeft(5, '0') +
+            imm.PadLeft(16, '0')
+            |> printfn "%A"
+
         let map =
             [
-                "itype", fun (pc:uint32) (operands:Group list) -> 
+                "itype", fun (pc:uint32) (operands:GroupCollection) -> 
+                    let rd, rs1, imm =
+                        operands.["rd"].Value,
+                        operands.["rs1"].Value,
+                        operands.["imm"].Value
                     0u, ""
-                "rtype", fun (pc:uint32) (operands:Group list) -> 0u, ""
-                "jtype", fun (pc:uint32) (operands:Group list) -> 0u, ""   
+                "rtype", fun (pc:uint32) (operands:GroupCollection) -> 
+                    let rru, rd, rs1, rs2, func =
+                        operands.["rru"].Value,
+                        operands.["rd"].Value,
+                        operands.["rs1"].Value,
+                        operands.["rs2"].Value,
+                        operands.["func"].Value
+                    0u, ""
+                "jtype", fun (pc:uint32) (operands:GroupCollection) -> 
+                    let label = operands.["label"].Value
+                    0u, ""   
             ] |> Map.ofList
 
-        let dlx2hex (opcode:string) = fun _ _ _ -> 0u, "" //dlx2hex (map.[opcode])
+        let dlx2hex (opcode:string) = dlx2hex (Directive.map.[opcode])
 
 module Patterns =
     let comment = @"(?<comment>.+;.*)"
@@ -319,89 +351,72 @@ module Patterns =
     let label = @"\w+:"
     let imm = @"\d+|\w+|\d+\x40[r\d\d?|\w+]\x41"
 
-    let matchLabel input =
-        let matches = Regex(@"(?<=(label:).*)(?<label>\w+)").Matches(input)
-        ([for m in matches -> m.Groups.["label"].Value], matches.Count > 0)
+    module Label =
+        module private DlxRegex =
+            let newlabel = Regex(@"(?<=(\w+):.*)(\w+)")
+        
+        let matchLabel (regex:Regex) input =
+            let matches = regex.Matches(input)
+            ([for m in matches -> m.Groups.["label"].Value], matches.Count > 0)
 
-    let (|Label|_|) pc hex input =
-        matchLabel input |> function
-        | matches, true -> Some "derp"
-        | _ -> None
-
+        let (|NewLabel|_|) (symbolTable:Map<string, string>) (pc:uint32) (hex:string list) input =
+            matchLabel DlxRegex.newlabel input |> function
+            | matches, true -> 
+                (symbolTable.Add(matches.Head, Conversions.pc2hex pc), pc, hex) |> Some
+            | _ -> None
 
     module Directive =
-        let matchText input = 
-            let matches = Regex(@"(?<=\.(text).*)(?<text>\d+)").Matches(input)
-            ([for m in matches -> m.Groups.["text"].Value], matches.Count > 0)
+        module private DlxRegex =
+            let text    = Regex(@"(?<=\.(text).*)(\d+)")
+            let data    = Regex(@"(?<=\.(data).*)(\d+)")
+            let align   = Regex(@"(?<=\.(align) )(\d)")
+            let asciiz  = Regex(@"(\.asciiz )?""([^""]+)""")
+            let double  = Regex(@"(?<=\.(double).*)([+-]?\d*\.\d+)")
+            let float   = Regex(@"(?<=\.(float).*)([+-]?\d*\.\d+)")
+            let word    = Regex(@"(?<=\.(word).*)((-)?(0x)?\d+)")
+            let space   = Regex(@"(?<=\.(space).*)(\d+)")
         
-        let matchData input = 
-            let matches = Regex(@"(?<=\.(data).*)(?<data>\d+)").Matches(input)
-            ([for m in matches -> m.Groups.["space"].Value], matches.Count > 0)
-        
-        let matchAlign input = 
-            let matches = Regex(@"(?<=\.(align) )(?<align>\d)").Matches(input)
-            ([for m in matches -> m.Groups.["align"].Value], matches.Count > 0)
-        
-        let matchAsciiz input = 
-            let matches = Regex(@"(\.asciiz )?""(?<asciiz>[^""]+)""").Matches(input)
-            ([for m in matches -> m.Groups.["asciiz"].Value], matches.Count > 0)
-        
-        let matchDouble (input:string) = 
-            let matches = Regex(@"(?<=\.(double).*)(?<double>[+-]?\d*\.\d+)").Matches(input)
-            ([for m in matches -> m.Groups.["double"].Value], matches.Count > 0)
-        
-        let matchFloat input = 
-            let matches = Regex(@"(?<=\.(float).*)(?<float>[+-]?\d*\.\d+)").Matches(input)
-            ([for m in matches -> m.Groups.["float"].Value.Replace(",", "")], matches.Count > 0)
-        
-        let matchWord input = 
-            let matches = Regex(@"(?<=\.(word).*)(?<word>(-)?(0x)?\d+)").Matches(input)
-            ([for m in matches -> m.Groups.["word"].Value], matches.Count > 0)
-        
-        let matchSpace input = 
-            let matches = Regex(@"(?<=\.(space).*)(?<space>\d+)").Matches(input)
-            ([for m in matches -> m.Groups.["space"].Value], matches.Count > 0)
-
-
-        let directive = @".(text|data|align|asciiz|double|float|word|space)"
+        let matchDirective (regex:Regex) (input:string) = 
+            let matches = regex.Matches(input)
+            ([for m in matches -> m.Groups.[2].Value], matches.Count > 0)
 
         let (|Text|_|) (pc:uint32) (hex:string list) input =
-            matchText input |> function
+            matchDirective DlxRegex.text input |> function
             | matches, true -> Conversions.Directive.dlx2hex ".text" matches (pc, hex) |> Some
             | _ -> None
 
         let (|Data|_|) (pc:uint32) (hex:string list) input =
-            matchData input |> function
+            matchDirective DlxRegex.data input |> function
             | matches, true -> Conversions.Directive.dlx2hex ".data" matches (pc, hex) |> Some
             | _ -> None
 
         let (|Align|_|) (pc:uint32) (hex:string list) input =
-            matchAlign input |> function
+            matchDirective DlxRegex.align input |> function
             | matches, true -> Conversions.Directive.dlx2hex ".align" matches (pc, hex) |> Some
             | _ -> None
 
         let (|Asciiz|_|) (pc:uint32) (hex:string list) input =
-            matchAsciiz input |> function
+            matchDirective DlxRegex.asciiz input |> function
             | matches, true -> Conversions.Directive.dlx2hex ".asciiz" matches (pc, hex) |> Some
             | _ -> None
 
         let (|Double|_|) (pc:uint32) (hex:string list) input =
-            matchDouble input |> function
+            matchDirective DlxRegex.double input |> function
             | matches, true -> Conversions.Directive.dlx2hex ".double" matches (pc, hex) |> Some
             | _ -> None
 
         let (|Float|_|) (pc:uint32) (hex:string list) input =
-            matchFloat input |> function
+            matchDirective DlxRegex.float input |> function
             | matches, true -> Conversions.Directive.dlx2hex ".float" matches (pc, hex) |> Some
             | _ -> None
 
         let (|Word|_|) (pc:uint32) (hex:string list) input =
-            matchWord input |> function
+            matchDirective DlxRegex.word input |> function
             | matches, true -> Conversions.Directive.dlx2hex ".word" matches (pc, hex) |> Some
             | _ -> None
 
         let (|Space|_|) (pc:uint32) (hex:string list) input =
-            matchSpace input |> function
+            matchDirective DlxRegex.space input |> function
             | matches, true -> Conversions.Directive.dlx2hex ".space" matches (pc, hex) |> Some
             | _ -> None
 
@@ -409,9 +424,14 @@ module Patterns =
     module Instruction =
         let opcodes  = Support.Opcodes()
 
+        module private DlxRegex =
+            let itype = @"beqz|bnez|addi|addui|subi|subui|andi|ori|xori|lhi|trap|jr|jalr|slli|srli|srai|seqi|snei|slti|sgti|slei|sgei|lb|lh|lw|lbu|lhu|lf|ld|sb|sh|sw|sf|sd"
+            let rtype = @"nop|sll|srl|sra|add|addu|sub|subu|and|or|xor|seq|sne|slt|sgt|sle|sge|movf|movd|movfp2i|movi2fp|addf|subf|multf|divf|addd|subd|multd|divd|cvtf2d|cvtf2i|cvtd2f|cvtd2i|cvti2f|cvti2d|mult|div|multu|divu"
+            let jtype = @"j|jal"            
+
         module Operands =
             module Immediate =
-                let immLabel = @"(?<label>^\(\w+)"
+                let immLabel = @"(?<label>\w+)"
                 let immReg = reg
                 let immVal = @"(?<val>\d\d?^[\(])"
                 let immBasePlusOffset = @"(?<baseplusoffset>(?<label>\d\d?\(\w+\))|(?<register>\d\d?\(r\d\d?\)))"
@@ -428,20 +448,18 @@ module Patterns =
 
             let any = @"(?<operands>" + rrr + "|" + fff + "|" + rri + ")"
 
-        let itype = @"beqz|bnez|addi|addui|subi|subui|andi|ori|xori|lhi|trap|jr|jalr|slli|srli|srai|seqi|snei|slti|sgti|slei|sgei|lb|lh|lw|lbu|lhu|lf|ld|sb|sh|sw|sf|sd"
-        let rtype = @"nop|sll|srl|sra|add|addu|sub|subu|and|or|xor|seq|sne|slt|sgt|sle|sge|movf|movd|movfp2i|movi2fp|addf|subf|multf|divf|addd|subd|multd|divd|cvtf2d|cvtf2i|cvtd2f|cvtd2i|cvti2f|cvti2d|mult|div|multu|divu"
-        let jtype = @"j|jal"
+
 
         let operands = Operands.any
 
-        let itypecg = @"(?<=(?<itype>" + itype + ").*)(?<operands>" + Operands.any + ")"
-        let rtypecg = @"(?<=(?<rtype>" + rtype + ").*)(?<operands>" + operands + ")"
-        let jtypecg = @"(?<=(?<jtype>" + jtype + ").*)(?<operands>" + Operands.Immediate.any + ")"
+        let itypecg = @"(?<=(?<itype>" + DlxRegex.itype + ").*)(?<operands>" + Operands.any + ")"
+        let rtypecg = @"(?<=(?<rtype>" + DlxRegex.rtype + ").*)(?<operands>" + operands + ")"
+        let jtypecg = @"(?<=(?<jtype>" + DlxRegex.jtype + ").*)(?<operands>" + Operands.Immediate.any + ")"
 
         let matchIType input =
             let opcode, operands = [
                 for m in Regex(itypecg).Matches(input) -> 
-                    m.Groups.["itype"].Value, m.Groups.["operands"]] |> List.unzip
+                    m.Groups.["itype"].Value, m.Groups] |> List.unzip
             (opcode.Head, operands, opcode.Length <> 0)
 
         let matchRType input =
@@ -461,7 +479,11 @@ module Patterns =
 
         let (|IType|_|) (pc:uint32) (hex:string list) input =
             matchIType input |> function
-            | opcode, operands, true -> Conversions.Instruction.dlx2hex opcode operands (pc, hex) |> Some
+            | opcode, operands, true -> 
+                operands.Head |> printfn "%A"
+                Conversions.Instruction.itype pc opcode operands.Head
+//                let ops = [for g in operands -> g.]
+                Conversions.Instruction.dlx2hex opcode [""] (pc, hex) |> Some
             | _ -> None
 
         let (|RType|_|) (pc:uint32) (hex:string list) input =
@@ -471,8 +493,13 @@ module Patterns =
 
         let (|JType|_|) (pc:uint32) (hex:string list) input =
             matchIType input |> function
-            | opcode, operands, true -> Conversions.Instruction.dlx2hex opcode operands (pc, hex) |> Some
+            | opcode, operands, true -> Conversions.Instruction.dlx2hex opcode [""] (pc, hex) |> Some
             | _ -> None
+
+    let (|Label|_|) symbolTable pc hex = function
+        | Label.NewLabel symbolTable pc hex result -> Some result
+        | _ -> None
+
 
     let (|Directive|_|) pc hex = function
         | Directive.Text pc hex result -> Some result
