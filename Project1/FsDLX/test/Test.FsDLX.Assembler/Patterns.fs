@@ -61,48 +61,142 @@ let ``match itype`` () =
 
 let opcodes = Opcodes()
 
+type SymbolTable() =
+    let table = Map.empty<string, string>
+    let immLabels = Map.empty<string, int>
+    member val private Table = table with get, set
+    member val private ImmLabels = immLabels with get, set
+    member st.Lookup(label, lineNumber) = 
+        st.Table.TryFind(label) |> function
+        | Some address -> 
+            Some address
+        | None -> 
+            st.ImmLabels <- st.ImmLabels.Add(label, lineNumber)
+            None
+    member st.Add(label, pc) = 
+        st.Table <- st.Table.Add(label, pc)
+        st
+
+    override st.ToString() =
+        sprintf "=== Table ===\n%s\n=== Imm Labels ===\n%s" 
+            (st.Table.ToString()) 
+            (st.ImmLabels.ToString())
+
+let str2option = function | "" -> None | str -> Some str
+
+type Immediate =
+    | Label of string
+    | Value of string
+
+    member imm.Convert(st:SymbolTable, lineNumber:int) = imm |> function
+        | Label x -> st.Lookup(x, lineNumber) |> function | Some address -> address | None -> failwith "fail"
+        | Value x -> x.PadLeft(16, '0')
+
+    static member Create str =
+        let imm = ref 0
+        Int32.TryParse(str, imm) |> function
+        | true -> Immediate.Value(Convert.ToString(!imm, 2))
+        | false -> Immediate.Label(str)
+
+type Operands =
+    | IType of string * string * string
+    | RType of string * string * string * string
+    | JType of string
+
+    static member Init (groups:GroupCollection) =
+        (   groups.["rru"].Value |> str2option, 
+            groups.["rd"].Value |> str2option, 
+            groups.["rs1"].Value |> str2option, 
+            groups.["rs2"].Value |> str2option, 
+            groups.["imm"].Value |> str2option) |> function
+        | None, Some rd, Some rs1, None, Some imm -> IType(rd, rs1, imm)
+        | Some rru, Some rd, Some rs1, Some rs2, None -> RType(rru, rd, rs1, rs2)
+        | None, None, None, None, Some imm -> JType(imm)
+        | _ -> failwith "couldn't create valid instruction DU"
+        
+
+//type Instruction =
+//    | IType of string * string * string * string
+//    | RType of string * string * string * string
+//    | JType of string * string
+//
+//    static member Create (groups:GroupCollection) =
+//        let operands =
+//            groups.["rru"].Value,
+//            groups.["rd"].Value,
+//            groups.["rs1"].Value,
+//            groups.["rs2"].Value,
+//            groups.["imm"].Value
+
 [<Test>]
 let ``itype conversion`` () =
-    let dlx = File.ReadAllText(Path.Combine(inputdir, "setImmed.dlx"), Text.Encoding.UTF8)
+    let dlx = File.ReadAllLines(Path.Combine(inputdir, "setImmed.dlx"))
+    printfn "========  DLX  ========\n%A" dlx
+    let hex = File.ReadAllText(Path.Combine(inputdir, "setImmed.hex")).Replace("\r", "")
+    printfn "========  HEX (Expected) ========\n%A" hex
     
+    printfn "none = > %A" (None)
+    printfn "%A" (str2option "derp")
+
+    let lblpat = @"((?<label>\w+):)?"
+    let lblregex = Regex(lblpat)
+    let itpar = Patterns.Instruction.itypecg
     
-    let itregex = Regex(Patterns.Instruction.itypecg)
+    let regex = Regex(lblpat + itpar)
     
+    let matchLabel (regex:Regex) input =
+        let matches = regex.Matches(input)
+        ([for m in matches -> m.Groups.["label"].Value], matches.Count > 0)
+
+    let (|NewLabel|_|) (symbolTable:SymbolTable) (pc:uint32) (hex:string list) input =
+        matchLabel lblregex input |> function
+        | matches, true -> 
+            (symbolTable.Add(matches.Head, Conversions.pc2hex pc), pc, hex) |> Some
+        | _ -> None
+
     let matchInstruction (regex:Regex) (input:string) =
         let matches = regex.Matches(input.Trim())
+        let label = [for m in matches -> m.Groups.["label"].Value].Head
+        
         let opcode, operands = [
             for m in matches ->
                 m.Groups.["itype"].Value, 
                 (m.Groups.["rd"].Value,
                  m.Groups.["rs1"].Value,
+                 m.Groups.["rs2"].Value,
                  m.Groups.["imm"].Value)] |> List.unzip
+        printfn "Operands ==> %A" operands.Head
         (opcode.Head, operands.Head, matches.Count > 0)
 
     
-    let conversion (pc:uint32) (opcode:string) (operands:string*string*string) =
-        let rd, rs1, imm = operands
+    let conversion (st:SymbolTable) (pc:uint32) (hex:string list) (opcode:string) (operands:string*string*string*string) =
+        let rd, rs1, rs2, imm = operands
+        let imm = Immediate.Create(imm).Convert(st, 1)
         let encoding = opcodes.Lookup(opcode)
-        encoding.PadLeft(6,'0') +
-        rd.PadLeft(5, '0') +
-        rs1.PadLeft(5, '0') +
-        imm.PadLeft(16, '0')
+        let newpc = pc + 4u
+        let newstr =
+            Conversions.pc2hex pc + ": " +
+            encoding.PadLeft(6,'0') +
+            (Conversions.reg2bin rd).PadLeft(5, '0') +
+            (Conversions.reg2bin rs1).PadLeft(5, '0') +
+            imm
+        (st, newpc, hex @ [newstr])
 
-    let (|IType|_|) (pc:uint32) (hex:string list) input =
-        matchInstruction itregex input |> function
-        | opcode, operands, true -> conversion pc opcode operands |> Some
+    let (|IType|_|) (st:SymbolTable) (pc:uint32) (hex:string list) input =
+        matchInstruction regex input |> function
+        | opcode, operands, true -> conversion st pc hex opcode operands |> Some
         | _ -> None
 
-//    let pchex = 0u, List.empty<string>
-//    let r = (pchex,strs) ||> Seq.fold(fun (pc,hex) line ->
-//        line |> function
-//        | IType pc hex line -> 
-//            printfn "%A" line
-//            (pc, hex @ [line])
-//        | _ -> 
-//            (pc + 1u, hex))
+    let st, pc, hex = SymbolTable(), 0u, List.empty<string>
+    let r = ((st,pc,hex),dlx) ||> Seq.fold(fun (st,pc,hex) line ->
+        line |> function
+        | IType st pc hex line -> line
+        | _ -> 
+            (st, pc + 1u, hex))
 
-//    let pc, lines = r
-//    printfn "%A" lines
+    let st, pc, lines = r
+    printfn "%A" st
+    printfn "%A" lines
     ()
 
 [<Test>]
