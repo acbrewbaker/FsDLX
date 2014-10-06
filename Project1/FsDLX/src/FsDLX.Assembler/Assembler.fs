@@ -6,11 +6,20 @@ open System.Text
 open System.Text.RegularExpressions
 
 
+let updateSymbolTable (st:SymbolTable) (ai:AssemblerInput list) =
+    let update = function | Some lbl, pc -> st.Add(lbl, pc) |> ignore | None, _ -> ()
+    ai |> List.iter (fun input ->
+        input |> function
+        | Instruction(pc, label, instruction) -> update (label,pc)
+        | Directive(pc, label, directive) -> update (label, pc)
+        | _ -> ())
+
 
 let assemble (dlxfile:string) = 
     if Path.GetExtension(dlxfile) <> ".dlx" then
         failwith "Invalid file extension"
     else
+        //let asmInput = dlx |> List.mapi (fun i line -> AssemblerInput)
         let symbols, pc, hex =
             dlxfile |> File.ReadAllLines |> Seq.fold (fun (symbols:Map<string, string>, pc:uint32, hex:string list) line ->
                 //let newhex = pc.ToString("x8") + ": "

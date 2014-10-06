@@ -82,7 +82,7 @@ module Conversions =
 
     let pc2hex (pc:uint32) = pc.ToString("x8")
     let strAsComment str = "\t#\"" + str + "\""
-    let asComment str = "    \t# " + str
+    let asComment str = "\t#" + str
     let addLeadingZero (str:string) =
         str |> function
         | _ when str.StartsWith("-.") -> str.Insert(str.IndexOf("-.") + 1, "0")
@@ -439,10 +439,6 @@ type SymbolTable() =
 //            (st.Table.ToString()) 
             //(st.ImmLabels.ToString())
 
-
-
-
-
 type HexOutput = string list
 
 type AssemblerState = SymbolTable * ProgramCounter * HexOutput
@@ -506,7 +502,7 @@ type Immediate =
     member imm.Encode() = 
         let encoding = imm |> function
             | Value value -> Convert.ToString((int value), 2)
-            | Label label -> Convert.ToString(10, 2)
+            | Label label -> label
             | Register register -> register.Encode()
             | BasePlusOffset(b, offset) -> Convert.ToString((int b) + (int offset), 2)
         encoding.PadLeft(16, '0')
@@ -516,15 +512,15 @@ type Immediate =
         imm |> function
         | Label label -> 
             let pcA = label |> st.Lookup //|> update |> Label
-            printfn "PC A: %A" pcA
+            //printfn "PC A: %A" pcA
             let pcB = pcA |> update
-            printfn "PC B: %A" pcB
+            //printfn "PC B: %A" pcB
             pcB |> Label
         | BasePlusOffset(b, offset) -> 
-            printfn "BPO SON!"
+            //printfn "BPO SON!"
             BasePlusOffset(b, offset |> st.Lookup |> update)
         | _ -> 
-            printfn "No LBL2ADDR MATCH SON"
+            //printfn "No LBL2ADDR MATCH SON"
             imm
         
     static member InitBasePlusOffset (groups:GroupCollection) =
@@ -605,4 +601,16 @@ type Instruction =
         Instruction.Init([for m in regex.Matches(input) -> m.Groups].Head)
 
 
+type AssemblerInput =
+    | Comment of string
+    | Directive of ProgramCounter * Label option * string
+    | Instruction of ProgramCounter * Label option * Instruction
 
+    static member Parse (regex:Regex) (line:string) (pc:ProgramCounter) =
+        let matches = regex.Matches(line)
+        let groups = [for m in matches -> m.Groups].Head
+        let label = [for m in matches -> m.Groups.["newlabel"].Value].Head.Replace(":","")
+        //printfn "new label: %A" label
+        label |> str2option |> function
+        | Some label -> Instruction(pc, Some label, Instruction.Init groups)
+        | input -> Instruction(pc, None, Instruction.Init groups)
