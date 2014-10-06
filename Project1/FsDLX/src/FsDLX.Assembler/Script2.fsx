@@ -20,4 +20,7 @@ printfn "%A" (Convert.ToUInt32(cvtf2dBinary, 2))
 
 printfn "%A" (Convert.ToUInt32(cvtf2dBinary,2).ToString("x8"))
 
+let x = 4u
+printfn "Binary: %A" (Convert.ToString(int x, 2))
+
 

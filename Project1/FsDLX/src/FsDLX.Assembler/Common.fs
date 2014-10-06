@@ -19,9 +19,15 @@ let bytes2hex (b:byte[]) =
 let str2hex (str:string) =
     (Encoding.Default.GetBytes(str) |> BitConverter.ToString).Replace("-","").ToLower() + "00"
 
-type SymbolTable = Map<string, string>
-type ProgramCounter = uint32
-type Hex = string list
+let pc2hex (pc:uint32) = pc.ToString("x8")
+
+let str2option = function | "" -> None | str -> Some str
+
+let group2option (g:Group) = g.Value |> str2option
+
+let reg2bin (r:string) = Convert.ToString(r.Substring(1) |> int, 2)
+
+let concatLines lines = lines |> List.fold (fun r s -> r + s + "\n") ""
 
 module Support =
     let srcdir = 
@@ -71,151 +77,6 @@ module Support =
         member o.Lookup(code) = lookup.[code]
 
         static member ParseTypeFile filepath = parseTypeFile filepath
-
-module Types =
-
-//    type Label(label:string, reference:string) =
-//        let v = reference |> uint32
-//        member val String = label with get, set
-//        member val Reference = v with get, set
-//
-//    type Immediate =
-//        | Val of string
-//        | Register of string
-//        | Label of string
-//        //| BasePlusOffset of string
-//    //
-//    //    static member Match str = 
-//    //        let pat = @"r\d\d?^\(|^\d\w+|\d\d?\(\w+\)"
-//    //        let matches = Regex(pat).Match(str)
-//    //        printfn "%A" matches
-//    
-//    //        imm |> function
-//    //        | Val str -> ()
-//    //        | Register str -> ()
-//    //        | Label str -> ()
-//    //        | BasePlusOffset str -> ()
-//
-//
-//    type PC =
-//        | String of string
-//        | Val of uint32
-//
-//        override pc.ToString() = pc |> function
-//            | String pc -> pc
-//            | Val pc -> pc.ToString("x8")
-
-//    type Primitive = 
-//        | Int of int
-//        | UInt of uint32
-//        | Single of float32
-//        | Double of float
-//        | Hex of string
-//
-//        member dp.ToHex = dp |> function
-//            | Int x ->      x |> BitConverter.GetBytes |> bytes2hex
-//            | UInt x ->     x |> BitConverter.GetBytes |> bytes2hex
-//            | Single x ->   x |> BitConverter.GetBytes |> bytes2hex
-//            | Double x ->   x |> BitConverter.GetBytes |> bytes2hex
-//            | Hex x -> x
-//
-//        static member AsHex = function
-//            | Int x ->      x |> BitConverter.GetBytes |> bytes2hex |> Primitive.Hex
-//            | UInt x ->     x |> BitConverter.GetBytes |> bytes2hex |> Primitive.Hex
-//            | Single x ->   x |> BitConverter.GetBytes |> bytes2hex |> Primitive.Hex
-//            | Double x ->   x |> BitConverter.GetBytes |> bytes2hex |> Primitive.Hex
-//            | Hex x ->      x                                       |> Primitive.Hex
-
-    let unused = "000000"
-
-//    type Opcode(name:string, ?opcodes:Support.Opcodes) =
-//        let opcodes = defaultArg opcodes (Support.Opcodes())
-//        let encoding = opcodes.Lookup(name) |> int
-//        member val Name = name
-//        member val IntEncoding = encoding
-//        member val HexEncoding = Convert.ToString(encoding, 16).PadLeft(6, '0')
-
-    //type Opcode(name:string, code:int) =
-    //    member val Name = name with get, set
-    //    member val Code = code with get, set
-
-
-//    type RegisterT(?value:uint32, ?displayInBinary:bool) =
-//        let mutable value = defaultArg value 0u
-//        let displayInBinary = defaultArg displayInBinary false
-//        let bytes = BitConverter.GetBytes(value)
-//        member r.Byte0 = bytes.[0]
-//        member r.Byte1 = bytes.[1]
-//        member r.Byte2 = bytes.[2]
-//        member r.Byte3 = bytes.[3]
-//        member r.Value
-//            with get() = value
-//            and set(v) = value <- v
-//        member r.Bit b = r.Value &&& (1u <<< b)
-//        override r.ToString() = 
-//            if displayInBinary then r.Value.ToString("2")
-//            else r.Value.ToString("x8")
-
-//    type Register =
-//        | String of string
-//        | Val of RegisterT
-//
-//        member r.Set(v) = r |> function
-//            | String rid -> ()
-//            | Val reg -> reg.Value <- v
-//
-    
-//    type Opcode =
-//        | Name of string
-//        | Encoding of int
-//
-//
-//
-//    type Immediate =
-//        | String of string
-//        | Val of uint32
-//
-//    type RRid =
-//        | String of string
-//        | Val of int
-//
-//    type Instruction =
-//        | IType of Opcode * Register * Register * Immediate
-//        | RType of RRid * Register * Register * Register * Opcode
-//        | JType of Opcode * Immediate
-//
-//        member private ins.Encode = ins |> function
-//            | IType(opcode, rs1, rd, imm) ->
-//                opcode  .PadLeft(6, '0') + 
-//                rs1     .PadLeft(5, '0') + 
-//                rd      .PadLeft(5, '0') + 
-//                imm     .PadLeft(16, '0')
-//                
-//            | RType(rru, rs1, rs2, rd, func) ->
-//                (string rru)    .PadLeft(6, '0') +
-//                rs1             .PadLeft(5, '0') +
-//                rs2             .PadLeft(5, '0') +
-//                rd              .PadLeft(5, '0') +
-//                unused                           +
-//                func            .PadLeft(5, '0')
-//            | JType(opcode, name) ->
-//                opcode  .PadLeft(6, '0') +
-//                name    .PadLeft(26, '0')
-//
-//        member ins.asBinaryString = ins.Encode
-//        member ins.asUInt32 = Convert.ToUInt32(ins.Encode, 2)
-//        member ins.asHexString = ins.asUInt32.ToString("x8")
-//    
-//        override ins.ToString() = ins.asHexString
-
-    type Opcode =
-        | Name of string
-        | Encoding of int
-        | Raw of string * string
-
-    type Operands = Group list
-
-    type Instruction = int
 
 module Conversions =
 
@@ -431,52 +292,50 @@ module Patterns =
 
         module Operands =
             module Immediate =
-                let immLabel = @"(?<label>\w+)"
-                let immReg = reg
-                let immVal = @"(?<val>\d\d?^[\(])"
-                let immBasePlusOffset = @"(?<baseplusoffset>(?<label>\d\d?\(\w+\))|(?<register>\d\d?\(r\d\d?\)))"
+                let immLabel = @"(,? )(?<label>[a-zA-Z]+\d*)$"
+                let immReg = @"(,? )(?<register>r\d\d?)$"
+                let immVal = @"(,? )(?<val>\d+)$"
+                let immBasePlusOffset = "(,? )(?<base>\d)\((?<offset>.*)\)$"
+                
                 let any = @"(?<imm>" + immLabel + "|" + immReg + "|" + immVal + "|" + immBasePlusOffset + ")"
             
-                let (|BasePlusOffset|_|) str =
-                    let m = Regex.Match(@"\d\d?\(\w+\)", str)
-                    if m.Success then Some(List.tail [for g in m.Groups -> g.Value])
-                    else None
 
-            let rrr = @"(?<rd>" + reg + "), (?<rs1>" + reg + "), (?<rs2>" + reg + ")"
-            let fff = @"(?<rd>" + freg + "), (?<rs1>" + freg + "), (?<rs2>" + freg + ")"
-            let rri = @"(?<rd>" + reg + "), (?<rs1>" + reg + "), " + Immediate.any //"(?<imm>" + imm + ")" //Immediate.any
+            let rrr = @"(?<rs1>r\d\d?), (?<rs2>r\d\d?), (?<rd>r\d\d?)$"
+            let fff = @"(?<rs1>f\d\d?), (?<rs2>f\d\d?), (?<rd>f\d\d?)$"
+            let rri = @"(?<rs1>r\d\d?), (?<rd>r\d\d?)" + Immediate.any
 
+            
+            let itype = @"(?<operands>" + rri + ")"
+            let rtype = @"(?<operands>" + rrr + "|" + fff + ")"
+            let jtype = @"(?<operands>" + Immediate.any + ")"
             let any = @"(?<operands>" + rrr + "|" + fff + "|" + rri + ")"
-
-
 
         let operands = Operands.any
 
-        let itypecg = @"(?<=(?<itype>" + DlxRegex.itype + ").*)(?<operands>" + Operands.any + ")"
-        let rtypecg = @"(?<=(?<rtype>" + DlxRegex.rtype + ").*)(?<operands>" + operands + ")"
-        let jtypecg = @"(?<=(?<jtype>" + DlxRegex.jtype + ").*)(?<operands>" + Operands.Immediate.any + ")"
+        let itype = @"(?<=(?<itype>" + DlxRegex.itype + ").*)" + Operands.itype
+        let rtype = @"(?<=(?<rtype>" + DlxRegex.rtype + ").*)" + Operands.rtype
+        let jtype = @"(?<=(?<jtype>" + DlxRegex.jtype + ").*)" + Operands.jtype
 
         let matchIType input =
             let opcode, operands = [
-                for m in Regex(itypecg).Matches(input) -> 
+                for m in Regex(itype).Matches(input) -> 
                     m.Groups.["itype"].Value, m.Groups] |> List.unzip
             (opcode.Head, operands, opcode.Length <> 0)
 
         let matchRType input =
             let opcode, operands = [
-                for m in Regex(rtypecg).Matches(input) -> 
+                for m in Regex(rtype).Matches(input) -> 
                     m.Groups.["rtype"].Value, m.Groups.["operands"].Value] |> List.unzip
             (opcode.Head, operands, opcode.Length <> 0)
 
         let matchJType input =
             let opcode, operands = [
-                for m in Regex(jtypecg).Matches(input) -> 
+                for m in Regex(jtype).Matches(input) -> 
                     m.Groups.["jtype"].Value, m.Groups.["operands"].Value] |> List.unzip
             (opcode.Head, operands, opcode.Length <> 0)
 
 
-        let instruction = @"(?<opcode>" + itypecg + "|" + rtypecg + "|" + jtypecg + @"])\s" + Operands.any
-
+        
         let (|IType|_|) (pc:uint32) (hex:string list) input =
             matchIType input |> function
             | opcode, operands, true -> 
@@ -518,3 +377,232 @@ module Patterns =
         | Instruction.RType pc hex result -> Some result
         | Instruction.JType pc hex result -> Some result
         | _ -> None
+
+
+type ProgramCounter =
+    | Value of uint32
+    | Hex of string
+
+    member pc.ForHexOutput = pc |> function
+        | Value v -> pc.ToString() + ": "
+        | Hex h -> h + ": "
+    
+    member pc.ToBinary() = pc |> function
+        | _ -> Convert.ToString(pc.ToUint32() |> int, 2)
+
+    member pc.ToUint32() = pc |> function
+        | Value v -> v
+        | Hex h -> Convert.ToUInt32(h, 16)
+
+    member pc.GetNewPC(oldpc:uint32) = pc |> function
+        | Value v -> ProgramCounter.Value(v + oldpc)
+        | _ -> ProgramCounter.Value(pc.ToUint32() + oldpc)
+
+    member pc.GetNewPC() = pc |> function
+        | Value v -> ProgramCounter.Value(v + 4u)
+        | _ -> ProgramCounter.Value(pc.ToUint32() + 4u)
+
+    override pc.ToString() = pc |> function
+        | Value v -> pc2hex v
+        | Hex h -> h
+
+type Label = string
+
+type Address =
+    | String of string
+    | Value of uint32
+
+type SymbolTable() =
+    let table = Map.empty<Label, ProgramCounter>
+    //let immLabels = Map.empty<Label, int>
+    member val private Table = table with get, set
+    //member val private ImmLabels = immLabels with get, set
+//    member st.Lookup(label, lineNumber) = 
+//        st.Table.TryFind(label) |> function
+//        | Some address -> 
+//            Some address
+//        | None -> 
+//            st.ImmLabels <- st.ImmLabels.Add(label, lineNumber)
+//            None
+
+    member st.Lookup(label) =
+        st.Table.TryFind(label) |> function | Some address -> Some address | None -> None
+
+    member st.Add(label:Label, pc) =
+        st.Table <- st.Table.Add(label, pc)
+        st
+    
+    member st.Display() = st.Table |> Map.iter (fun k v -> printfn "%A" (k,v,v.ToBinary()))
+
+//    override st.ToString() =
+//        sprintf "\n=== Table ===\n%s"  //\n=== Imm Labels ===\n%s" 
+//            (st.Table.ToString()) 
+            //(st.ImmLabels.ToString())
+
+
+
+
+
+type HexOutput = string list
+
+type AssemblerState = SymbolTable * ProgramCounter * HexOutput
+
+type MatchFunction = Regex -> string -> GroupCollection
+type ConversionFunction = AssemblerState -> string -> AssemblerState
+
+type Opcode =
+    | IType of string
+    | RType of string
+    | JType of string
+    
+    member o.Encode(?opcodes:Support.Opcodes) = 
+        let opcodes = defaultArg opcodes (Support.Opcodes())
+        let encoding = o |> function
+            | IType op -> opcodes.Lookup(op)
+            | RType op -> opcodes.Lookup(op)
+            | JType op -> opcodes.Lookup(op)
+        Convert.ToString(int encoding, 2).PadLeft(6, '0')
+
+//    member o.ToBinary(?opcodes:Support.Opcodes) = 
+//        let opcodes = defaultArg opcodes (Support.Opcodes())
+//        o.Encode(opcodes)
+//
+//    member o.ToHex() = 
+//        let opcodes = defaultArg opcodes (Support.Opcodes())
+//        Convert.ToUInt32()
+
+    static member Init (groups:GroupCollection) =
+        (   groups.["itype"].Value |> str2option,
+            groups.["rtype"].Value |> str2option,
+            groups.["jtype"].Value |> str2option) |> function
+        | Some opcode, None, None -> IType(opcode)
+        | None, Some opcode, None -> RType(opcode)
+        | None, None, Some opcode -> JType(opcode)
+        | _ -> failwith "couldn't create valid opcode DU"
+
+//type RRU =
+//    | Integer = 0
+//    | FloatingPoint = 1
+
+type Register =
+    | String of string
+    | Value of string
+
+    member reg.Encode() = reg |> function
+        | String r -> (reg2bin r).PadLeft(5, '0')
+        | _ -> "Value type of Register DU not used yet"
+
+type Immediate =
+    | Value of string
+    | Label of Label
+    | Register of Register
+    | BasePlusOffset of string * string
+
+//    member imm.Convert(st:SymbolTable, lineNumber:int) = imm |> function
+//        | Label lbl -> st.Lookup(x, lineNumber) |> function | Some address -> address | None -> failwith "fail"
+//        | Value x -> x.PadLeft(16, '0')
+//        | _ -> ""
+
+    member imm.Encode() = 
+        let encoding = imm |> function
+            | Value value -> Convert.ToString((int value), 2)
+            | Label label -> Convert.ToString(10, 2)
+            | Register register -> register.Encode()
+            | BasePlusOffset(b, offset) -> Convert.ToString((int b) + (int offset), 2)
+        encoding.PadLeft(16, '0')
+            
+    member imm.LabelToAddress(st:SymbolTable) = 
+        let update = function | Some (pc:ProgramCounter) -> pc.ToBinary() | None -> failwith ""
+        imm |> function
+        | Label label -> 
+            let pcA = label |> st.Lookup //|> update |> Label
+            printfn "PC A: %A" pcA
+            let pcB = pcA |> update
+            printfn "PC B: %A" pcB
+            pcB |> Label
+        | BasePlusOffset(b, offset) -> 
+            printfn "BPO SON!"
+            BasePlusOffset(b, offset |> st.Lookup |> update)
+        | _ -> 
+            printfn "No LBL2ADDR MATCH SON"
+            imm
+        
+    static member InitBasePlusOffset (groups:GroupCollection) =
+        (   groups.["base"] |> group2option,
+            groups.["offset"] |> group2option) |> function
+        | Some b, Some offset -> BasePlusOffset(b, offset)
+        | _ -> failwith "missing base and/or offset"
+
+    static member Init (groups:GroupCollection) = 
+        (   groups.["label"] |> group2option,
+            groups.["register"] |> group2option,
+            groups.["val"] |> group2option) |> function
+        | Some label, None, None -> Label label
+        | None, Some register, None -> register |> Register.String |> Register
+        | None, None, Some value -> Value value
+        | None, None, None -> Immediate.InitBasePlusOffset groups
+        | _ -> failwith "couldn't construct a valid Immediate DU"
+        
+    static member Parse (regex:Regex) (input:string) = ()
+
+type Operands =
+    | IType of Register * Register * Immediate
+    | RType of Register * Register * Register
+    | JType of Immediate
+
+    member ops.Encode() = ops |> function
+        | IType(rs1, rd, imm) -> 
+            rs1.Encode() +
+            rd.Encode() +
+            imm.Encode()
+        | RType(rs1, rs2, rd) -> ""
+        | JType(imm) -> ""
+
+    member ops.LabelToAddress(st:SymbolTable) = ops |> function
+        | IType(rs1, rd, imm) -> IType(rs1, rd, imm.LabelToAddress st)
+        | JType(imm) -> JType(imm.LabelToAddress st)
+        | RType(_) -> ops
+
+    static member Init(groups:GroupCollection) =
+        (   groups.["rs1"].Value |> str2option, 
+            groups.["rs2"].Value |> str2option, 
+            groups.["rd"].Value |> str2option, 
+            groups.["imm"] |> group2option) |> function
+        | Some rs1, None, Some rd, Some imm -> 
+            IType(Register.String rd, Register.String rs1, Immediate.Init groups)
+        | Some rs1, Some rs2, Some rd, _ -> 
+            RType(Register.String rs1, Register.String rs2, Register.String rd)
+        | None, None, None, Some imm -> JType(Immediate.Init groups)
+        | _ -> failwith "couldn't create valid instruction DU"
+
+type Instruction =
+    | Raw of string 
+    | Parsed of Opcode * Operands
+    
+    member i.Parse regex (f:Regex -> string -> GroupCollection) = i |> function
+        | Raw instruction -> 
+            let groups = f regex instruction
+            Parsed(Opcode.Init groups, Operands.Init groups)
+        | Parsed(opcode, operands) -> i
+    
+    member private i.Encode() = i |> function
+        | Parsed(opcode, operands) -> 
+            opcode.Encode() +
+            operands.Encode()
+        | Raw str -> failwith "cant encode raw function!"
+
+    member i.ToHex() = Convert.ToUInt32(i.Encode(), 2).ToString("x8")
+    member i.ToBinary() = i.Encode()
+
+    member i.LabelToAddress(st:SymbolTable) = i |> function 
+        | Parsed(opcode, operands) -> Parsed(opcode, operands.LabelToAddress st)
+        | _ -> i
+
+    static member Init (groups:GroupCollection) =
+        Parsed(Opcode.Init groups, Operands.Init groups)
+
+    static member Match (regex:Regex) (input:string) =
+        Instruction.Init([for m in regex.Matches(input) -> m.Groups].Head)
+
+
+

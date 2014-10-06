@@ -23,7 +23,6 @@ let ``get opcode regex`` () =
     printfn "%A" jtypecodes
 
 
-
 [<Test>]
 let ``match itype`` () = 
     let str1 = "addi r1, r21, 4(r5)"
@@ -31,7 +30,7 @@ let ``match itype`` () =
 
     let matchIType input =
         let opcode, operands = [
-            for m in Regex(Patterns.Instruction.itypecg).Matches(input) -> 
+            for m in Regex(Patterns.Instruction.itype).Matches(input) -> 
                 m.Groups.["itype"].Value, 
                 (m.Groups.["rd"].Value,
                  m.Groups.["rs1"].Value,
@@ -48,155 +47,449 @@ let ``match itype`` () =
     printfn "Operands Count:\t%A" (operands.Head)
     printfn "Op Valid?:\t%A" opvalid
 
-    //printfn "Conversion: %A" ((4u, opcode, operands.Head) |||> Conversions.Instruction.itype)
-
-//    let rd, rs1, imm = operands.Head
-//    printfn "Operands Separated:\t%A, %A, %A" rd rs1 imm
-
-//
-//[<Test>]
-//let ``match itype 2`` () =
-//    let str1 = "addi r1, r21, 4(r5)"
-//    let str2 = "seqi r4, r5, 4(label3)"
-
-let opcodes = Opcodes()
-
-type SymbolTable() =
-    let table = Map.empty<string, string>
-    let immLabels = Map.empty<string, int>
-    member val private Table = table with get, set
-    member val private ImmLabels = immLabels with get, set
-    member st.Lookup(label, lineNumber) = 
-        st.Table.TryFind(label) |> function
-        | Some address -> 
-            Some address
-        | None -> 
-            st.ImmLabels <- st.ImmLabels.Add(label, lineNumber)
-            None
-    member st.Add(label, pc) = 
-        st.Table <- st.Table.Add(label, pc)
-        st
-
-    override st.ToString() =
-        sprintf "=== Table ===\n%s\n=== Imm Labels ===\n%s" 
-            (st.Table.ToString()) 
-            (st.ImmLabels.ToString())
-
-let str2option = function | "" -> None | str -> Some str
-
-type Immediate =
-    | Label of string
-    | Value of string
-
-    member imm.Convert(st:SymbolTable, lineNumber:int) = imm |> function
-        | Label x -> st.Lookup(x, lineNumber) |> function | Some address -> address | None -> failwith "fail"
-        | Value x -> x.PadLeft(16, '0')
-
-    static member Create str =
-        let imm = ref 0
-        Int32.TryParse(str, imm) |> function
-        | true -> Immediate.Value(Convert.ToString(!imm, 2))
-        | false -> Immediate.Label(str)
-
-type Operands =
-    | IType of string * string * string
-    | RType of string * string * string * string
-    | JType of string
-
-    static member Init (groups:GroupCollection) =
-        (   groups.["rru"].Value |> str2option, 
-            groups.["rd"].Value |> str2option, 
-            groups.["rs1"].Value |> str2option, 
-            groups.["rs2"].Value |> str2option, 
-            groups.["imm"].Value |> str2option) |> function
-        | None, Some rd, Some rs1, None, Some imm -> IType(rd, rs1, imm)
-        | Some rru, Some rd, Some rs1, Some rs2, None -> RType(rru, rd, rs1, rs2)
-        | None, None, None, None, Some imm -> JType(imm)
-        | _ -> failwith "couldn't create valid instruction DU"
-        
-
-//type Instruction =
-//    | IType of string * string * string * string
-//    | RType of string * string * string * string
-//    | JType of string * string
-//
-//    static member Create (groups:GroupCollection) =
-//        let operands =
-//            groups.["rru"].Value,
-//            groups.["rd"].Value,
-//            groups.["rs1"].Value,
-//            groups.["rs2"].Value,
-//            groups.["imm"].Value
 
 [<Test>]
-let ``itype conversion`` () =
-    let dlx = File.ReadAllLines(Path.Combine(inputdir, "setImmed.dlx"))
-    printfn "========  DLX  ========\n%A" dlx
-    let hex = File.ReadAllText(Path.Combine(inputdir, "setImmed.hex")).Replace("\r", "")
-    printfn "========  HEX (Expected) ========\n%A" hex
-    
-    printfn "none = > %A" (None)
-    printfn "%A" (str2option "derp")
-
+let ``MatchFunction test`` () =
     let lblpat = @"((?<label>\w+):)?"
     let lblregex = Regex(lblpat)
-    let itpar = Patterns.Instruction.itypecg
+    let itpar = Patterns.Instruction.itype
     
     let regex = Regex(lblpat + itpar)
     
-    let matchLabel (regex:Regex) input =
-        let matches = regex.Matches(input)
-        ([for m in matches -> m.Groups.["label"].Value], matches.Count > 0)
+    let str = "addi r4, r5, 100"
+    let matchFunction : MatchFunction =
+        fun (regex:Regex) (input:string) ->
+            [for m in regex.Matches(input) -> m.Groups].Head
 
-    let (|NewLabel|_|) (symbolTable:SymbolTable) (pc:uint32) (hex:string list) input =
-        matchLabel lblregex input |> function
-        | matches, true -> 
-            (symbolTable.Add(matches.Head, Conversions.pc2hex pc), pc, hex) |> Some
-        | _ -> None
-
-    let matchInstruction (regex:Regex) (input:string) =
-        let matches = regex.Matches(input.Trim())
-        let label = [for m in matches -> m.Groups.["label"].Value].Head
-        
-        let opcode, operands = [
-            for m in matches ->
-                m.Groups.["itype"].Value, 
-                (m.Groups.["rd"].Value,
-                 m.Groups.["rs1"].Value,
-                 m.Groups.["rs2"].Value,
-                 m.Groups.["imm"].Value)] |> List.unzip
-        printfn "Operands ==> %A" operands.Head
-        (opcode.Head, operands.Head, matches.Count > 0)
-
+    let groups regex input (f:MatchFunction) = f regex input
     
-    let conversion (st:SymbolTable) (pc:uint32) (hex:string list) (opcode:string) (operands:string*string*string*string) =
-        let rd, rs1, rs2, imm = operands
-        let imm = Immediate.Create(imm).Convert(st, 1)
-        let encoding = opcodes.Lookup(opcode)
-        let newpc = pc + 4u
-        let newstr =
-            Conversions.pc2hex pc + ": " +
-            encoding.PadLeft(6,'0') +
-            (Conversions.reg2bin rd).PadLeft(5, '0') +
-            (Conversions.reg2bin rs1).PadLeft(5, '0') +
-            imm
-        (st, newpc, hex @ [newstr])
+    printfn "MatchFunction ==> %A" (groups regex str matchFunction)   
 
-    let (|IType|_|) (st:SymbolTable) (pc:uint32) (hex:string list) input =
-        matchInstruction regex input |> function
-        | opcode, operands, true -> conversion st pc hex opcode operands |> Some
+[<Test>]
+let ``Immediate test`` () =
+    let regex = Regex(Patterns.Instruction.operands)
+    
+    let str1 = "addi r4, r5, 100"
+    let str2 = "addi r5, r21, label8"
+    let str3 = "seqi r7, r1, 4(label9)"
+    let str4 = "subi r8, r10, 8(r4)"
+    let str5 = "subi r21, r22, x"
+    let str6 = "add r1, r2, r3"
+
+    let strs = [str1;str2;str3;str4;str5]
+
+    let tryMatch str =
+        printfn "Operands ==> %A" (regex.Match(str).Groups |> Immediate.Init)   
+
+    strs |> List.iter (fun s -> tryMatch s)
+
+
+[<Test>]
+let ``Operands test - itype`` () =
+    let regex = Regex(Patterns.Instruction.operands)
+    
+    let str1 = "addi r4, r5, 100"
+    let str2 = "addi r5, r21, label8"
+    let str3 = "seqi r7, r1, 4(label9)"
+    let str4 = "subi r8, r10, 8(r4)"
+
+    let strs = [str1;str2;str3;str4]
+
+    let tryMatch str =
+        printfn "Operands ==> %A" (regex.Match(str).Groups |> Operands.Init)   
+
+    strs |> List.iter (fun s -> tryMatch s)
+
+[<Test>]
+let ``Operands test - rtype`` () =
+    let regex = Regex(Patterns.Instruction.operands)
+    
+    let str1 = "add r4, r5, r10"
+    let str2 = "addf f5, f21, f6"
+    let str3 = "subd f7, f1, f3"
+    let str4 = "divf f8, f10, f9"
+
+    let strs = [str1;str2;str3;str4]
+
+    let tryMatch str =
+        printfn "Operands ==> %A" (regex.Match(str).Groups |> Operands.Init)   
+
+    strs |> List.iter (fun s -> tryMatch s)
+
+[<Test>]
+let ``Operands test - jtype`` () =
+    let regex = Regex(Patterns.Instruction.Operands.jtype)
+    
+    let str1 = "j r4"
+    let str2 = "jal 4(label9)"
+    let str3 = "j 1000"
+    let str4 = "j 8(r5)"
+    let str5 = "jal label9"
+
+    let strs = [str1;str2;str3;str4;str5]
+
+    let tryMatch str =
+        printfn "Operands ==> %A" (regex.Match(str).Groups)   
+
+    strs |> List.iter (fun s -> tryMatch s)
+
+[<Test>]
+let ``Opcode test`` () =
+    let lblpat = @"((?<label>\w+):)?"
+    let lblregex = Regex(lblpat)
+    let itpar = Patterns.Instruction.itype
+    
+    let regex = Regex(lblpat + itpar)
+    
+    let str = "addi r4, r5, 100"
+    
+    let matchFunction : MatchFunction =
+        fun (regex:Regex) (input:string) ->
+            [for m in regex.Matches(input) -> m.Groups].Head
+
+    printfn "Opcode ==> %A" (Opcode.Init (matchFunction regex str))
+
+[<Test>]
+let ``Instruction test`` () =
+    let lblpat = @"((?<label>\w+):)?"
+    let lblregex = Regex(lblpat)
+    let itpar = Patterns.Instruction.itype
+    
+    let regex = Regex(lblpat + itpar)
+    
+    let str = "addi r4, r5, 100"
+    
+    let matchFunction : MatchFunction =
+        fun (regex:Regex) (input:string) ->
+            [for m in regex.Matches(input) -> m.Groups].Head
+
+    printfn "Instruction ==> %A" (Instruction.Init (matchFunction regex str))
+
+
+
+module Pat =
+    let (|Label|_|) input =
+        let matches = Regex(@"(?<=(\w+):.*)(\w+)").Matches(input)
+        printfn "Label Matches: %A" matches
+        (matches, matches.Count > 0) |> function
+        | matches, true -> Some [for m in matches -> m.Groups.[1].Value].Head
         | _ -> None
 
-    let st, pc, hex = SymbolTable(), 0u, List.empty<string>
-    let r = ((st,pc,hex),dlx) ||> Seq.fold(fun (st,pc,hex) line ->
-        line |> function
-        | IType st pc hex line -> line
-        | _ -> 
-            (st, pc + 1u, hex))
+type AssemblerInput =
+    | Comment of string
+    | Directive of ProgramCounter * Label option * string
+    | Instruction of ProgramCounter * Label option * Instruction
 
-    let st, pc, lines = r
-    printfn "%A" st
-    printfn "%A" lines
+    static member Parse (regex:Regex) (line:string) (pc:ProgramCounter) =
+        let matches = regex.Matches(line)
+        let groups = [for m in matches -> m.Groups].Head
+        let label = [for m in matches -> m.Groups.["newlabel"].Value].Head.Replace(":","")
+        //printfn "new label: %A" label
+        label |> str2option |> function
+        | Some label -> Instruction(pc, Some label, Instruction.Init groups)
+        | input -> Instruction(pc, None, Instruction.Init groups)
+        //let newlabel = Regex(@"(?<=(\w+):.*)(\w+)")
+        
+
+type AssemblerOutput = string * string * string
+
+let updateSymbolTable (st:SymbolTable) (ai:AssemblerInput list) =
+    let update = function | Some lbl, pc -> st.Add(lbl, pc) |> ignore | None, _ -> ()
+    ai |> List.iter (fun input ->
+        input |> function
+        | Instruction(pc, label, instruction) -> update (label,pc)
+        | Directive(pc, label, directive) -> update (label, pc)
+        | _ -> ())
+
+
+
+[<Test>]
+let ``advanced immediate match`` () =
+    let str1 = "addi r6, r3, label7"
+    let str2 = "addi r2, r10, 4(label5)"
+    let str3 = "addi r2, r7, 4(r8)"
+    let str4 = "addi r6, r9, r21"
+    let str5 = "addi r8, r22, 1000"
+
+    //let regex = Regex(Patterns.Instruction.Operands.Immediate.any)
+
+//    let matches1 = regex.Matches(str1)
+//    let matches2 = regex.Matches(str2)
+//    printfn "Matches1: %A" matches1
+//    printfn "Matches2: %A" matches2
+//
+//    let groups1 = [for m in matches1 -> m.Groups]
+//    let groups2 = [for m in matches2 -> m.Groups]
+//    printfn "Groups1:  %A" groups1
+//    printfn "Groups2:  %A" groups2
+//
+//    let disp (groups:GroupCollection list) =
+//        printfn "Groups.imm:  %A" ([for g in groups -> g.["imm"]])
+//        printfn "Groups.label:  %A" ([for g in groups -> g.["label"]])
+//        printfn "Groups.register:  %A" ([for g in groups -> g.["register"]])
+//        printfn "Groups.val:  %A" ([for g in groups -> g.["val"]])
+//        printfn "Groups.baseplusoffset:  %A" ([for g in groups -> g.["baseplusoffset"]])
+//
+//    printfn "\nGroups 1"
+//    disp groups1
+//
+//    printfn "\nGroups 2"
+//    disp groups2
+//
+//    let match1 = regex.Match(str1)
+//    printfn "\nMatch1: %A" match1
+
+    let tryEachImmMatch str =
+        let immLabelMatch = Regex(Patterns.Instruction.Operands.Immediate.immLabel).Match(str)
+        let immRegMatch = Regex(Patterns.Instruction.Operands.Immediate.immReg).Match(str)
+        let immValMatch = Regex(Patterns.Instruction.Operands.Immediate.immVal).Match(str)
+        let immBasePlusOffsetMatch = Regex(Patterns.Instruction.Operands.Immediate.immBasePlusOffset).Match(str)
+    
+        printfn "=================== %A ======================" str
+        printfn "label matches: %A" immLabelMatch.Groups.["label"]
+        printfn "reg matches: %A" immRegMatch.Groups.["register"]
+        printfn "val matches: %A" immValMatch.Groups.["val"]
+        printfn "base plus offset matches: %A + %A" 
+            immBasePlusOffsetMatch.Groups.["base"]
+            immBasePlusOffsetMatch.Groups.["offset"]
+        printfn "=================================================="
+
+
+    tryEachImmMatch str1
+    tryEachImmMatch str2
+    tryEachImmMatch str3
+    tryEachImmMatch str4
+    tryEachImmMatch str5
+
+    printfn "\n============MATCH ANY============"
+    let matchAny str =
+        let regex = Regex(Patterns.Instruction.Operands.any)
+        let matches = regex.Matches(str)
+        let groups = [for m in matches -> m.Groups]
+        let operands = [for m in matches -> m.Groups.["operands"]]
+        printfn "\n===================== %A ======================" str
+        printfn "Matches: %A" matches
+        printfn "Groups: %A" groups
+        printfn "Operands: %A" operands
+        for g in operands do printfn "%A" g.Captures
+
+    matchAny str1
+    matchAny str2
+    matchAny str3
+    matchAny str4
+    matchAny str5
+
+[<Test>]
+let ``itype conversion`` () =
+    let dlx = File.ReadAllLines(Path.Combine(inputdir, "setImmed.dlx")) |> List.ofArray
+    //titledDisplay "DLX" dlx
+    let expected = File.ReadAllText(Path.Combine(inputdir, "setImmed.hex")).Replace("\r", "")
+    //titledDisplay "HEX (Expected)" expected
+    
+    let opcodes = Opcodes()
+    
+    let lblpat = @"(?<newlabel>[a-zA-z]+\d+:)?.*"
+    let lblregex = Regex(lblpat)
+    let itpat = Patterns.Instruction.itype
+    
+    let regex = Regex(lblpat + itpat)
+    
+    let p x = printfn "%A" x
+//
+//    let str = dlx.[0]
+//    let lblmatches = lblregex.Matches(str)
+//    printfn "Label Matches: %A" lblmatches
+//    let g1 = [for m in lblmatches -> m.Groups.["newlabel"]].Head
+//    printfn "Label Groups: %A" ([for m in lblmatches -> m.Groups.["newlabel"]].Head)
+
+    printfn "\n**************   Instructions   **********************"
+    let instructions = [for line in dlx -> Instruction.Match regex line]
+    p instructions
+
+    let matchFunction : MatchFunction =
+        fun (regex:Regex) (input:string) ->
+            [for m in regex.Matches(input) -> m.Groups].Head
+
+    printfn "\n**************   Encoded Instructions (Binary)  ******************"
+    for ins in instructions do ins.ToBinary() |> printfn "%s"
+
+    printfn "\n*************** ASM Input   ***************************"
+    let asmInput = dlx |> List.mapi (fun i line -> AssemblerInput.Parse regex line (ProgramCounter.Value(i * 4 |> uint32)))
+    p asmInput
+
+    printfn "\n*************** Updated Symbol Table   ***************************"
+    let st = SymbolTable()
+    updateSymbolTable st asmInput
+    st.Display()
+
+    let updateInlineLabels (st:SymbolTable) (ir:AssemblerInput list) =
+        (List.empty<AssemblerInput>, ir) ||> Seq.fold (fun (newinput) input ->
+            input |> function
+            | Instruction(pc, label, instruction) -> 
+                printfn "Old Instruction: %A" instruction
+                printfn "New Instruction: %A" (instruction.LabelToAddress st)
+                newinput @ [Instruction(pc, label, instruction.LabelToAddress st)]
+            | _ -> 
+                newinput )
+
+    let asmInput = updateInlineLabels st asmInput
+    printfn "\n******************** Updated Inputs ***************************"
+    p asmInput
+
+    let assemble (state0:AssemblerState) (dlx:string list) =
+        (state0, dlx) ||> Seq.fold (fun (state:AssemblerState) line ->
+            let st, pc, hex = state
+            let input = AssemblerInput.Parse regex line pc
+            AssemblerInput.Parse regex line pc |> function
+            | Instruction(pc, lbl, instruction) ->
+                let newhex = hex @ [pc.ForHexOutput + instruction.ToHex() + "#" + line]
+                let newpc = pc.GetNewPC()
+                (st, newpc, newhex)
+            | _ -> state )
+
+    let state0 : AssemblerState = (SymbolTable(), ProgramCounter.Value(0u), List.empty<string>)
+
+    let result = assemble state0 dlx
+    printfn "***************  Last Assembler State  *****************" 
+    printfn "%A" result
+
+    let _, _, hex = result
+    printfn "***************  Final Hex Output  **********************"
+    for l in hex do printfn "%A" l
+
+    let printContent dlx expected actual =
+        printfn "==========  DLX  ==========" 
+        for l in dlx do printfn "%s" l
+        printfn "==========  HEX - Expected  =========="
+        printfn "%s" expected
+        printfn "==========  HEX - Actual  ==========" 
+        printfn "%s" actual
+
+    let actual = concatLines hex
+    printContent dlx expected actual
+
+    actual |> should equal expected
+
+[<Test>]
+let ``simple itype conversion`` () =
+    let dlx = File.ReadAllText(Path.Combine(inputdir, "setImmed.dlx"))
+    titledDisplay "DLX" dlx
+    let expected = File.ReadAllText(Path.Combine(inputdir, "setImmed.hex")).Replace("\r", "")
+    titledDisplay "HEX (Expected)" expected
+    
+    let dlx = File.ReadAllLines(Path.Combine(inputdir, "setImmed.dlx")) |> List.ofArray
+    let dlx = [dlx.Head; dlx.[dlx.Length - 1]]
+    
+    let expected = 
+        File.ReadAllLines(Path.Combine(inputdir, "setImmed.hex"))
+        |> List.ofArray
+        |> List.map (fun l -> l.Replace("\r",""))
+    
+    let expected = [expected.Head; expected.[expected.Length - 1]]
+
+    let opcodes = Opcodes()
+    
+    let lblpat = @"(?<newlabel>[a-zA-z]+\d+:)?.*"
+    let lblregex = Regex(lblpat)
+    let itpat = Patterns.Instruction.itype
+    
+    let regex = Regex(lblpat + itpat)
+    
+    let p x = printfn "%A" x
+//
+//    let str = dlx.[0]
+//    let lblmatches = lblregex.Matches(str)
+//    printfn "Label Matches: %A" lblmatches
+//    let g1 = [for m in lblmatches -> m.Groups.["newlabel"]].Head
+//    printfn "Label Groups: %A" ([for m in lblmatches -> m.Groups.["newlabel"]].Head)
+    printfn "\n************** DLX Lines ******************"
+    for l in dlx do printfn "%s" l
+
+    printfn "\n**************   Instructions   **********************"
+    let instructions = [for line in dlx -> Instruction.Match regex line]
+    p instructions   
+
+//    let matchFunction : MatchFunction =
+//        fun (regex:Regex) (input:string) ->
+//            [for m in regex.Matches(input) -> m.Groups].Head
+
+    printfn "\n**************   Encoded Instructions (Binary)  ******************"
+    for ins in instructions do ins.ToBinary() |> printfn "%s"
+
+    printfn "\n*************** ASM Input   ***************************"
+    let asmInput = dlx |> List.mapi (fun i line -> AssemblerInput.Parse regex line (ProgramCounter.Value(i * 4 |> uint32)))
+    p asmInput
+
+    printfn "\n*************** Updated Symbol Table   ***************************"
+    let st = SymbolTable()
+    updateSymbolTable st asmInput
+    st.Display()
+
+    let updateInlineLabels (st:SymbolTable) (ir:AssemblerInput list) =
+        (List.empty<AssemblerInput>, ir) ||> Seq.fold (fun (newinput) input ->
+            input |> function
+            | Instruction(pc, label, instruction) -> 
+                printfn "Old Instruction: %A" instruction
+                printfn "New Instruction: %A" (instruction.LabelToAddress st)
+                newinput @ [Instruction(pc, label, instruction.LabelToAddress st)]
+            | _ -> 
+                newinput )
+
+    let asmInput = updateInlineLabels st asmInput
+    printfn "\n******************** Updated Inputs ***************************"
+    p asmInput
+
+
+    let updateSymbolTable (st:SymbolTable) (ai:AssemblerInput list) =
+        let update = function | Some lbl, pc -> st.Add(lbl, pc) |> ignore | None, _ -> ()
+        ai |> List.iter (fun input ->
+            input |> function
+            | Instruction(pc, label, instruction) -> update (label,pc)
+            | Directive(pc, label, directive) -> update (label, pc)
+            | _ -> ())
+
+    let assemble (dlx:string list) =
+        let asmInput = dlx |> List.mapi (fun i line -> AssemblerInput.Parse regex line (ProgramCounter.Value(i * 4 |> uint32)))
+        updateSymbolTable st asmInput
+        //updateInlineLabels st asmInput
+        let state0 = st, ProgramCounter.Value(0u), List.empty<string>
+
+        let inputs = (asmInput, dlx) ||> List.zip
+        (state0, inputs) ||> Seq.fold (fun (state:AssemblerState) (asm, line) ->
+            let st, pc, hex = state
+            //printfn "State: %A" state
+            asm |> function
+            | Instruction(pc, label, instruction) ->
+                printfn "Old Instruction: %A" instruction
+                let newins = instruction.LabelToAddress st
+                printfn "New Instruction: %A" newins
+                let newhex = hex @ [pc.ForHexOutput + newins.ToHex() + "#" + line]
+                let newpc = pc.GetNewPC()
+                (st, newpc, newhex)
+            | _ -> state )
+
+
+    let result = assemble dlx
+    printfn "***************  Last Assembler State  *****************" 
+    printfn "%A" result
+
+    let _, _, hex = result
+    printfn "***************  Final Hex Output  **********************"
+    for l in hex do printfn "%A" l
+
+    let printContent dlx expected actual =
+        printfn "==========  DLX  ==========" 
+        for l in dlx do printfn "%s" l
+        printfn "==========  HEX - Expected  =========="
+        printfn "%s" expected
+        printfn "==========  HEX - Actual  ==========" 
+        printfn "%s" actual
+
+    let actual = concatLines hex
+    let expected = concatLines expected
+    printContent dlx expected actual
+
+
     ()
 
 [<Test>]
@@ -470,7 +763,7 @@ let ``immediate patterns 2`` () =
 
 //[<Test>]
 //let ``match any opcode`` () =
-//    let pat = Patterns.Opcode.itypecg + "|" + Patterns.Opcode.rtypecg + "|" + Patterns.Opcode.jtypecg
+//    let pat = Patterns.Opcode.itype + "|" + Patterns.Opcode.rtypecg + "|" + Patterns.Opcode.jtypecg
 //    let str = "
 //        add r1, r2, r3
 //        addf f1, f2, f31

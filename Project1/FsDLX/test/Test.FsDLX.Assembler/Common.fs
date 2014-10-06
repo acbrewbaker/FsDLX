@@ -12,6 +12,13 @@ open FsDLX
 let dlxfiles = Directory.GetFiles(Support.inputdir) |> Array.filter(fun f -> f.EndsWith(".dlx"))
 let hexfiles = Directory.GetFiles(Support.inputdir) |> Array.filter(fun f -> f.EndsWith(".hex"))
 
+let titledDisplay title data =
+    let len = 70
+    let title = (sprintf " %s " title)
+    let left = (len - title.Length) / 2
+    printfn "%s" (title.PadRight(left, '=').PadLeft(len, '='))
+    printfn "%A" data
+    printfn "%s" ("=".PadLeft(len, '='))
 
 //    module DLX =
 //        let aligns = dlxfiles |> Array.filter (fun f -> f.StartsWith("align"))
