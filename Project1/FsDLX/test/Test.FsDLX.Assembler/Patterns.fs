@@ -166,7 +166,6 @@ let ``Instruction test`` () =
     printfn "Instruction ==> %A" (Instruction.Init (matchFunction regex str))
 
 
-
 module Pat =
     let (|Label|_|) input =
         let matches = Regex(@"(?<=(\w+):.*)(\w+)").Matches(input)
@@ -177,15 +176,6 @@ module Pat =
         
 
 type AssemblerOutput = string * string * string
-
-//let updateSymbolTable (st:SymbolTable) (ai:AssemblerInput list) =
-//    let update = function | Some lbl, pc -> st.Add(lbl, pc) |> ignore | None, _ -> ()
-//    ai |> List.iter (fun input ->
-//        input |> function
-//        | Instruction(pc, label, instruction) -> update (label,pc)
-//        | Directive(pc, label, directive) -> update (label, pc)
-//        | _ -> ())
-
 
 
 [<Test>]
