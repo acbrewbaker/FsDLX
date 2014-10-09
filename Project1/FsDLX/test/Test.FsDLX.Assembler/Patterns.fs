@@ -174,8 +174,21 @@ module Pat =
         | matches, true -> Some [for m in matches -> m.Groups.[1].Value].Head
         | _ -> None
         
+[<Test>]
+let ``match new label`` () =
+    let dlxpath = inputdir @@ "setImmed.dlx"
+    let hexpath = inputdir @@ "setImmed.hex"
+    
+    let dlxlines = dlxpath |> getLines
+    let hexlines = hexpath |> getLines
 
-type AssemblerOutput = string * string * string
+    let dlx = dlxlines.[0]
+    printfn "Trying to match new label of: %s" dlx
+
+    let lblpat = @"(?<newlabel>[a-zA-z]+\d+:)?"
+    let regex = Regex(lblpat)
+    
+    getDetailedMatchInfo regex dlx
 
 
 [<Test>]
@@ -254,16 +267,23 @@ let ``advanced immediate match`` () =
     matchAny str4
     matchAny str5
 
+
 [<Test>]
 let ``itype conversion`` () =
-    let dlx = File.ReadAllLines(Path.Combine(inputdir, "setImmed.dlx")) |> List.ofArray
-    //titledDisplay "DLX" dlx
-    let expected = File.ReadAllText(Path.Combine(inputdir, "setImmed.hex")).Replace("\r", "")
-    //titledDisplay "HEX (Expected)" expected
+    let dlxpath = inputdir @@ "setImmed.dlx"
+    let hexpath = inputdir @@ "setImmed.hex"
+    
+    let dlxlines = dlxpath |> getLines
+    let hexlines = hexpath |> getLines
+
+    let dlxtext = dlxpath |> getText
+    let hextext = hexpath |> getText
+    
+    let expected = hextext.Replace("\r", "")
     
     let opcodes = Opcodes()
     
-    let lblpat = @"(?<newlabel>[a-zA-z]+\d+:)?.*"
+    let lblpat = @"(?<newlabel>[a-zA-z]+\d+:)?"
     let lblregex = Regex(lblpat)
     let itpat = Patterns.Instruction.itype
     
@@ -271,216 +291,98 @@ let ``itype conversion`` () =
     
     let p x = printfn "%A" x
 
-    let updateSymbolTable (st:SymbolTable) (ai:AssemblerInput list) =
-        let update = function | Some lbl, pc -> st.Add(lbl, pc) |> ignore | None, _ -> ()
-        ai |> List.iter (fun input ->
-            input |> function
-            | Instruction(pc, label, instruction) -> update (label,pc)
-            | Directive(pc, label, directive) -> update (label, pc)
-            | _ -> ())
 
-    printfn "\n**************   Instructions   **********************"
-    let instructions = [for line in dlx -> Instruction.Match regex line]
-    p instructions
-
-    let matchFunction : MatchFunction =
-        fun (regex:Regex) (input:string) ->
-            [for m in regex.Matches(input) -> m.Groups].Head
-
-    printfn "\n**************   Encoded Instructions (Binary)  ******************"
-    for ins in instructions do ins.ToBinary() |> printfn "%s"
-
-    printfn "\n*************** ASM Input   ***************************"
-    let asmInput = dlx |> List.mapi (fun i line -> AssemblerInput.Parse regex line (ProgramCounter.Value(i * 4 |> uint32)))
-    p asmInput
-
-    printfn "\n*************** Updated Symbol Table   ***************************"
-    let st = SymbolTable()
-    updateSymbolTable st asmInput
-    st.Display()
-
-    let updateInlineLabels (st:SymbolTable) (ir:AssemblerInput list) =
-        (List.empty<AssemblerInput>, ir) ||> Seq.fold (fun (newinput) input ->
-            input |> function
-            | Instruction(pc, label, instruction) -> 
-                //printfn "Old Instruction: %A" instruction
-                //printfn "New Instruction: %A" (instruction.LabelToAddress st)
-                newinput @ [Instruction(pc, label, instruction.LabelToAddress st)]
-            | _ -> 
-                newinput )
-
-    let asmInput = updateInlineLabels st asmInput
-    printfn "\n******************** Updated Inputs ***************************"
-    p asmInput
-
-    let assemble (dlx:string list) =
-        let asmInput = dlx |> List.mapi (fun i line -> AssemblerInput.Parse regex line (ProgramCounter.Value(i * 4 |> uint32)))
-        updateSymbolTable st asmInput
-        //updateInlineLabels st asmInput
-        let state0 = st, ProgramCounter.Value(0u), List.empty<string>
-
-        let inputs = (asmInput, dlx) ||> List.zip
-        (state0, inputs) ||> Seq.fold (fun (state:AssemblerState) (asm, line) ->
-            let st, pc, hex = state
-            //printfn "State: %A" state
-            asm |> function
-            | Instruction(pc, label, instruction) ->
-                //printfn "Old Instruction: %A" instruction
-                let newins = instruction.LabelToAddress st
-                //printfn "New Instruction: %A" newins
-                let newhex = hex @ [pc.ForHexOutput + newins.ToHex() + Conversions.asComment line]
-                //printfn "PC: %A" pc
-                let newpc = pc //pc.GetNewPC()
-                (st, newpc, newhex)
-            | _ -> state )
-
+    let instructions = getInstructions dlxpath regex
+    instructions |> showBinaryInstructions
     
-    let result = assemble dlx
-    printfn "***************  Last Assembler State  *****************" 
-    printfn "%A" result
+    let asmInput = getAsmInputs dlxpath regex
+    
+    let st = SymbolTable()
+//    updateSymbolTable st asmInput
+    
+    //let asmInput = updateInlineLabels st asmInput
+
+    let result = testAssemble st regex dlxlines
 
     let _, _, hex = result
     printfn "***************  Final Hex Output  **********************"
     for l in hex do printfn "%A" l
 
-    let printContent dlx expected actual =
-        printfn "==========  DLX  ==========" 
-        for l in dlx do printfn "%s" l
-        printfn "==========  HEX - Expected  =========="
-        printfn "%s" expected
-        printfn "==========  HEX - Actual  ==========" 
-        printfn "%s" actual
-
     let actual = concatLines hex
-    printContent dlx expected actual
+    printContent dlxlines expected actual
 
     actual |> should equal expected
 
-//[<Test>]
-//let ``simple itype conversion`` () =
-//    let dlx = File.ReadAllText(Path.Combine(inputdir, "setImmed.dlx"))
-//    titledDisplay "DLX" dlx
-//    let expected = File.ReadAllText(Path.Combine(inputdir, "setImmed.hex")).Replace("\r", "")
-//    titledDisplay "HEX (Expected)" expected
-//    
-//    let dlx = File.ReadAllLines(Path.Combine(inputdir, "setImmed.dlx")) |> List.ofArray
-//    let dlx = [dlx.Head; dlx.[dlx.Length - 1]]
-//    
-//    let expected = 
-//        File.ReadAllLines(Path.Combine(inputdir, "setImmed.hex"))
-//        |> List.ofArray
-//        |> List.map (fun l -> l.Replace("\r",""))
-//    
-//    let expected = [expected.Head; expected.[expected.Length - 1]]
-//
-//    let opcodes = Opcodes()
-//    
-//    let lblpat = @"(?<newlabel>[a-zA-z]+\d+:)?.*"
-//    let lblregex = Regex(lblpat)
-//    let itpat = Patterns.Instruction.itype
-//    
-//    let regex = Regex(lblpat + itpat)
-//    
-//    let p x = printfn "%A" x
-////
-////    let str = dlx.[0]
-////    let lblmatches = lblregex.Matches(str)
-////    printfn "Label Matches: %A" lblmatches
-////    let g1 = [for m in lblmatches -> m.Groups.["newlabel"]].Head
-////    printfn "Label Groups: %A" ([for m in lblmatches -> m.Groups.["newlabel"]].Head)
-//    printfn "\n************** DLX Lines ******************"
-//    for l in dlx do printfn "%s" l
-//
-//    printfn "\n**************   Instructions   **********************"
-//    let instructions = [for line in dlx -> Instruction.Match regex line]
-//    p instructions   
-//
-////    let matchFunction : MatchFunction =
-////        fun (regex:Regex) (input:string) ->
-////            [for m in regex.Matches(input) -> m.Groups].Head
-//
-//    printfn "\n**************   Encoded Instructions (Binary)  ******************"
-//    for ins in instructions do ins.ToBinary() |> printfn "%s"
-//
-//    printfn "\n*************** ASM Input   ***************************"
-//    let asmInput = dlx |> List.mapi (fun i line -> AssemblerInput.Parse regex line (ProgramCounter.Value(i * 4 |> uint32)))
-//    p asmInput
-//
-//    printfn "\n*************** Updated Symbol Table   ***************************"
-//    let st = SymbolTable()
-//    updateSymbolTable st asmInput
-//    st.Display()
-//
-//    let updateInlineLabels (st:SymbolTable) (ir:AssemblerInput list) =
-//        (List.empty<AssemblerInput>, ir) ||> Seq.fold (fun (newinput) input ->
-//            input |> function
-//            | Instruction(pc, label, instruction) -> 
-//                printfn "Old Instruction: %A" instruction
-//                printfn "New Instruction: %A" (instruction.LabelToAddress st)
-//                newinput @ [Instruction(pc, label, instruction.LabelToAddress st)]
-//            | _ -> 
-//                newinput )
-//
-//    let asmInput = updateInlineLabels st asmInput
-//    printfn "\n******************** Updated Inputs ***************************"
-//    p asmInput
-//
-//
-//    let updateSymbolTable (st:SymbolTable) (ai:AssemblerInput list) =
-//        let update = function | Some lbl, pc -> st.Add(lbl, pc) |> ignore | None, _ -> ()
-//        ai |> List.iter (fun input ->
-//            input |> function
-//            | Instruction(pc, label, instruction) -> update (label,pc)
-//            | Directive(pc, label, directive) -> update (label, pc)
-//            | _ -> ())
-//
-//    let assemble (dlx:string list) =
-//        let asmInput = dlx |> List.mapi (fun i line -> AssemblerInput.Parse regex line (ProgramCounter.Value(i * 4 |> uint32)))
-//        updateSymbolTable st asmInput
-//        //updateInlineLabels st asmInput
-//        let state0 = st, ProgramCounter.Value(0u), List.empty<string>
-//
-//        let inputs = (asmInput, dlx) ||> List.zip
-//        (state0, inputs) ||> Seq.fold (fun (state:AssemblerState) (asm, line) ->
-//            let st, pc, hex = state
-//            //printfn "State: %A" state
-//            asm |> function
-//            | Instruction(pc, label, instruction) ->
-//                printfn "Old Instruction: %A" instruction
-//                let newins = instruction.LabelToAddress st
-//                printfn "New Instruction: %A" newins
-//                let newhex = hex @ [pc.ForHexOutput + newins.ToHex() + "#" + line]
-//                printfn "PC: %A" pc
-//                let newpc = pc //pc.GetNewPC()
-//                (st, newpc, newhex)
-//            | _ -> state )
-//
-//
-//    let result = assemble dlx
-//    printfn "***************  Last Assembler State  *****************" 
-//    printfn "%A" result
-//
-//    let _, _, hex = result
-//    printfn "***************  Final Hex Output  **********************"
-//    for l in hex do printfn "%A" l
-//
-//    let printContent dlx expected actual =
-//        printfn "==========  DLX  ==========" 
-//        for l in dlx do printfn "%s" l
-//        printfn "==========  HEX - Expected  =========="
-//        printfn "%s" expected
-//        printfn "==========  HEX - Actual  ==========" 
-//        printfn "%s" actual
-//
-//    let actual = concatLines hex
-//    let expected = concatLines expected
-//    printContent dlx expected actual
-//
-//    actual |> should equal expected
-//    ()
+[<Test>]
+let ``rtype match`` () =
+    let dlx = (inputdir @@ "intArith.dlx") |> getLines
+    let str1 = dlx.[0]
+    let str2 = dlx.[1]
+    let str3 = dlx.[2]
+    let strs = [str1; str2; str3]
+
+    printfn "=== Strings ==="
+    for s in strs do printfn "%s" s
+
+    let regex = Regex(Patterns.Instruction.rtype)
+    
+    
+    let tryMatch str =
+        printfn "\ntry to match: %s" str
+        let matches = regex.Matches(str)
+        printfn "Matches: %A" matches
+        printfn "Groups: %A" [for m in matches -> m.Groups].Head
+
+    strs |> List.iter (fun s -> tryMatch s)
 
 [<Test>]
-let ``match rtype`` () = ()
+let ``rtype conversion`` () =
+    let dlxpath = inputdir @@ "intArith.dlx"
+    let hexpath = inputdir @@ "intArith.hex"
+    
+    let dlxlines = dlxpath |> getLines
+    let hexlines = hexpath |> getLines
+    
+    let dlxtext = dlxpath |> getText
+    let hextext = hexpath |> getText
+    //titledDisplay "DLX" dlx
+    printfn "============= DLX =============="
+    //for l in dlx do printfn "%s" l
+    printfn "%s" dlxtext
+
+    let expected = (inputdir @@ "intArith.hex") |> getText
+    titledDisplay "HEX (Expected)" expected
+    
+    let opcodes = Opcodes()
+    
+    let lblpat = @"(?<newlabel>[a-zA-z]+\d+:)?.*"
+    let lblregex = Regex(lblpat)
+    let rtpat = Patterns.Instruction.rtype
+    
+    let regex = Regex(rtpat)
+
+    let instructions = getInstructions dlxpath regex
+    
+    instructions |> showBinaryInstructions
+
+    let asmInput = getAsmInputs dlxpath regex
+    
+
+    let st = SymbolTable()
+    updateSymbolTable st asmInput
+        
+    let asmInput = updateInlineLabels st asmInput
+        
+    let result = testAssemble st regex dlxlines
+    
+    let _, _, hex = result
+    printfn "***************  Final Hex Output  **********************"
+    for l in hex do printfn "%A" l
+
+    let actual = concatLines hex
+    printContent dlxlines expected actual
+
+    actual |> should equal expected
 
 [<Test>]
 let ``match jtype`` () = ()

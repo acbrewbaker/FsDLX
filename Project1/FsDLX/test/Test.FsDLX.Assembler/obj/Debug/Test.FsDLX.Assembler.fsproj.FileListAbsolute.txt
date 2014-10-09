@@ -17,3 +17,14 @@ C:\Users\User\OneDrive\CS5483\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Debug
 C:\Users\User\OneDrive\CS5483\Project1\FsDLX\test\Test.FsDLX.Assembler\obj\Debug\Test.FsDLX.Assembler.fsprojResolveAssemblyReference.cache
 C:\Users\User\OneDrive\CS5483\Project1\FsDLX\test\Test.FsDLX.Assembler\obj\Debug\Test.FsDLX.Assembler.exe
 C:\Users\User\OneDrive\CS5483\Project1\FsDLX\test\Test.FsDLX.Assembler\obj\Debug\Test.FsDLX.Assembler.pdb
+X:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Debug\Test.FsDLX.Assembler.exe
+X:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Debug\Test.FsDLX.Assembler.pdb
+X:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Debug\FsUnit.NUnit.dll
+X:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Debug\NCrunch.Framework.dll
+X:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Debug\nunit.framework.dll
+X:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Debug\FsDLX.Assembler.pdb
+X:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Debug\nunit.framework.xml
+X:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\obj\Debug\Test.FsDLX.Assembler.fsprojResolveAssemblyReference.cache
+X:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\obj\Debug\Test.FsDLX.Assembler.exe
+X:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\obj\Debug\Test.FsDLX.Assembler.pdb
+X:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Debug\FsDLX.Assembler.exe

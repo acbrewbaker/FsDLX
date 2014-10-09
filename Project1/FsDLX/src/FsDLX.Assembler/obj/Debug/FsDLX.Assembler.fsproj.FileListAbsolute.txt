@@ -8,3 +8,11 @@ C:\Users\User\OneDrive\CS5483\Project1\FsDLX\src\FsDLX.Assembler\obj\Debug\FsDLX
 C:\Users\User\OneDrive\CS5483\Project1\FsDLX\src\FsDLX.Assembler\obj\Debug\FsDLX.Assembler.pdb
 C:\Users\User\OneDrive\CS5483\Project1\FsDLX\src\FsDLX.Assembler\bin\Debug\FsDLX.Assembler.dll
 C:\Users\User\OneDrive\CS5483\Project1\FsDLX\src\FsDLX.Assembler\bin\Debug\FsDLX.Assembler.pdb
+X:\GitHub\FsDLX\Project1\FsDLX\src\FsDLX.Assembler\bin\Debug\FsDLX.Assembler.pdb
+X:\GitHub\FsDLX\Project1\FsDLX\src\FsDLX.Assembler\bin\Debug\FSharp.Core.dll
+X:\GitHub\FsDLX\Project1\FsDLX\src\FsDLX.Assembler\bin\Debug\NCrunch.Framework.dll
+X:\GitHub\FsDLX\Project1\FsDLX\src\FsDLX.Assembler\bin\Debug\FSharp.Core.xml
+X:\GitHub\FsDLX\Project1\FsDLX\src\FsDLX.Assembler\obj\Debug\FsDLX.Assembler.fsprojResolveAssemblyReference.cache
+X:\GitHub\FsDLX\Project1\FsDLX\src\FsDLX.Assembler\obj\Debug\FsDLX.Assembler.pdb
+X:\GitHub\FsDLX\Project1\FsDLX\src\FsDLX.Assembler\bin\Debug\FsDLX.Assembler.exe
+X:\GitHub\FsDLX\Project1\FsDLX\src\FsDLX.Assembler\obj\Debug\FsDLX.Assembler.exe
