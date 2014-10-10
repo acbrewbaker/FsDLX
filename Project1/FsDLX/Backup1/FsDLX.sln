@@ -5,7 +5,11 @@ VisualStudioVersion = 12.0.30723.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{BB9A244E-31AC-4E74-B9E2-4480483C12E7}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Assembler", "src\FsDLX.Assembler\FsDLX.Assembler.fsproj", "{0BC68FF9-C0A4-4D52-B4F3-A091A3A6C07B}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{F867B9B1-C77D-4E01-82E6-6719C254C41C}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Assembler", "test\Test.FsDLX.Assembler\Test.FsDLX.Assembler.fsproj", "{713A6AA9-AB9D-45D6-9087-705F60798719}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "support", "support", "{1FB80DD5-D4DD-41EA-A04C-053FB0B9B096}"
 	ProjectSection(SolutionItems) = preProject
@@ -95,10 +99,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{F065BA
 		.nuget\NuGet.exe = .nuget\NuGet.exe
 		.nuget\NuGet.targets = .nuget\NuGet.targets
 	EndProjectSection
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Assembler", "src\FsDLX.Assembler\FsDLX.Assembler.fsproj", "{0BC68FF9-C0A4-4D52-B4F3-A091A3A6C07B}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Assembler", "test\Test.FsDLX.Assembler\Test.FsDLX.Assembler.fsproj", "{713A6AA9-AB9D-45D6-9087-705F60798719}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

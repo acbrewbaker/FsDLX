@@ -1,4 +1,4 @@
-﻿module FsDLX.Assembler.Grammar
+﻿module FsDLX.Grammar
 
 open System
 open System.Text
@@ -6,81 +6,136 @@ open System.Text.RegularExpressions
 open Patterns
 
 
-
-type DLXInput =
-    | Comment of Comment
-    | Instruction of Instruction * Comment option
-    | Directive of Directive * Comment option
-
-    static member Parse = function 
-        | Patterns.Input.Comment s -> Comment.Parse s
-        | Patterns.Input.Instruction s -> Instruction s
-        | Patterns.Input.Directive s -> Directive.Parse s
-            
-
-and Comment =
-    | CommentOnly of string
-    | Inline of string
-
-    static member Parse (input:string) : Comment option =
-        input.Split(';') |> function
-        | tokens when tokens.Length > 1 -> input |> Inline |> Some
-        | tokens when tokens.Length = 1 -> input |> CommentOnly |> Some
-        | _ -> None
-
-and Instruction =
-    | IType of Opcode * Register * Register * Immediate
-    | RType of RRX * Register * Register * Register * Opcode
-    | JType of Opcode * Immediate
-
-    static member Parse : (string -> DLXInput) = function 
-        | 
-        | _ -> failwith ""
-
-and Directive =
-    | Text of int
-    | Data of int
-    | Asciiz of string[]
-    | Double of string[]
-    | Float of string[]
-    | Word of int
-    | Space of int
-
-    static member Parse : (string -> DLXInput) = function
-        | Patterns.Directive.Text s ->
-            DLXInput.Directive (Text (int s), s |> Comment.Parse)
-        | Patterns.Directive.Asciiz s -> 
-            DLXInput.Directive (s.Split(' ') |> Asciiz, Comment.Parse s)        
-
-and Opcode =
-    | IType of string
-    | RType of string
-    | JType of string
-
-and Register =
-    | R of string
-    | F of string
-
-and RRX =
-    | RRAlu
-    | RRFpu
-
-and Immediate =
-    | Value of Value
-    | Label of Label
-    | Register of Register
-    | BasePlusOffset of BasePlusOffset
-        
-and Label =
-    | Reference
-    | Inline
-
-and BasePlusOffset =
-    | ValPlusLabel of Value * Label
-    | ValPlusReg of Value * Register
-    | RegPlusLabel of Register * Label
-
-and Value = uint32
+//
+//type DLXInput =
+//    | Comment of Comment
+//    | Instruction of Instruction * Comment option
+//    | Directive of Directive * Comment option
+//
+//    static member Parse = function 
+//        | Patterns.Input.Comment s -> Comment.Parse s
+//        | _ -> failwith ""
+////        | Patterns.Input.Instruction s -> Instruction s
+////        | Patterns.Input.Directive s -> Directive.Parse s
+//            
+//
+//and Comment =
+//    | CommentOnly of string
+//    | Inline of string
+//
+//    static member Parse (input:string) : Comment option =
+//        input.Split(';') |> function
+//        | tokens when tokens.Length > 1 -> input |> Inline |> Some
+//        | tokens when tokens.Length = 1 -> input |> CommentOnly |> Some
+//        | _ -> None
+//
+//and Instruction =
+//    | IType of Opcode * Operands
+//    | RType of Opcode * Operands
+//    | JType of Opcode * Operands
+//
+////    static member Parse : (string*string -> DLXInput) = function 
+////        | Patterns.Instruction.IType (op,ops) -> 
+////            let rs1, rd, imm = ops.[0], ops.[1], ops.[2]
+////            (Opcode.IType op, Operands.Encode ops)
+////        | Patterns.Instruction.RType (op,ops) -> Opcode.RType op
+////        | Patterns.Instruction.JType (op,ops) -> Opcode.IType op
+////        | _ -> failwith ""
+//
+//and Directive =
+//    | Text of int
+//    | Data of int
+//    | Asciiz of string[]
+//    | Double of string[]
+//    | Float of string[]
+//    | Word of int
+//    | Space of int
+//
+//    static member Parse : (string -> DLXInput) = function
+//        | Patterns.Directive.Text s ->
+//            DLXInput.Directive (Text (int s), s |> Comment.Parse)
+//        | Patterns.Directive.Asciiz s -> 
+//            DLXInput.Directive (s.Split(' ') |> Asciiz, Comment.Parse s)        
+//
+//and Opcode =
+//    | IType of string
+//    | RType of string
+//    | JType of string
+//
+//    static member Encode(opcodes:Opcodes) : Opcode -> Opcode = 
+//        let convert (op:string) = Convert.ToString(opcodes.Lookup(op) |> int, 2)
+//        function
+//        | IType opcode ->  convert opcode |> IType
+//        | RType opcode -> convert opcode |> RType
+//        | JType opcode -> convert opcode |> JType
+//
+//    //static member Encode = Opcode.Encode(Opcodes())
+//
+//and Operands =
+//    | IType of Register * Register * Immediate
+//    | RType of RRX * Register * Register * Register
+//    | JType of Immediate
+//
+//    static member Encode (tokens:string[]) : Opcode -> Operands = 
+//        let reg i = tokens.[i] |> Register.Encode
+//        let imm i = tokens.[i] |> Immediate.Encode
+//        function
+//        | Opcode.IType s -> IType(reg 1, reg 2, imm 3)
+//        | Opcode.JType s -> JType(imm 1)
+//        | op -> RType(RRX.Encode op, reg 1, reg 2, reg 3)
+//        
+//        
+//
+//
+//and Register =
+//    | R of string
+//    | F of string
+//
+//    static member Encode : string -> Register = function
+//        | Patterns.Register.R s -> R s
+//        | Patterns.Register.F s -> F s
+//
+//and RRX =
+//    | RRAlu of string
+//    | RRFpu of string
+//
+//    static member Encode(opcodes:Opcodes) : Opcode -> RRX = function
+//        | Opcode.RType opcode -> 
+//            opcodes.RTypes.[opcode] |> fst |> function
+//            | s when int s = 0 -> s.PadLeft(5,'0') |> RRAlu
+//            | s when int s = 1 -> s.PadLeft(5, '0') |> RRFpu
+//            | _ -> failwith ""
+//        | _ -> failwith "" 
+//
+//    static member Encode op = RRX.Encode(Opcodes()) op
+//
+//and Immediate =
+//    | Value of Value
+//    | Label of Label
+//    | Register of Register
+//    | BasePlusOffset of BasePlusOffset
+//        
+//    static member Encode : string -> Immediate = function
+//        | Patterns.Immediate.Value s -> Value (uint32 s)
+//        | Patterns.Immediate.Label s -> Label (Inline s)
+//        | Patterns.Immediate.Register s -> s |> Register.Encode |> Register
+//        | _ -> failwith ""
+//        //| Patterns.Immediate.BasePlusOffset s -> BasePlusOffset s
+//
+//and Label =
+//    | Reference of string
+//    | Inline of string
+//
+//and BasePlusOffset =
+//    | ValPlusLabel of Value * Label
+//    | ValPlusReg of Value * Register
+//
+//    static member Encode : string * string -> BasePlusOffset = function
+//        | v, l -> ValPlusLabel (v |> uint32, Inline l)
+//        //| _ -> ValPlusReg(0u, Register.Encode "r0")
+//        
+//
+//and Value = uint32
 
 
 //type Derp =

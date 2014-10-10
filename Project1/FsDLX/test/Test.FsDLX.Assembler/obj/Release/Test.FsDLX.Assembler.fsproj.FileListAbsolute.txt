@@ -7,7 +7,6 @@ C:\Users\User\OneDrive\CS5483\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Relea
 C:\Users\User\OneDrive\CS5483\Project1\FsDLX\test\Test.FsDLX.Assembler\obj\Release\Test.FsDLX.Assembler.fsprojResolveAssemblyReference.cache
 C:\Users\User\OneDrive\CS5483\Project1\FsDLX\test\Test.FsDLX.Assembler\obj\Release\Test.FsDLX.Assembler.exe
 D:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Release\Test.FsDLX.Assembler.exe
-D:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Release\FsDLX.Assembler.dll
 D:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Release\FsUnit.NUnit.dll
 D:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Release\NCrunch.Framework.dll
 D:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Release\nunit.framework.dll
@@ -23,3 +22,5 @@ X:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Release\nunit.frame
 X:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Release\nunit.framework.xml
 X:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\obj\Release\Test.FsDLX.Assembler.fsprojResolveAssemblyReference.cache
 X:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\obj\Release\Test.FsDLX.Assembler.exe
+D:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Release\Test.FsDLX.Assembler.exe.config
+D:\GitHub\FsDLX\Project1\FsDLX\test\Test.FsDLX.Assembler\bin\Release\FsDLX.Assembler.dll
