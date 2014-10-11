@@ -1,35 +1,38 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{D43DBA97-260F-493F-B2CF-02CD5682CF7F}"
+# Visual Studio 2013
+VisualStudioVersion = 12.0.30723.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{FB35964A-E523-4608-92F2-D0740B4F99C4}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "FsDLX.Assembler", "FsDLX\src\FsDLX.Assembler\FsDLX.Assembler.fsproj", "{E0EF2BC3-7B7F-42D7-A853-357FC2DB369B}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{04B3CF7C-F2EC-4642-AA45-AF52E5BD6A99}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{B6CD9EE4-AEB6-44A0-AAB3-2297EC9CAECC}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Assembler", "test\Test.FsDLX.Assembler\Test.FsDLX.Assembler.fsproj", "{D45A63B0-C456-4756-9961-927E6A793674}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "Test.FsDLX.Assembler", "FsDLX\test\Test.FsDLX.Assembler\Test.FsDLX.Assembler.fsproj", "{1BDD4B3E-FB98-4A6A-85CF-60AE722A7966}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Assembler", "src\FsDLX.Assembler\FsDLX.Assembler.fsproj", "{B2F814DF-8B27-456C-A909-66186D4A6C0E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NewFolder1", "NewFolder1", "{BACAD4B9-BC7A-450D-9707-ED85B088F216}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|x86 = Debug|x86
-		Release|x86 = Release|x86
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{1BDD4B3E-FB98-4A6A-85CF-60AE722A7966}.Debug|x86.ActiveCfg = Debug|x86
-		{1BDD4B3E-FB98-4A6A-85CF-60AE722A7966}.Debug|x86.Build.0 = Debug|x86
-		{1BDD4B3E-FB98-4A6A-85CF-60AE722A7966}.Release|x86.ActiveCfg = Release|x86
-		{1BDD4B3E-FB98-4A6A-85CF-60AE722A7966}.Release|x86.Build.0 = Release|x86
-		{E0EF2BC3-7B7F-42D7-A853-357FC2DB369B}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{E0EF2BC3-7B7F-42D7-A853-357FC2DB369B}.Debug|x86.Build.0 = Debug|Any CPU
-		{E0EF2BC3-7B7F-42D7-A853-357FC2DB369B}.Release|x86.ActiveCfg = Release|Any CPU
-		{E0EF2BC3-7B7F-42D7-A853-357FC2DB369B}.Release|x86.Build.0 = Release|Any CPU
+		{D45A63B0-C456-4756-9961-927E6A793674}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D45A63B0-C456-4756-9961-927E6A793674}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D45A63B0-C456-4756-9961-927E6A793674}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D45A63B0-C456-4756-9961-927E6A793674}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B2F814DF-8B27-456C-A909-66186D4A6C0E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B2F814DF-8B27-456C-A909-66186D4A6C0E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B2F814DF-8B27-456C-A909-66186D4A6C0E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B2F814DF-8B27-456C-A909-66186D4A6C0E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{E0EF2BC3-7B7F-42D7-A853-357FC2DB369B} = {D43DBA97-260F-493F-B2CF-02CD5682CF7F}
-		{1BDD4B3E-FB98-4A6A-85CF-60AE722A7966} = {B6CD9EE4-AEB6-44A0-AAB3-2297EC9CAECC}
-	EndGlobalSection
-	GlobalSection(MonoDevelopProperties) = preSolution
-		StartupItem = FsDLX\test\Test.FsDLX.Assembler\Test.FsDLX.Assembler.fsproj
-		outputpath = .
+		{D45A63B0-C456-4756-9961-927E6A793674} = {04B3CF7C-F2EC-4642-AA45-AF52E5BD6A99}
+		{B2F814DF-8B27-456C-A909-66186D4A6C0E} = {FB35964A-E523-4608-92F2-D0740B4F99C4}
 	EndGlobalSection
 EndGlobal
