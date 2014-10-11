@@ -61,7 +61,7 @@ for ($i = 0; $i <= $#canfiles; $i++){
    #print "Comparing $output and $canoutput\n";
    $problemFile = $prefix . ".problems";
    if (-e $output) {
-       system "./mydiff $output $canoutput 18 > $problemFile";
+       system "./mydiff $output $canoutput > $problemFile";
        $problemFileSize = -s $problemFile;
    }
 

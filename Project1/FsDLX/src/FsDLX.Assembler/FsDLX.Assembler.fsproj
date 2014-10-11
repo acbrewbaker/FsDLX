@@ -1,20 +1,18 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{0BC68FF9-C0A4-4D52-B4F3-A091A3A6C07B}</ProjectGuid>
+    <ProjectGuid>{E0EF2BC3-7B7F-42D7-A853-357FC2DB369B}</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>FsDLX.Assembler</RootNamespace>
-    <AssemblyName>FsDLX.Assembler</AssemblyName>
-    <TargetFSharpCoreVersion>4.3.0.0</TargetFSharpCoreVersion>
-    <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
+    <AssemblyName>fsdlx</AssemblyName>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug</OutputPath>
+    <OutputPath>..\..\..</OutputPath>
     <DefineConstants>DEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <Tailcalls>false</Tailcalls>
@@ -26,53 +24,25 @@
     <DebugSymbols>false</DebugSymbols>
     <DebugType>none</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release</OutputPath>
+    <OutputPath>..\..\..</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <Tailcalls>true</Tailcalls>
     <ConsolePause>false</ConsolePause>
     <PlatformTarget>
     </PlatformTarget>
+    <DefineConstants>
+    </DefineConstants>
   </PropertyGroup>
-  <Choose>
-    <When Condition="'$(VisualStudioVersion)' == '11.0'">
-      <PropertyGroup>
-        <FSharpTargetsPath>$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets</FSharpTargetsPath>
-      </PropertyGroup>
-    </When>
-    <Otherwise>
-      <PropertyGroup>
-        <FSharpTargetsPath>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets</FSharpTargetsPath>
-      </PropertyGroup>
-    </Otherwise>
-  </Choose>
-  <Import Project="$(FSharpTargetsPath)" Condition="Exists('$(FSharpTargetsPath)')" />
   <ItemGroup>
-    <None Include="CodeGeneration.fsx" />
-    <Compile Include="Script.fsx" />
-    <None Include="Script1.fsx" />
-    <None Include="Script2.fsx" />
-    <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Common.fs" />
-    <Compile Include="Patterns.fs" />
-    <Compile Include="Encoding.fs" />
-    <Compile Include="Grammar.fs" />
-    <Compile Include="Builder.fs" />
-    <Compile Include="Assembler.fs" />
-    <Compile Include="Program.fs" />
-    <Content Include="packages.config" />
-    <Content Include="app.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-      <Private>True</Private>
-    </Reference>
     <Reference Include="mscorlib" />
-    <Reference Include="NCrunch.Framework">
-      <HintPath>..\..\packages\NCrunch.Framework.2.8.0.34\lib\NCrunch.Framework.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
+    <Reference Include="FSharp.Core, Version=4.3.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Assembler.fs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
 </Project>

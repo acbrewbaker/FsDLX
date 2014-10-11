@@ -3,7 +3,7 @@
 open System.Reflection
 open System.Runtime.CompilerServices
 
-[<AssemblyTitle("FsDLX.Assembler")>]
+[<AssemblyTitle("FsDLX")>]
 [<AssemblyDescription("")>]
 [<AssemblyConfiguration("")>]
 [<AssemblyCompany("")>]

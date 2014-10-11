@@ -1,0 +1,15 @@
+﻿<Properties>
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Release|x86" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="FsDLX\test\Test.FsDLX.Assembler\Program.fs">
+    <Files>
+      <File FileName="FsDLX\test\Test.FsDLX.Assembler\Program.fs" Line="37" Column="37" />
+      <File FileName="FsDLX\src\FsDLX.Assembler\Assembler.fs" Line="1" Column="1" />
+      <File FileName="FsDLX\src\FsDLX.Assembler\AssemblyInfo.fs" Line="1" Column="1" />
+      <File FileName="FsDLX\test\Test.FsDLX.Assembler\AssemblyInfo.fs" Line="1" Column="1" />
+    </Files>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+</Properties>
