@@ -24,16 +24,17 @@ let parseTypeFile filepath =
 
 let directives = [ ".text"; ".data"; ".align"; ".asciiz"; ".double"; ".float"; ".word"; ".space"]
 
-let genMatchFunc (name:string) (pattern:string) = 
-    sprintf "
-let matches%s (s:string) = let r = Regex(\"%s\") in r.IsMatch(s)"
-        (name.ToUpper()) pattern
+//let genMatchFunc (name:string) (pattern:string) = 
+//    sprintf "
+//let matches%s (s:string) = let r = Regex(\"%s\") in r.IsMatch(s)"
+//        (name.ToUpper()) pattern
+//
+//let genEncodeFunc name =
+//    sprintf "
+//let encode%s (s:string ref) (f:string -> string) = function
+//	| s when s |> matches%s -> f s
+//	| _ -> s" name
+//
+//
+//itypesfile |> parseTypeFile |> List.map (fun (op, rrx, enc) -> genMatchFunc op op) |> List.iter (printfn "%s")
 
-let genEncodeFunc name =
-    sprintf "
-let encode%s (s:string ref) (f:string -> string) = function
-	| s when s |> matches%s -> f s
-	| _ -> s" name
-
-
-itypesfile |> parseTypeFile |> List.map (fun (op, rrx, enc) -> genMatchFunc op op) |> List.iter (printfn "%s")

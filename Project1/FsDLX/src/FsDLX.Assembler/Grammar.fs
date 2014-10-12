@@ -3,39 +3,114 @@
 open System
 open System.Text
 open System.Text.RegularExpressions
-open Patterns
+
+open Tokens
+
+type IDlxElement =
+    abstract Encode : string -> string
+
+[<AbstractClass>]
+type DLXElement(pc:ProgramCounter, instruction:Instruction, comment:Comment) =
+    //let encode = { new IDlxElement with member this.Encode s = "" }
+    new (pc:uint32, instruction, comment) = DLXElement(ProgramCounter(pc), instruction, comment)
 
 
+    abstract String : string with get, set
+       
+    abstract Encode : unit -> string
+    default d.Encode() = d.String
+    
+    override d.ToString() = d.Encode()
 
-type DLXInput =
+and DLXOuput(pc:ProgramCounter, instruction:Instruction, comment:Comment) =
+    inherit DLXElement(pc, instruction, comment)
+    let mutable s = ""
+    override dlxo.String 
+        with get () = s
+        and set(v) = s <- v
+    member val PC           = pc
+    member val Instruction  = instruction
+    member val Comment      = comment
+
+and ProgramCounter(pc:uint32) =
+    override ctr.ToString() = pc.ToString("x8")
+
+and Instruction =
+    | IType of Opcode * RS1 * RD * Immediate
+    | RType of RRX * RS1 * RS2 * RD * Unused * Func
+    | JType of Opcode * Name
+
+and Opcode(name:string, enc:int) =
+    member val Name = name
+    member val Encoding = enc
+
+and RS1 = Register
+and RS2 = Register
+and RD = Register
+and Unused =
+    | U5
+    | U6
+
+and Func =
+    | F6
+    | F5
+
+and Name(immediate:Immediate) =
+    override this.ToString() = ""
+
+and Operands =
+    | IType of RS1 * RD * Immediate
+    | RType of RS1 * RS2 * RD
+    | JType of Name
+
+and RegisterKind =
+    | R
+    | F
+
+and Register(reg:string) =
+    let k = reg |> function
+        | _ when reg.StartsWith("r") -> RegisterKind.R
+        | _ when reg.StartsWith("f") -> RegisterKind.F
+        | _ -> failwith "Tried to create invalid register"
+
+    member val Kind = k
+
+
+and Immediate =
+    | Value of Value
+    | Label of Label
+    | Register of Register
+    | BasePlusOffset of BasePlusOffset
+        
+and DLXInput =
     | Comment of Comment
     | Instruction of Instruction * Comment option
     | Directive of Directive * Comment option
 
-    static member Parse = function 
-        | Patterns.Input.Comment s -> Comment.Parse s
-        | Patterns.Input.Instruction s -> Instruction s
-        | Patterns.Input.Directive s -> Directive.Parse s
-            
+    static member Parse (e:DLXEncoder) = function 
+        | _ -> failwith ""
+//        | Patterns.Comment e s -> Comment.Parse s |> Comment
+//        | Patterns.Instruction e s -> Instruction.Parse s |> Instruction
+//        | Patterns.Directive e s -> Directive.Parse s |> Directive
+//            
 
 and Comment =
     | CommentOnly of string
     | Inline of string
 
-    static member Parse (input:string) : Comment option =
+    static member Parse (input:string) : Comment =
         input.Split(';') |> function
-        | tokens when tokens.Length > 1 -> input |> Inline |> Some
-        | tokens when tokens.Length = 1 -> input |> CommentOnly |> Some
-        | _ -> None
-
-and Instruction =
-    | IType of Opcode * Register * Register * Immediate
-    | RType of RRX * Register * Register * Register * Opcode
-    | JType of Opcode * Immediate
-
-    static member Parse : (string -> DLXInput) = function 
-        | 
+        | tokens when tokens.Length > 1 -> input |> Inline
+        | tokens when tokens.Length = 1 -> input |> CommentOnly
         | _ -> failwith ""
+
+//and Instruction =
+//    | IType of Opcode.IType * Operand.T * Operand.T * Immediate.T
+//    | RType of Opcode.RType * Operand.T * Operand.T * Operand.T
+//    | JType of Opcode.JType * Immediate.T
+//
+//    static member Parse : (string -> Instruction * Comment option) = function 
+//        | _ -> failwith ""
 
 and Directive =
     | Text of int
@@ -46,30 +121,18 @@ and Directive =
     | Word of int
     | Space of int
 
-    static member Parse : (string -> DLXInput) = function
-        | Patterns.Directive.Text s ->
-            DLXInput.Directive (Text (int s), s |> Comment.Parse)
-        | Patterns.Directive.Asciiz s -> 
-            DLXInput.Directive (s.Split(' ') |> Asciiz, Comment.Parse s)        
-
-and Opcode =
-    | IType of string
-    | RType of string
-    | JType of string
-
-and Register =
-    | R of string
-    | F of string
+    static member Parse : (string -> Directive * Comment option) = function
+        | _ -> failwith ""
+//        | Patterns.Directive s ->
+//            DLXInput.Directive (Text (int s), s |> Comment.Parse)
+//        | Patterns.Directive.Asciiz s -> 
+//            DLXInput.Directive (s.Split(' ') |> Asciiz, Comment.Parse s)        
 
 and RRX =
     | RRAlu
     | RRFpu
 
-and Immediate =
-    | Value of Value
-    | Label of Label
-    | Register of Register
-    | BasePlusOffset of BasePlusOffset
+
         
 and Label =
     | Reference
