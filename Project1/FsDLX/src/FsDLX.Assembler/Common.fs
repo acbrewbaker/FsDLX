@@ -41,9 +41,9 @@ module Support =
     let inputdir = srcdir @@ @"../../../Inputs"
 
     let itypesfile, rtypesfile, jtypesfile = 
-        srcdir @@ @"../../support/Itypes",
-        srcdir @@ @"../../support/Rtypes",
-        srcdir @@ @"../../support/Jtypes"
+        srcdir @@ @"../../../Itypes",
+        srcdir @@ @"../../../Rtypes",
+        srcdir @@ @"../../../Jtypes"
 
     type Defaults = 
         { Directories : Directories; Files : Files}
@@ -67,9 +67,9 @@ module Support =
         let regex = new Regex(pattern, RegexOptions.Multiline)
         let matches = File.ReadAllText(filepath) |> regex.Matches
         [for m in matches -> 
-            m.Groups.["opcode"].Value, 
-            m.Groups.["rrid"].Value, 
-            m.Groups.["encoding"].Value]
+            m.Groups.["opcode"].Value.Trim(), 
+            m.Groups.["rrid"].Value.Trim(), 
+            m.Groups.["encoding"].Value.Trim()]
 
     let parseTypeFile2 filepath =
         let pattern = @"(?<opcode>[^\s]+)\s+(?<rrid>\d\s+)*\s*(?<encoding>\d+)"
@@ -81,34 +81,64 @@ module Support =
 
     let getInfo = parseTypeFile
     
+    let getOpEncOnly =
+        getInfo
+        >> List.map (fun (op, _, enc) -> (op, enc))
+
     let getPattern =
         getInfo
         >> List.map (fun (op, _, _) -> op)
-        >> List.fold (fun r s -> r + s + "|") ("")
+        >> List.fold (fun a s -> a + "|" + s ) ("")
 
-    let getLookup =
-        getInfo
-        >> List.map (fun (op, _, enc) -> (op, enc))
+    let getLookupByOp =
+        getOpEncOnly
+        >> Map.ofList
+
+    let getLookupByEnc =
+        getOpEncOnly
+        >> List.map (fun (o,e) -> (int e, o))
         >> Map.ofList
 
 type ParsedOpcode = 
-    { Info : List<string*string*string>; Pattern : string; Lookup : Map<string, string>}
+    { 
+        Info : List<string*string*string>; 
+        Pattern : string; 
+        LookupByOpcode : Map<string, string>
+        LookupByEncoding : Map<int, string>
+    }
     
 
     static member create fp =
-        {   Info    = fp |> Support.parseTypeFile
-            Pattern = fp |> Support.getPattern
-            Lookup  = fp |> Support.getLookup  }
+        {   Info            = fp |> Support.parseTypeFile
+            Pattern         = (fp |> Support.getPattern).Substring(1)
+            LookupByOpcode  = fp |> Support.getLookupByOp  
+            LookupByEncoding= fp |> Support.getLookupByEnc}
 
 and OpcodeInfo(itypesfile:string, rtypesfile:string, jtypesfile:string) = 
     let itypes() = itypesfile |> ParsedOpcode.create
     let rtypes() = rtypesfile |> ParsedOpcode.create
     let jtypes() = jtypesfile |> ParsedOpcode.create
     
-    let rrx = 
+    let rrxOpEnc = 
         rtypes().Info
         |> List.map (fun (op, rrx, enc) -> (op, rrx))
         |> Map.ofList
+
+    let rrxEncOp =
+        rtypes().Info
+        |> List.map (fun (op, rrx, enc) -> (int enc, rrx))
+        |> Map.ofList
+
+    let allOpEncPairs() = 
+        (itypesfile |> Support.getOpEncOnly) @
+        (rtypesfile |> Support.getOpEncOnly) @
+        (jtypesfile |> Support.getOpEncOnly)
+        
+    let lookupByOp() = allOpEncPairs() |> Map.ofList
+    
+    let lookupByEnc() = 
+        allOpEncPairs()
+        |> List.map (fun (o,e) -> (int e,o))
 
     new () = 
         let d = Support.Defaults.Init
@@ -116,11 +146,25 @@ and OpcodeInfo(itypesfile:string, rtypesfile:string, jtypesfile:string) =
             d.Files.IType, d.Files.RType, d.Files.JType
         OpcodeInfo(i,r,j)
 
+
     member val ITypes = itypes()
     member val RTypes = rtypes()
     member val JTypes = jtypes()
 
-    member val RRX = rrx
+    member oi.GetIType(op:string) = itypes().LookupByOpcode.[op]
+    member oi.GetIType(enc:int) = itypes().LookupByEncoding.[enc]
+
+    member oi.GetRType(op:string) = rtypes().LookupByOpcode.[op]
+    member oi.GetRType(enc:int) = rtypes().LookupByEncoding.[enc]
+    
+    member oi.GetJType(op:string) = jtypes().LookupByOpcode.[op]
+    member oi.GetJType(enc:int) = jtypes().LookupByEncoding.[enc]
+
+    member oi.GetRRX(op:string) = rrxOpEnc.[op]
+    member oi.GetRRX(enc:int) = rrxEncOp.[enc]
+
+    member oi.Lookup(op:string) = lookupByOp().[op]
+    member oi.Lookup(enc:int) = lookupByEnc().[enc]
 
 //and RawInfo(info:(string*string*string) list) =
 //    member val List = info

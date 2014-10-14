@@ -56,7 +56,7 @@ for ($i = 0; $i <= $#canfiles; $i++){
    print "Testing $input. ";
 
 #  change the command in quotes below to call your executable
-   system "java -jar Assemble.jar $input";
+   system "mono /u/css/ab67597/5483/Project1/assemble.exe $input";
 
    #print "Comparing $output and $canoutput\n";
    $problemFile = $prefix . ".problems";
