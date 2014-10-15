@@ -115,29 +115,29 @@ type ParsedOpcode =
             LookupByEncoding= fp |> Support.getLookupByEnc}
 
 and OpcodeInfo(itypesfile:string, rtypesfile:string, jtypesfile:string) = 
-    let itypes() = itypesfile |> ParsedOpcode.create
-    let rtypes() = rtypesfile |> ParsedOpcode.create
-    let jtypes() = jtypesfile |> ParsedOpcode.create
+    let itypes = itypesfile |> ParsedOpcode.create
+    let rtypes = rtypesfile |> ParsedOpcode.create
+    let jtypes = jtypesfile |> ParsedOpcode.create
     
     let rrxOpEnc = 
-        rtypes().Info
+        rtypes.Info
         |> List.map (fun (op, rrx, enc) -> (op, rrx))
         |> Map.ofList
 
     let rrxEncOp =
-        rtypes().Info
+        rtypes.Info
         |> List.map (fun (op, rrx, enc) -> (int enc, rrx))
         |> Map.ofList
 
-    let allOpEncPairs() = 
+    let allOpEncPairs = 
         (itypesfile |> Support.getOpEncOnly) @
         (rtypesfile |> Support.getOpEncOnly) @
         (jtypesfile |> Support.getOpEncOnly)
         
-    let lookupByOp() = allOpEncPairs() |> Map.ofList
+    let lookupByOp = allOpEncPairs |> Map.ofList
     
-    let lookupByEnc() = 
-        allOpEncPairs()
+    let lookupByEnc = 
+        allOpEncPairs
         |> List.map (fun (o,e) -> (int e,o))
 
     new () = 
@@ -147,24 +147,24 @@ and OpcodeInfo(itypesfile:string, rtypesfile:string, jtypesfile:string) =
         OpcodeInfo(i,r,j)
 
 
-    member val ITypes = itypes()
-    member val RTypes = rtypes()
-    member val JTypes = jtypes()
+    member val ITypes = itypes
+    member val RTypes = rtypes
+    member val JTypes = jtypes
 
-    member oi.GetIType(op:string) = itypes().LookupByOpcode.[op]
-    member oi.GetIType(enc:int) = itypes().LookupByEncoding.[enc]
+    member oi.GetIType(op:string) = itypes.LookupByOpcode.[op]
+    member oi.GetIType(enc:int) = itypes.LookupByEncoding.[enc]
 
-    member oi.GetRType(op:string) = rtypes().LookupByOpcode.[op]
-    member oi.GetRType(enc:int) = rtypes().LookupByEncoding.[enc]
+    member oi.GetRType(op:string) = rtypes.LookupByOpcode.[op]
+    member oi.GetRType(enc:int) = rtypes.LookupByEncoding.[enc]
     
-    member oi.GetJType(op:string) = jtypes().LookupByOpcode.[op]
-    member oi.GetJType(enc:int) = jtypes().LookupByEncoding.[enc]
+    member oi.GetJType(op:string) = jtypes.LookupByOpcode.[op]
+    member oi.GetJType(enc:int) = jtypes.LookupByEncoding.[enc]
 
     member oi.GetRRX(op:string) = rrxOpEnc.[op]
     member oi.GetRRX(enc:int) = rrxEncOp.[enc]
 
-    member oi.Lookup(op:string) = lookupByOp().[op]
-    member oi.Lookup(enc:int) = lookupByEnc().[enc]
+    member oi.Lookup(op:string) = lookupByOp.[op]
+    member oi.Lookup(enc:int) = lookupByEnc.[enc]
 
 //and RawInfo(info:(string*string*string) list) =
 //    member val List = info

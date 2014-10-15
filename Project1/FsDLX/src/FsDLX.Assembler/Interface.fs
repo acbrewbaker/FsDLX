@@ -91,6 +91,7 @@ and Operands =
     | JType of Immediate
 
     static member NOP() = RType(Register.R "r0", Register.R "r0", Register.R "r0")
+    static member TRAP(s:string) = JType(Immediate.Value (Convert.ToUInt32(s)))
 
     override o.ToString() = o |> function
         | IType(rs1, rd, imm) -> 
@@ -269,7 +270,7 @@ module Patterns =
         member val Instruction = Regex(@"\A(\w+)([^;]*)")
 
     type DirectiveRegex() =
-        member val Text    = Regex(@"(?<=\.(text).*)(\d+)")
+        member val Text    = Regex(@"(?<=\.(text).*)(\d*)")
         member val Data    = Regex(@"(?<=\.(data).*)(\d+)")
         member val Align   = Regex(@"(?<=\.(align).*)(\d)")
         member val Asciiz  = Regex(@"(?<=\.(asciiz).*)?""([^""]+)""")
@@ -338,12 +339,20 @@ module Patterns =
     let (|Instruction|_|) (info:OpcodeInfo) : (string*uint32 ref) -> Instruction option =
         let r = OpcodeRegex(info)
         let i = InputRegex()
+        let imm = ImmediateRegex()
 
         let (|IType|_|) (info:OpcodeInfo) : (string*string) -> (Opcode*Operands) option =
         
+//            let (|RRI|RI|R|LF|LR|) (ops:string[]) = ops.Length |> function
             let (|RRI|RI|R|) (ops:string[]) = ops.Length |> function
                 | 3 -> RRI ops
                 | 2 -> RI ops
+//                | 2 -> ops |> function
+//                    | _ when ops.[0] |> matches imm.Label -> 
+//                        if ops.[1].StartsWith("f")
+//                        then LF ops
+//                        else LR ops
+//                    | _ -> RI ops
                 | 1 -> R ops
                 | _ -> failwith "no 0 register IType operands"
         
@@ -357,6 +366,8 @@ module Patterns =
                        | RRI ops -> Operands.IType(Register.R ops.[0], Register.R ops.[1], immediate ops.[2])
                        | RI ops -> Operands.IType(Register.R ops.[0], Register.Unused, immediate ops.[1])
                        | R ops -> Operands.IType(Register.R ops.[0], Register.Unused, Immediate.Unused)
+//                       | LF ops -> Operands.IType(Register.F ops.[1], Register.Unused, immediate ops.[0])
+//                       | LR ops -> Operands.IType(Register.R ops.[1], Register.Unused, immediate ops.[0])
                 Some (opcode, operands)
             | _ -> None
     
@@ -434,6 +445,9 @@ module Patterns =
 
             let instruction = 
                 (opcode, operands) |> function
+                | "trap", _ ->
+                    // trap is IType in the files, but JType in the book.
+                    Instruction.JType(Opcode.JType(info.Lookup(opcode) |> int), Operands.TRAP(operands))
                 | "nop", _ ->
                     Instruction.RType(rrx opcode, Operands.NOP(), unused opcode, func opcode)
                 | IType info (op, ops) -> 
@@ -457,13 +471,13 @@ module Patterns =
         let r = DirectiveRegex()
     
         let groups (r:Regex) s = [for m in r.Matches(s) -> m.Groups.[2].Value]
-
         function
         | s, pc when s |> matches r.Text ->
             groups r.Text s |> List.map (fun (str:string) ->
                 let pc' = !pc
                 let s' = str
                 let comment = asComment str
+                if s'.Length <= 1 then pc := 0u else pc := UInt32.Parse(s')
                 (pc', s', comment)) 
             |> List.map (fun e -> new Directive(e)) 
             |> Some
@@ -569,6 +583,7 @@ let parseInputs (info:OpcodeInfo) (lines:string[]) (pc:uint32 ref) (st:SymbolTab
     let groups (r:Regex) s = let g = r.Match(s).Groups in (g.[1].Value, g.[2].Value)
         
     lines |> Seq.fold (fun (i:int, inputs:DLXInput list) line ->
+        //printfn "Line: %A" line
         (line.Trim(), pc) |> function
         | _ when line.Length <= 1 ->
             (i, inputs)
@@ -579,7 +594,7 @@ let parseInputs (info:OpcodeInfo) (lines:string[]) (pc:uint32 ref) (st:SymbolTab
             //printfn "Matched Label: %A, %A" ste rest
             st.Add(ste)
             let lbl = Label.Reference(ste)
-            printfn "Symbol Table : %A" (st)
+            //printfn "Symbol Table : %A" (st)
             let data, comment = rest |> function | InlineComment c -> c | _ -> rest, rest
             let data = data.Trim()
             let rest = rest.Trim()
@@ -605,7 +620,7 @@ let parseInputs (info:OpcodeInfo) (lines:string[]) (pc:uint32 ref) (st:SymbolTab
             | _ -> failwith "Failed to match info after matching label"
 
         | Patterns.Directive directive -> 
-            printfn "Match Directive"
+            //printfn "Match Directive"
             let d = directive |> List.mapi (fun i d -> DLXInput.Directive(None, d))
             (i + 1, inputs @ d)
         | Patterns.Instruction info instruction ->
@@ -690,7 +705,7 @@ type Assembler(dlxfile:string) =
                                     //printfn "Label After: %A" lbl
                                     Operands.IType(rs1, rd, Immediate.Label lbl)
                                 | Immediate.BasePlusOffset(b,o) -> 
-                                    printfn "BPO ==> (%A, %A)" b o
+                                    //printfn "BPO ==> (%A, %A)" b o
                                     let b,o = 
                                         b.ReplaceWithAddress(symtab),
                                         o.RepalceWithAddress(symtab)
@@ -720,7 +735,8 @@ type Assembler(dlxfile:string) =
         |> function | (_, out) -> out
 
     let createOutput (lines:string list) =
-        lines |> List.fold (fun s l -> s + l + "\n") ("")
+        (lines |> List.fold (fun s l -> s + l + "\n") (""))
+        
 
     member val DlxFile = dlxfile
     member val HexFile = hexfile
