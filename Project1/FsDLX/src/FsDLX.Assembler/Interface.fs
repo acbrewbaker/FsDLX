@@ -56,27 +56,23 @@ and Instruction =
     | IType of Opcode * Operands
     | RType of RRX * Operands * Unused * Func
     | JType of Opcode * Operands
-
     
-    override i.ToString() = 
-        let s = i |> function
-            | IType(opcode, operands) -> 
-                printfn "Bout to print"
-                sprintf "%s%s" 
-                    (opcode.ToString()) 
-                    (operands.ToString())
-            | RType(rrx, operands, unused, func) -> 
-                sprintf "%s%s%s%s" 
-                    (rrx.ToString()) 
-                    (operands.ToString()) 
-                    (unused.ToString()) 
-                    (func.ToString())
-            | JType(opcode, operands) ->
-                sprintf "%s%s" 
-                    (opcode.ToString())
-                    (operands.ToString())
-        s //|> revstr
-        //(Convert.ToUInt32(s,2).ToString("x8"))
+    override i.ToString() = i |> function
+        | IType(opcode, operands) -> 
+            printfn "Bout to print"
+            sprintf "%s%s" 
+                (opcode.ToString()) 
+                (operands.ToString())
+        | RType(rrx, operands, unused, func) -> 
+            sprintf "%s%s%s%s" 
+                (rrx.ToString()) 
+                (operands.ToString()) 
+                (unused.ToString()) 
+                (func.ToString())
+        | JType(opcode, operands) ->
+            sprintf "%s%s" 
+                (opcode.ToString())
+                (operands.ToString())
 
 and Opcode =
     | IType of int
@@ -559,211 +555,6 @@ module Patterns =
         | (line, _) when line.StartsWith(";") -> Some line
         | _ -> None          
 
-//module State0 =
-//    type InputInfo = string * string
-//
-//
-//    let (|Comment|Directive|Label|Instruction|) (input:InputInfo) : Choice<string, string*string, string*string, string*string> =
-//        let file, s = input
-//        let filename = Path.GetFileName(file)
-//        let s = s.Trim()
-//        let comment = Regex(@"^(;)(.*)")
-//        let directive = Regex(@"\.(\w+)\s(.*)")
-//        let label = Regex(@"(\w+):(.*)")
-//        let instruction = Regex(@"^(\w+) (.*)")
-//    
-//        let matches (r:Regex) s = r.IsMatch(s)
-//
-//        let groups (r:Regex) s = 
-//            let g = r.Match(s).Groups in (g.[1].Value, g.[2].Value)
-//            
-//        let fail() =
-//            (sprintf "Unable to match input from %s" filename, s)
-//            ||> asmfail
-//    
-//        s |> function
-//        | _ when s |> matches comment -> Comment (groups comment s |> snd)
-//        | _ when s |> matches directive -> Directive (groups directive s)
-//        | _ when s |> matches label -> Label (groups label s)
-//        | _ when s |> matches instruction -> Instruction (groups instruction s)
-//        | _ when s.Length <= 1 -> Comment s
-//        | _ -> failwith (fail())
-//
-//
-//let opcode (opinfo:OpcodeInfo) =
-//    let itype = Regex(opinfo.ITypes.Pattern)
-//    let rtype = Regex(opinfo.RTypes.Pattern)
-//    let jtype = Regex(opinfo.JTypes.Pattern)
-//        
-//    let groups (r:Regex) s = let g = r.Match(s).Groups in (g.[0].Value)
-//        
-//    let encoding r s = opinfo.Lookup(groups r s) |> int
-//        
-//    function
-//    | opcode when opcode |> matches itype -> 
-//        printfn "IType Opcode match: %A" opcode
-//        Opcode.IType(encoding itype opcode)
-//    | opcode when opcode |> matches rtype -> 
-//        printfn "RType Opcode match: %A" opcode
-//        Opcode.RType(encoding rtype opcode)
-//    | opcode when opcode |> matches jtype -> 
-//        printfn "JType Opcode match: %A" opcode
-//        Opcode.JType(encoding jtype opcode)
-//    | opcode -> failwith (sprintf "Failed to create opcode from : %A" opcode)
-//
-//let baseplusoffset =
-//    let value   = Regex(@"(\d+)$")
-//    let label   = Regex(@"([a-zA-Z]+\d*)$")
-//    function
-//    | bl,ol when bl |> matches label && ol |> matches label -> 
-//        Base.Label (Label.Inline bl), Offset.Label (Label.Inline ol)
-//    | bv,ol when bv |> matches value && ol |> matches label -> 
-//        Base.Value (Convert.ToUInt32(bv)), Offset.Label (Label.Inline ol)
-//    | bl,ov when bl |> matches label && ov |> matches value ->
-//        Base.Label (Label.Inline bl), Offset.Value (Convert.ToUInt32(ov))
-//    | bv,ov when bv |> matches value && ov |> matches value ->
-//        Base.Value (Convert.ToUInt32(bv)), Offset.Value (Convert.ToUInt32(ov))
-//    | _ -> failwith "failed to match base plus offset"
-
-//let register =
-//    let r = Regex(@"r\d\d?")
-//    let f = Regex(@"f\d\d?")
-//
-//    function
-//    | reg when reg |> matches r -> Register.R reg
-//    | reg when reg |> matches f -> Register.F reg
-//    | _ -> failwith "Failed to create register"
-//
-//let immediate =
-//    let value       = Regex(@"(\A\d+)$")
-//    let label       = Regex(@"([a-zA-Z]+\d*)$")
-//    let register    = Regex(@"(r\d\d?)$")
-//    let bpo         = Regex(@"(\w+)\((\w+)\)$")
-//    
-//    function
-//    | imm when imm |> matches value     -> Immediate.Value (Convert.ToUInt32(imm))
-//    | imm when imm |> matches label     -> Immediate.Label (Label.Inline imm)
-//    | imm when imm |> matches register  -> Immediate.Register (imm |> register)
-//    | imm when imm |> matches bpo -> 
-//        let b,o = let g = bpo.Match(imm).Groups in (g.[1].Value, g.[2].Value)
-//        printfn "BPO ======> (%A, %A)" b o
-//        Immediate.BasePlusOffset (baseplusoffset (b,o))
-//    | _ -> failwith "Failed to create immediate"
-
-//
-//
-//let rr ra rb = register ra, register rb
-//let rrr ra rb rc = register ra, register rb, register rc
-//    
-//
-//let instruction opinfo op ops =
-//    printfn "1: Opcode, Operands ==> %A, %A" op ops
-//    let opcode, operands = (op, ops) |> function
-//        | IType.IType opinfo itype -> itype
-//        | RType.RType opinfo rtype -> rtype
-//        | JType.JType opinfo jtype -> jtype
-//        | _ -> failwith "unable to match opcode & ops"
-////        (opcode opinfo op), 
-////        (operands ops)
-//    printfn "2: Opcode, Operands ==> %A, %A" opcode operands
-//    //printfn "RRX: %A" (opinfo.GetRRX(op))
-//    let rrx() = 
-//        opinfo.GetRRX(op) |> function
-//        | x when char x = '0' -> RRX.RRalu x
-//        | x when char x = '1' -> RRX.RRfpu x
-//        | _ -> failwith "RRX Failed"
-//
-//    let unused() = rrx() |> function
-//        | RRX.RRalu _ -> Unused.U5
-//        | RRX.RRfpu _ -> Unused.U6
-//
-//    let func() = rrx() |> function
-//        | RRX.RRalu _ -> Func.F6 (opinfo.Lookup(op))
-//        | RRX.RRfpu _ -> Func.F5 (opinfo.Lookup(op))
-//        
-//    (opcode, operands) |> function
-//    | Opcode.IType(_), Operands.IType(_) -> 
-//        let i = Instruction.IType(opcode, operands)
-//        //printfn "%A" (i.ToString())
-//        i
-//    | Opcode.RType(_), Operands.RType(_) -> 
-//        //printfn "Op: %d" op
-//        printfn "Opcode, Operands ====> %A, %A" opcode operands
-//        let ins = Instruction.RType(rrx(), operands, unused(), func())
-//        printfn "made this: %A" ins
-//        ins
-//    | Opcode.JType(_), Operands.JType(_) -> Instruction.JType(opcode, operands)
-//    | x -> failwith (sprintf "Failed to create instruction: %A" x)
-
-let directive (s:string) (pc:uint32 ref) : Directive list =
-    let r = Patterns.DirectiveRegex()
-    
-    let groups (r:Regex) s = [for m in r.Matches(s) -> m.Groups.[2].Value]
-
-    (s,pc) |> function
-    | s,pc when s |> matches r.Text ->
-        groups r.Text s |> List.map (fun (str:string) ->
-            let pc' = !pc
-            let s' = str
-            let comment = asComment str
-            (pc', s', comment)) |> List.map (fun e -> Directive(e))
-
-    | s,pc when s |> matches r.Data ->
-        groups r.Data s |> List.map (fun (str:string) ->
-            let pc' = !pc
-            let s' = str
-            let comment = asComment str
-            (pc', s', comment)) |> List.map (fun e -> Directive(e))
-
-    | s,pc when s |> matches r.Align ->
-        groups r.Align s |> List.map (fun (str:string) ->
-            let pc' = !pc
-            let s' = str
-            let comment = asComment str
-            (pc', s', comment)) |> List.map (fun e -> Directive(e))
-
-    | s,pc when s |> matches r.Asciiz ->
-        groups r.Asciiz s |> List.map (fun (s:string) ->
-            let bytes = Encoding.Default.GetBytes(s)
-            let pc' = !pc
-            let s' = s |> str2hex
-            pc := !pc + uint32 bytes.Length + 1u
-            (pc', s', s)) |> List.map (fun e -> Directive(e))
-        
-    | s,pc when s |> matches r.Double ->
-        groups r.Double s |> List.map (fun (str:string) ->
-            let pc' = !pc
-            let s' = (Double.Parse(str) |> BitConverter.GetBytes |> bytes2hex)
-            let comment = floatingPointAsComment str
-            pc := !pc + 8u
-            (pc', s', comment)) |> List.map (fun e -> Directive(e))
-
-    | s,pc when s |> matches r.Float ->
-        groups r.Float s |> List.map (fun (str:string) ->
-            let pc' = !pc
-            let s' = (Single.Parse(str) |> BitConverter.GetBytes |> bytes2hex)
-            let comment = floatingPointAsComment str
-            pc := !pc + 4u
-            (pc', s', comment)) |> List.map (fun e -> Directive(e))
-
-    | s,pc when s |> matches r.Word ->
-        groups r.Word s |> List.map (fun (str:string) ->
-            let pc' = !pc
-            let str, isNeg = if str.StartsWith("-") then str.Replace("-",""), true else str, false
-            let base' = if str.StartsWith("0x") then 16 else 10
-            let word = Convert.ToInt32(str, base') * (if isNeg then -1 else 1)
-            let s' = (word |> BitConverter.GetBytes |> bytes2hex)
-            let comment = asComment (string word)
-            (pc', s', comment)) |> List.map (fun e -> Directive(e))
-
-    | s,pc when s |> matches r.Space ->
-        groups r.Space s |> List.map (fun (str:string) ->
-            let pc' = !pc
-            let s' = str
-            let comment = asComment str
-            (pc', s', comment)) |> List.map (fun e -> Directive(e))
-
-    | _ -> failwith "Failed to create directive"
 
 let parseInputs (info:OpcodeInfo) (lines:string[]) (pc:uint32 ref) (st:SymbolTable) =
     let r = Patterns.InputRegex()
@@ -861,9 +652,7 @@ type Assembler(dlxfile:string) =
     let opcodeInfo = OpcodeInfo()
 
     let symtab = new SymbolTable()
-
     
-
     let assemble() =
         let lines = dlxfile |> File.ReadAllLines 
         let pc = ref 0u
@@ -958,73 +747,3 @@ type Assembler(dlxfile:string) =
     interface IDisposable with
         member this.Dispose() = ()
         
-
-
-//let operands (ops:string) =
-//    let r = Patterns.OperandRegex()
-//    
-////    let getNewOps ops = ops |> function
-////        | RRR ops -> Operands.RType(register ops.[0], register ops.[1], register ops.[2])
-////        | FFF ops -> Operands.RType(Register.F ops.[0], Register.F ops.[1], Register.F ops.[2])
-////        | RR ops -> Operands.RType(Register.R ops.[0], Register.Unused, Register.R ops.[1])
-////        | RI ops -> Operands.IType(register ops.[0], Register.Unused, immediate ops.[1])
-////        | RRI ops -> Operands.IType(register ops.[0], register ops.[1], immediate ops.[2])
-////        | RRV ops -> Operands.IType(register ops.[0], register ops.[1], immediate ops.[2])
-////        | I ops -> Operands.JType(immediate ops.[0])
-//
-////    let getNewOps ops = ops |> function
-////        | IType.RRI ops -> Operands.IType(Register.R ops.[0], Register.R ops.[1], immediate ops.[2])
-////        | IType.RI ops -> Operands.IType(Register.R ops.[0], Register.Unused, immediate ops.[1])
-////        | RType.RRR ops -> Operands.RType(Register.R ops.[0], Register.R ops.[1], Register.R ops.[2])
-////        | RType.FFF ops -> Operands.RType(Register.F ops.[0], Register.F ops.[1], Register.F ops.[2])
-////    //printfn "Ops.split ==> %A" (ops.Split([|',';' '|], StringSplitOptions.RemoveEmptyEntries))
-////    let groups (r:Regex) s = let g = r.Match(s).Groups in (g.[1].Value, g.[2].Value, g.[3].Value)
-//    
-//    
-////    ops |> function
-////    | operands when operands |> matches r.IType -> 
-////        printfn "IType Operand Match: %A" operands
-////        //let groups s = let g = r.IType.Match(s).Groups in (g.[1].Value, g.[2].Value, g.[3].Value)
-////        let groups s = [for m in r.IType.Matches(s) -> m.Groups.["rrv"], m.Groups.["rrl"], m.Groups.["rl"]]
-//////        let g = 
-//////            [   [for m in r.IType.Matches(ops) -> (m.Groups.[2].Value, m.Groups.[3].Value, m.Groups.[4].Value)].Head;
-//////                [for m in r.IType.Matches(ops) -> (m.Groups.[6].Value, m.Groups.[7].Value, m.Groups.[8].Value)].Head;
-//////                [for m in r.IType.Matches(ops) -> (m.Groups.[10].Value, m.Groups.[11].Value, " ")].Head]
-//////            |> List.choose (fun (g1,g2,g3) -> if g1.Length > 1 && g2.Length > 1 && g3.Length > 1 then Some (g1,g2,g3) else None)
-//////        printfn "Groups: %A" (g)
-//////        let g1,g2,g3 = g.Head
-////            
-//////        let rd, rs1, imm =
-//////            if g3.Length <= 1
-//////            then (Register.Unused, register g1, immediate g2)
-//////            else (register g1, register g2, immediate g3)
-//////                    
-//////        //printfn "#1:  RS1, RSD, IMM  ===> %A, %A, %A" (rs1.ToString()) (rd.ToString()) (imm.ToString())
-//////        printfn "RS1, RD, IMM  ===> %A, %A, %A" (rs1.ToString()) (rd.ToString()) (imm.ToString())
-//////        Operands.IType(rs1, rd, imm)
-////        getNewOps ops
-////    | operands when operands |> matches r.RType -> 
-////        printfn "RType Operand Match: %A" operands
-//////        let g1, g2, g3 = groups r.RType operands
-//////        
-//////        printfn "Groups: %A" (g1, g2, g3)
-//////        let rd, rs1, rs2 =
-//////            if g3.Length <= 1
-//////            then (register g1, register g2, Register.Unused)
-//////            else (rrr g1 g2 g3)
-//////        printfn "RS1, RS2, RD ===> %A, %A, %A" (rs1.ToString()) (rs2.ToString()) (rd.ToString())
-//////        Operands.RType(rs1, rs2, rd)
-////        getNewOps ops
-////    | operands when operands |> matches r.JType -> 
-////        printfn "JType Operand Match: %A" operands
-////        getNewOps ops
-////        let name = let imm, _, _ =  groups r.JType operands in imm |> immediate
-////        Operands.JType(name)
-//    ops |> function
-//    | IType.IType itype -> itype
-//    | RType.RType rtype -> rtype
-//    | JType.JType jtype -> jtype
-//    | operands when operands.Length = 0 ->
-//        //printfn "Making nop!"
-//        Operands.NOP()
-//    | operands -> failwith (sprintf "Failed to create operands from : %A" operands)
