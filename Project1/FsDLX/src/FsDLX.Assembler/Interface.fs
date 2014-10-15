@@ -114,16 +114,12 @@ and Register =
     | F of string
     | Unused
 
-
     static member (+) (b:Base, r:Register) = (b, r) |> function
-//        | Base.Value b, R r -> b + int r
         | b, R r -> b + int r
-        //| Base.Label b, R r -> 
-        | _ -> failwith "cant be addin that reg to that base"
+        | _ -> failwith "Cant add base to floating point register"
 
     override r.ToString() = r |> function
         | R s | F s -> 
-            printfn "Register input string: %A" s
             Convert.ToString(s.Substring(1) |> int, 2).PadLeft(5, '0')
         | Unused -> "00000"
 
@@ -141,37 +137,13 @@ and Immediate =
         | BasePlusOffset(b,o) -> 
             printfn "Immediate BPO to string"
             let bpo = (b,o) |> function
-//                | Base.Value bv, Offset.Value ov -> bv + ov
-//                | Base.Value bv, Offset.Label ol -> bv + ol
                 | bv, Offset.Value ov -> bv + ov
                 | bv, Offset.Label ol -> bv + ol                
-//                | Base.Label bl, Offset.Value ov -> bl + ov
-//                | Base.Label bl, Offset.Label ol -> bl + ol
-//                | Base.Value bv, Offset.Register oreg -> bv + (oreg.ToString() |> int)
                 | bv, Offset.Register oreg -> bv + (oreg.ToString() |> int)
-//                | Base.Label bl, Offset.Register oreg -> bl + (oreg.ToString() |> int)
             bpo.ToString()
         | Unused -> "0".PadLeft(16, '0')
         
 and Base = int
-//    | Value of Value
-//    | Label of Label
-//
-//    member b.ReplaceWithAddress(st:SymbolTable) = b |> function
-//        | Label l -> 
-//            printfn "Base was label"
-//            Label (l.ReplaceWithAddress(st))
-//        | Value v -> Value v
-//
-//    static member (+) (b:Base, o:Offset) = (b,o) |> function
-//        | Value b, Offset.Value o -> b + o
-//        | Value b, Offset.Label o -> b + o
-//        | Label b, Offset.Value o -> b + o
-//        | Label b, Offset.Label o -> b + o
-//
-//    override b.ToString() = b |> function
-//        | Value v -> v.ToString()
-//        | Label l -> l.ToString()
 
 and Offset =
     | Value of Value
@@ -187,13 +159,6 @@ and Offset =
         | b, Value o -> b + o
         | b, Label o -> b + o
         | b, Register o -> b + (o.ToString() |> int) 
-
-//        | Base.Value b, Value o -> b + o
-//        | Base.Value b, Label o -> b + o
-//        | Base.Value b, Register o -> b + (o.ToString() |> int) 
-//        | Base.Label b, Value o -> b + o
-//        | Base.Label b, Label o -> b + o
-        //| Base.Label b, Register o -> b + o
 
     override o.ToString() = o |> function
         | Value v -> v.ToString()
@@ -239,9 +204,7 @@ and Unused =
     | U5
     | U6
 
-    override u.ToString() = u |> function
-        | U5 -> "00000"
-        | U6 -> "000000"
+    override u.ToString() = u |> function | U5 -> "00000" | U6 -> "000000"
 
 and Func =
     | F6 of string
@@ -311,73 +274,60 @@ module Patterns =
         member val Register         = Regex(@"([rf]\d\d?)$")
         member val BasePlusOffset   = Regex(@"([+-]?\d+)\((\w+)\)")
 
+    type RegisterRegex() =
+        member val R = Regex(@"r\d\d?")
+        member val F = Regex(@"f\d\d?")
+
+    type InstructionRegex(info) =
+        member val InputRegexes        = InputRegex()
+        member val OpcodeRegexes       = OpcodeRegex(info)
+        member val RegisterRegexes     = RegisterRegex()
+        member val ImmediateRegexes    = ImmediateRegex()
+
     let register =
-        let r = Regex(@"r\d\d?")
-        let f = Regex(@"f\d\d?")
+        let r = RegisterRegex()
 
         function
-        | reg when reg |> matches r -> Register.R reg
-        | reg when reg |> matches f -> Register.F reg
+        | reg when reg |> matches r.R -> Register.R reg
+        | reg when reg |> matches r.F -> Register.F reg
         | _ -> failwith "Failed to create register"
 
     let baseplusoffset =
-        let r = ImmediateRegex()
+        let imm = ImmediateRegex()
         function
-//        | bl,ol when bl |> matches r.Label && ol |> matches r.Label -> 
-//            Base.Label (Label.Inline bl), Offset.Label (Label.Inline ol)
-        | bv,ol when bv |> matches r.Value && ol |> matches r.Value -> 
-//            Base.Value (Convert.ToInt32(bv)), Offset.Label (Label.Inline ol)
+        | bv,ol when bv |> matches imm.Value && ol |> matches imm.Value -> 
             Convert.ToInt32(bv), Offset.Label (Label.Inline ol)
-//        | bl,ov when bl |> matches r.Label && ov |> matches r.Value ->
-//            Base.Label (Label.Inline bl), Offset.Value (Convert.ToInt32(ov))
-        | bv,ov when bv |> matches r.Value && ov |> matches r.Value ->
-//            Base.Value (Convert.ToInt32(bv)), Offset.Value (Convert.ToInt32(ov))
+        | bv,ov when bv |> matches imm.Value && ov |> matches imm.Value ->
             Convert.ToInt32(bv), Offset.Value (Convert.ToInt32(ov))
-        | bv,oreg when bv |> matches r.Value && oreg |> matches r.Register ->
-//            Base.Value (Convert.ToInt32(bv)), Offset.Register (register oreg)
+        | bv,oreg when bv |> matches imm.Value && oreg |> matches imm.Register ->
             Convert.ToInt32(bv), Offset.Register (register oreg)
-        | bv,oreg -> failwith (sprintf "failed to match base plus offset from: (%A, %A)" bv oreg)
+        | bv,oreg -> 
+            failwith (sprintf "failed to match base plus offset from: (%A, %A)" bv oreg)
 
     let immediate =
         let r = ImmediateRegex()
     
         function
-        | imm when imm |> matches r.Value       -> Immediate.Value (Convert.ToInt32(imm))
-        | imm when imm |> matches r.Label       -> Immediate.Label (Label.Inline imm)
-        | imm when imm |> matches r.Register    -> 
-            printfn "Making register: %A" imm
-            Immediate.Register (register imm)
-        | imm when imm |> matches r.BasePlusOffset ->
-            printfn "Making base plus offset: %A" imm
+        | imm when imm |> matches r.Value           -> Immediate.Value (Convert.ToInt32(imm))
+        | imm when imm |> matches r.Label           -> Immediate.Label (Label.Inline imm)
+        | imm when imm |> matches r.Register        -> Immediate.Register (register imm)
+        | imm when imm |> matches r.BasePlusOffset  ->
             let b,o = let g = r.BasePlusOffset.Match(imm).Groups in (g.[1].Value, g.[2].Value)
             Immediate.BasePlusOffset (baseplusoffset (b,o))
         | imm -> failwith (sprintf "Failed to create immediate from: %A" imm)
 
-//    let (|Immediate|_|) =
-//        let r = ImmediateRegex()
-//        
-//        function
-//        | imm when 
 
     let (|Instruction|_|) (info:OpcodeInfo) : (string*uint32 ref) -> Instruction option =
-        let r = OpcodeRegex(info)
-        let i = InputRegex()
+        let o = OpcodeRegex(info)
         let imm = ImmediateRegex()
+        let reg = RegisterRegex()
+        let i = InputRegex()
 
         let (|IType|_|) (info:OpcodeInfo) : (string*string) -> (Opcode*Operands) option =
-        
-//            let (|RRI|RI|R|LF|LR|) (ops:string[]) = ops.Length |> function
             let (|RRI|RI|R|IF|IR|) (ops:string[]) = ops.Length |> function
                 | 3 -> RRI ops
-//                | 2 -> RI ops
                 | 2 -> ops |> function
-                    | _ when ops.[0] |> matches imm.Label -> 
-                        printfn "Matches imm.label: %A" ops.[0]
-                        if ops.[1].StartsWith("f")
-                        then IF ops
-                        else IR ops
-                    | _ when ops.[0] |> matches imm.BasePlusOffset ->
-                        printfn "Matches imm.BasedPlusOffset: %A" ops.[0]
+                    | _ when (ops.[0] |> matches imm.Label) || (ops.[0] |> matches imm.BasePlusOffset) -> 
                         if ops.[1].StartsWith("f")
                         then IF ops
                         else IR ops
@@ -386,33 +336,24 @@ module Patterns =
                 | _ -> failwith "no 0 register IType operands"
         
             function
-            | (opcode, operands) when opcode |> matches r.IType ->
-                //printfn "Matched IType in A.P."
-                //printfn "Lookup : %A" (info.Lookup(opcode))
+            | (opcode, operands) when opcode |> matches o.IType ->
                 let opcode, operands =
                     Opcode.IType(info.Lookup(opcode) |> int),
                     operands.Split([|',';' '|], StringSplitOptions.RemoveEmptyEntries) |> function
                        | RRI ops ->
-                            printfn "RRI ==> %A" ops
                             Operands.IType(Register.R ops.[0], Register.R ops.[1], immediate ops.[2])
                        | RI ops -> 
-                            printfn "RI ==> %A" ops
                             Operands.IType(Register.R ops.[0], Register.Unused, immediate ops.[1])
                        | R ops -> 
-                            printfn "R ==> %A" ops
                             Operands.IType(Register.R ops.[0], Register.Unused, Immediate.Unused)
                        | IF ops -> 
-                            printfn "IF ==> %A" ops
                             Operands.IType(Register.F ops.[1], Register.Unused, immediate ops.[0])
                        | IR ops -> 
-                            printfn "IR ==> %A" ops
                             Operands.IType(Register.R ops.[1], Register.Unused, immediate ops.[0])
                 Some (opcode, operands)
             | _ -> None
     
         let (|RType|_|) (info:OpcodeInfo) : (string*string) -> (Opcode*Operands) option =
-          
-
             let (|RRR|FFF|RR|FF|RF|) (ops:string[]) = 
                 let allR, allF, len =
                     ops |> Array.forall (fun reg -> reg.StartsWith("r")),
@@ -427,8 +368,7 @@ module Patterns =
                 | _ -> failwith "no 1 register RType operands"
             
             function
-            | (opcode, operands) when opcode |> matches r.RType ->
-                printfn "Opcode, Operands ===> (%A, %A)" opcode operands
+            | (opcode, operands) when opcode |> matches o.RType ->
                 let op, ops =
                     Opcode.RType(info.Lookup(opcode) |> int),
                     operands.Split([|',';' '|], StringSplitOptions.RemoveEmptyEntries) |> function
@@ -441,15 +381,15 @@ module Patterns =
             | _ -> None
 
         let (|JType|_|) (info:OpcodeInfo) : (string*string) -> (Opcode*Operands) option =
-            
+            let r = RegisterRegex()
+
             let (|R|I|) (ops:string[]) = 
-                let register = Regex(@"r\d\d?")
                 ops.Length |> function
-                | 1 -> ops.[0] |> function | o when o |> matches register -> R o | _ -> I ops.[0]
+                | 1 -> ops.[0] |> function | o when o |> matches reg.R -> R o | _ -> I ops.[0]
                 | _ -> failwith "failed to match JType operands in active pattern"
 
             function
-            | (opcode, operands) when opcode |> matches r.JType ->
+            | (opcode, operands) when opcode |> matches o.JType ->
                 let opcode, operands =
                     Opcode.JType(info.Lookup(opcode) |> int),
                     operands.Split([|',';' '|], StringSplitOptions.RemoveEmptyEntries) |> function
@@ -593,12 +533,12 @@ module Patterns =
         | _ -> None
 
     let (|Label|_|) : (string*uint32 ref) -> (SymbolTableEntry*string) option =
-        let r = InputRegex()
+        let i = InputRegex()
         let groups (r:Regex) s = let g = r.Match(s).Groups in (g.[1].Value, g.[2].Value)
 
         function
-        | (line, pc) when line |> matches r.Label ->
-            let lbl, rest = (groups r.Label line)
+        | (line, pc) when line |> matches i.Label ->
+            let lbl, rest = (groups i.Label line)
             (SymbolTableEntry(lbl, int !pc), rest)
             |> Some
         | _ -> None
@@ -615,33 +555,25 @@ let parseInputs (info:OpcodeInfo) (lines:string[]) (pc:uint32 ref) (st:SymbolTab
     let (|InlineComment|_|) : string -> (string*string) option = function
         | s when s.Contains(";") -> 
             let s = s.Split(';') 
-            printfn "Inline Comment Tokens ====> %A" s
             (s.[0].Trim(), s.[1].Trim()) |> Some
         | _ -> None
 
     let groups (r:Regex) s = let g = r.Match(s).Groups in (g.[1].Value, g.[2].Value)
         
     lines |> Seq.fold (fun (i:int, inputs:DLXInput list) line ->
-        //printfn "Line: %A" line
         (line.Trim(), pc) |> function
         | _ when line.Length <= 1 ->
             (i, inputs)
         | Patterns.Comment comment ->
-            //printfn "Comment match : %A" line
             (i + 1, inputs @ [DLXInput.Comment comment])
         | Patterns.Label (ste, rest) ->
-            //printfn "Matched Label: %A, %A" ste rest
             st.Add(ste)
             let lbl = Label.Reference(ste)
-            //printfn "Symbol Table : %A" (st)
             let data, comment = rest |> function | InlineComment c -> c | _ -> rest, rest
             let data = data.Trim()
             let rest = rest.Trim()
-//            printfn "data, comment = %A, %A" data comment
-//            printfn "data, rest = %A, %A" data rest
             (data, pc) |> function
             | Patterns.Instruction info instruction ->
-                //printfn "Matched Instruction"
                 let instruction = DLXInput.Instruction(!pc, Some lbl, instruction, comment)
                 (i + 1, inputs @ [instruction])
             | Patterns.Directive directive ->
@@ -652,19 +584,16 @@ let parseInputs (info:OpcodeInfo) (lines:string[]) (pc:uint32 ref) (st:SymbolTab
             | _ when rest.StartsWith(";") ->
                 ("nop", pc) |> function
                 | Patterns.Instruction info instruction ->
-                    printfn "Trying to make NOP"
                     let instruction = DLXInput.Instruction(!pc, Some lbl, instruction, comment)
                     (i + 1, inputs @ [instruction])
                 | _ -> failwith "Fail creating nop"
             | _ -> failwith "Failed to match info after matching label"
 
         | Patterns.Directive directive -> 
-            //printfn "Match Directive"
             let d = directive |> List.mapi (fun i d -> DLXInput.Directive(None, d))
             (i + 1, inputs @ d)
         | Patterns.Instruction info instruction ->
-            //printfn "Instruction Match (no label):  %A" line
-            let instruction = DLXInput.Instruction(!pc, None, instruction, "deeerrrppp")
+            let instruction = DLXInput.Instruction(!pc, None, instruction, line)
             (i + 1, inputs @ [instruction])
         | _ -> failwith "Couldn't create dlx input"
         ) (0, List.empty<DLXInput>)
@@ -685,19 +614,15 @@ type Assembler(dlxfile:string) =
     
     let byte2hex (s:string) = (b2hmap.[s.Substring(0, 4)] + b2hmap.[s.Substring(4, 4)])
     
-    let bin2hex (s:string) = 
-        //printfn "%A" (s.ToString())
-        s |> function
-        | _ when s.Length = 32 ->
+    let bin2hex : string -> string = function
+        | s when s.Length = 32 ->
             let b0 = s.Substring(0,8) |> byte2hex
             let b1 = s.Substring(8,8) |> byte2hex
             let b2 = s.Substring(16,8) |> byte2hex
             let b3 = s.Substring(24,8) |> byte2hex
-            //printfn "bytes: %s, %s, %s, %s" b0 b1 b2 b3
             (b0 + b1 + b2 + b3)
         | _ -> failwith "binary string must be length 32"
     
-
     let hexfile = Path.ChangeExtension(dlxfile, ".hex")
 
     let removeEmptyLines (lines:seq<string>) =
@@ -711,9 +636,7 @@ type Assembler(dlxfile:string) =
         let lines = dlxfile |> File.ReadAllLines 
         let pc = ref 0u
         let _, inputs = parseInputs opcodeInfo lines pc symtab
-        printfn "Parsed inputs!"
-        //for i in inputs do printfn "%A" i
-
+    
         let newhex (input:DLXInput) = [input.ToString()]
 
         inputs
@@ -722,47 +645,26 @@ type Assembler(dlxfile:string) =
             | DLXInput.Comment comment ->
                 (i + 1, hex @ newhex input)
             | DLXInput.Directive(_) -> 
-                printfn "Directive!"
-//                printfn "Directive (asm) : %A, %A, %A" 
-//                    (label.ToString())
-//                    (directive.ToString())
-//                    (comment.ToString())
-//                let newhex = makeOutputLine input pc
                 (i + 1, hex @ newhex input)
             | DLXInput.Instruction(pc, label, instruction, comment) ->
-                printfn "Instruction!"
                 let instruction = instruction |> function
                     | Instruction.IType(opcode, operands) ->
-                        printfn "IType!"
                         let operands = operands |> function
                             | Operands.IType(rs1, rd, imm) ->
-                                printfn "IType operands!"
                                 imm |> function
                                 | Immediate.Label lbl ->
-                                    printfn "Label Before: %A" lbl
-                                    let lbl = lbl.ReplaceWithAddress(symtab)
-                                    //printfn "Label After: %A" lbl
-                                    Operands.IType(rs1, rd, Immediate.Label lbl)
+                                    Operands.IType(rs1, rd, Immediate.Label (lbl.ReplaceWithAddress(symtab)))
                                 | Immediate.BasePlusOffset(b,o) -> 
-                                    //printfn "BPO ==> (%A, %A)" b o
-//                                    let b,o = 
-//                                        b.ReplaceWithAddress(symtab),
-//                                        o.RepalceWithAddress(symtab)
                                     Operands.IType(rs1, rd, Immediate.BasePlusOffset(b,o.RepalceWithAddress(symtab)))
                                 | _ -> operands
                             | _ -> operands
-                        printfn "I Made it!"
                         Instruction.IType(opcode, operands)
                     | Instruction.JType(opcode, operands) -> 
                         let operands = operands |> function
                             | Operands.JType(imm) -> imm |> function
                                 | Immediate.Label lbl ->
-                                    let lbl = lbl.ReplaceWithAddress(symtab)
-                                    Operands.JType(Immediate.Label lbl)
+                                    Operands.JType(Immediate.Label (lbl.ReplaceWithAddress(symtab)))
                                 | Immediate.BasePlusOffset(b,o) ->
-//                                    let b,o =
-//                                        b.ReplaceWithAddress(symtab),
-//                                        o.RepalceWithAddress(symtab)
                                     Operands.JType(Immediate.BasePlusOffset(b,o.RepalceWithAddress(symtab)))
                                 | _ -> operands
                             | _ -> operands
@@ -776,7 +678,6 @@ type Assembler(dlxfile:string) =
     let createOutput (lines:string list) =
         (lines |> List.fold (fun s l -> s + l + "\n") (""))
         
-
     member val DlxFile = dlxfile
     member val HexFile = hexfile
 
@@ -787,13 +688,7 @@ type Assembler(dlxfile:string) =
         let outpath = outpath @@ Path.GetFileName(hexfile)
         
         let output = assemble() |> createOutput
-//            let lines = assemble()
-//            lines |> List.fold (fun (lineNumber, outstring) line -> 
-//                (lineNumber = lines.Length - 1) |> function
-//                | false -> (lineNumber + 1, outstring + line + "\n") 
-//                | true -> (lineNumber + 1, outstring + line)
-//                ) (0, "")
-//            |> snd
+
         if File.Exists(outpath) then File.Delete(outpath)
         File.AppendAllText(outpath, output)
     
