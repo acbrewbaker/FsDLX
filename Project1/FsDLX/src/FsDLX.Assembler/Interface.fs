@@ -91,7 +91,7 @@ and Operands =
     | JType of Immediate
 
     static member NOP() = RType(Register.R "r0", Register.R "r0", Register.R "r0")
-    static member TRAP(s:string) = JType(Immediate.Value (Convert.ToUInt32(s)))
+    static member TRAP(s:string) = JType(Immediate.Value (Convert.ToInt32(s)))
 
     override o.ToString() = o |> function
         | IType(rs1, rd, imm) -> 
@@ -116,7 +116,8 @@ and Register =
 
 
     static member (+) (b:Base, r:Register) = (b, r) |> function
-        | Base.Value b, R r -> b + uint32 r
+//        | Base.Value b, R r -> b + int r
+        | b, R r -> b + int r
         //| Base.Label b, R r -> 
         | _ -> failwith "cant be addin that reg to that base"
 
@@ -138,33 +139,39 @@ and Immediate =
         | Label imm -> imm.ToString().PadLeft(16, '0')
         | Register imm -> imm.ToString().PadLeft(16, '0')
         | BasePlusOffset(b,o) -> 
+            printfn "Immediate BPO to string"
             let bpo = (b,o) |> function
-                | Base.Value bv, Offset.Value ov -> bv + ov
-                | Base.Value bv, Offset.Label ol -> bv + ol
-                | Base.Label bl, Offset.Value ov -> bl + ov
-                | Base.Label bl, Offset.Label ol -> bl + ol
-                | Base.Value bv, Offset.Register oreg -> bv + (oreg.ToString() |> uint32)
-                | Base.Label bl, Offset.Register oreg -> bl + (oreg.ToString() |> uint32)
+//                | Base.Value bv, Offset.Value ov -> bv + ov
+//                | Base.Value bv, Offset.Label ol -> bv + ol
+                | bv, Offset.Value ov -> bv + ov
+                | bv, Offset.Label ol -> bv + ol                
+//                | Base.Label bl, Offset.Value ov -> bl + ov
+//                | Base.Label bl, Offset.Label ol -> bl + ol
+//                | Base.Value bv, Offset.Register oreg -> bv + (oreg.ToString() |> int)
+                | bv, Offset.Register oreg -> bv + (oreg.ToString() |> int)
+//                | Base.Label bl, Offset.Register oreg -> bl + (oreg.ToString() |> int)
             bpo.ToString()
         | Unused -> "0".PadLeft(16, '0')
         
-and Base =
-    | Value of Value
-    | Label of Label
-
-    member b.ReplaceWithAddress(st:SymbolTable) = b |> function
-        | Label l -> Label (l.ReplaceWithAddress(st))
-        | Value v -> Value v
-
-    static member (+) (b:Base, o:Offset) = (b,o) |> function
-        | Value b, Offset.Value o -> b + o
-        | Value b, Offset.Label o -> b + o
-        | Label b, Offset.Value o -> b + o
-        | Label b, Offset.Label o -> b + o
-
-    override b.ToString() = b |> function
-        | Value v -> v.ToString()
-        | Label l -> l.ToString()
+and Base = int
+//    | Value of Value
+//    | Label of Label
+//
+//    member b.ReplaceWithAddress(st:SymbolTable) = b |> function
+//        | Label l -> 
+//            printfn "Base was label"
+//            Label (l.ReplaceWithAddress(st))
+//        | Value v -> Value v
+//
+//    static member (+) (b:Base, o:Offset) = (b,o) |> function
+//        | Value b, Offset.Value o -> b + o
+//        | Value b, Offset.Label o -> b + o
+//        | Label b, Offset.Value o -> b + o
+//        | Label b, Offset.Label o -> b + o
+//
+//    override b.ToString() = b |> function
+//        | Value v -> v.ToString()
+//        | Label l -> l.ToString()
 
 and Offset =
     | Value of Value
@@ -177,11 +184,15 @@ and Offset =
         | Register r -> Register r
 
     static member (+) (b:Base, o:Offset) = (b, o) |> function
-        | Base.Value b, Value o -> b + o
-        | Base.Value b, Label o -> b + o
-        | Base.Value b, Register o -> b + (o.ToString() |> uint32) 
-        | Base.Label b, Value o -> b + o
-        | Base.Label b, Label o -> b + o
+        | b, Value o -> b + o
+        | b, Label o -> b + o
+        | b, Register o -> b + (o.ToString() |> int) 
+
+//        | Base.Value b, Value o -> b + o
+//        | Base.Value b, Label o -> b + o
+//        | Base.Value b, Register o -> b + (o.ToString() |> int) 
+//        | Base.Label b, Value o -> b + o
+//        | Base.Label b, Label o -> b + o
         //| Base.Label b, Register o -> b + o
 
     override o.ToString() = o |> function
@@ -189,7 +200,7 @@ and Offset =
         | Label l -> l.ToString()
         | Register r -> r.ToString()
 
-and Value = uint32
+and Value = int
 
 and Label =
     | Inline of string
@@ -240,13 +251,13 @@ and Func =
         | F6 s -> Convert.ToString(int s, 2).PadLeft(6, '0')
         | F5 s -> Convert.ToString(int s, 2).PadLeft(5, '0')
 
-and SymbolTableEntry(symbol:string, value:uint32) =
+and SymbolTableEntry(symbol:string, value:int) =
     member val Symbol = symbol
     member val Value = value
 
 and SymbolTable() =
     let mutable entries = List.empty<SymbolTableEntry>
-    let mutable tab = Map.empty<string, uint32>
+    let mutable tab = Map.empty<string, int>
     member st.UpdateTable() =  
         tab <- 
             entries 
@@ -290,15 +301,15 @@ module Patterns =
         member val Any = Regex(ipat ++ rpat ++ jpat)
 
     type OperandRegex() =
-        member val IType = Regex(@"((r\d\d?), (r\d\d?), (\d+))|((r\d\d?), (r\d\d?), (\w+))|((r\d\d?), (\w+))")
+        member val IType = Regex(@"((r\d\d?), (r\d\d?), (\d+))|((r\d\d?), (r\d\d?), (\w+))|((r\d\d?), (\w+))|(\w+), ([rf]\d\d?)")
         member val RType = Regex(@"([rf]\d\d?), ([rf]\d\d?)$|([rf]\d\d?), ([rf]\d\d?)$")
         member val JType = Regex(@"\A(\w+)$")
 
     type ImmediateRegex() =
-        member val Value            = Regex(@"(\A\d+)$")
-        member val Label            = Regex(@"([a-zA-Z]+\d*)$")
-        member val Register         = Regex(@"(r\d\d?)$")
-        member val BasePlusOffset   = Regex(@"(\w+)\((\w+)\)$")
+        member val Value            = Regex(@"(\A[+-]?\d+)$")
+        member val Label            = Regex(@"(\D\w[^\(]\w+[^\)])")
+        member val Register         = Regex(@"([rf]\d\d?)$")
+        member val BasePlusOffset   = Regex(@"([+-]?\d+)\((\w+)\)")
 
     let register =
         let r = Regex(@"r\d\d?")
@@ -312,29 +323,41 @@ module Patterns =
     let baseplusoffset =
         let r = ImmediateRegex()
         function
-        | bl,ol when bl |> matches r.Label && ol |> matches r.Label -> 
-            Base.Label (Label.Inline bl), Offset.Label (Label.Inline ol)
+//        | bl,ol when bl |> matches r.Label && ol |> matches r.Label -> 
+//            Base.Label (Label.Inline bl), Offset.Label (Label.Inline ol)
         | bv,ol when bv |> matches r.Value && ol |> matches r.Value -> 
-            Base.Value (Convert.ToUInt32(bv)), Offset.Label (Label.Inline ol)
-        | bl,ov when bl |> matches r.Label && ov |> matches r.Value ->
-            Base.Label (Label.Inline bl), Offset.Value (Convert.ToUInt32(ov))
+//            Base.Value (Convert.ToInt32(bv)), Offset.Label (Label.Inline ol)
+            Convert.ToInt32(bv), Offset.Label (Label.Inline ol)
+//        | bl,ov when bl |> matches r.Label && ov |> matches r.Value ->
+//            Base.Label (Label.Inline bl), Offset.Value (Convert.ToInt32(ov))
         | bv,ov when bv |> matches r.Value && ov |> matches r.Value ->
-            Base.Value (Convert.ToUInt32(bv)), Offset.Value (Convert.ToUInt32(ov))
+//            Base.Value (Convert.ToInt32(bv)), Offset.Value (Convert.ToInt32(ov))
+            Convert.ToInt32(bv), Offset.Value (Convert.ToInt32(ov))
         | bv,oreg when bv |> matches r.Value && oreg |> matches r.Register ->
-            Base.Value (Convert.ToUInt32(bv)), Offset.Register (register oreg)
-        | _ -> failwith "failed to match base plus offset"
+//            Base.Value (Convert.ToInt32(bv)), Offset.Register (register oreg)
+            Convert.ToInt32(bv), Offset.Register (register oreg)
+        | bv,oreg -> failwith (sprintf "failed to match base plus offset from: (%A, %A)" bv oreg)
 
     let immediate =
         let r = ImmediateRegex()
     
         function
-        | imm when imm |> matches r.Value       -> Immediate.Value (Convert.ToUInt32(imm))
+        | imm when imm |> matches r.Value       -> Immediate.Value (Convert.ToInt32(imm))
         | imm when imm |> matches r.Label       -> Immediate.Label (Label.Inline imm)
-        | imm when imm |> matches r.Register    -> Immediate.Register (register imm)
-        | imm when imm |> matches r.BasePlusOffset -> 
+        | imm when imm |> matches r.Register    -> 
+            printfn "Making register: %A" imm
+            Immediate.Register (register imm)
+        | imm when imm |> matches r.BasePlusOffset ->
+            printfn "Making base plus offset: %A" imm
             let b,o = let g = r.BasePlusOffset.Match(imm).Groups in (g.[1].Value, g.[2].Value)
             Immediate.BasePlusOffset (baseplusoffset (b,o))
-        | _ -> failwith "Failed to create immediate"
+        | imm -> failwith (sprintf "Failed to create immediate from: %A" imm)
+
+//    let (|Immediate|_|) =
+//        let r = ImmediateRegex()
+//        
+//        function
+//        | imm when 
 
     let (|Instruction|_|) (info:OpcodeInfo) : (string*uint32 ref) -> Instruction option =
         let r = OpcodeRegex(info)
@@ -344,15 +367,21 @@ module Patterns =
         let (|IType|_|) (info:OpcodeInfo) : (string*string) -> (Opcode*Operands) option =
         
 //            let (|RRI|RI|R|LF|LR|) (ops:string[]) = ops.Length |> function
-            let (|RRI|RI|R|) (ops:string[]) = ops.Length |> function
+            let (|RRI|RI|R|IF|IR|) (ops:string[]) = ops.Length |> function
                 | 3 -> RRI ops
-                | 2 -> RI ops
-//                | 2 -> ops |> function
-//                    | _ when ops.[0] |> matches imm.Label -> 
-//                        if ops.[1].StartsWith("f")
-//                        then LF ops
-//                        else LR ops
-//                    | _ -> RI ops
+//                | 2 -> RI ops
+                | 2 -> ops |> function
+                    | _ when ops.[0] |> matches imm.Label -> 
+                        printfn "Matches imm.label: %A" ops.[0]
+                        if ops.[1].StartsWith("f")
+                        then IF ops
+                        else IR ops
+                    | _ when ops.[0] |> matches imm.BasePlusOffset ->
+                        printfn "Matches imm.BasedPlusOffset: %A" ops.[0]
+                        if ops.[1].StartsWith("f")
+                        then IF ops
+                        else IR ops
+                    | _ -> RI ops
                 | 1 -> R ops
                 | _ -> failwith "no 0 register IType operands"
         
@@ -363,11 +392,21 @@ module Patterns =
                 let opcode, operands =
                     Opcode.IType(info.Lookup(opcode) |> int),
                     operands.Split([|',';' '|], StringSplitOptions.RemoveEmptyEntries) |> function
-                       | RRI ops -> Operands.IType(Register.R ops.[0], Register.R ops.[1], immediate ops.[2])
-                       | RI ops -> Operands.IType(Register.R ops.[0], Register.Unused, immediate ops.[1])
-                       | R ops -> Operands.IType(Register.R ops.[0], Register.Unused, Immediate.Unused)
-//                       | LF ops -> Operands.IType(Register.F ops.[1], Register.Unused, immediate ops.[0])
-//                       | LR ops -> Operands.IType(Register.R ops.[1], Register.Unused, immediate ops.[0])
+                       | RRI ops ->
+                            printfn "RRI ==> %A" ops
+                            Operands.IType(Register.R ops.[0], Register.R ops.[1], immediate ops.[2])
+                       | RI ops -> 
+                            printfn "RI ==> %A" ops
+                            Operands.IType(Register.R ops.[0], Register.Unused, immediate ops.[1])
+                       | R ops -> 
+                            printfn "R ==> %A" ops
+                            Operands.IType(Register.R ops.[0], Register.Unused, Immediate.Unused)
+                       | IF ops -> 
+                            printfn "IF ==> %A" ops
+                            Operands.IType(Register.F ops.[1], Register.Unused, immediate ops.[0])
+                       | IR ops -> 
+                            printfn "IR ==> %A" ops
+                            Operands.IType(Register.R ops.[1], Register.Unused, immediate ops.[0])
                 Some (opcode, operands)
             | _ -> None
     
@@ -560,7 +599,7 @@ module Patterns =
         function
         | (line, pc) when line |> matches r.Label ->
             let lbl, rest = (groups r.Label line)
-            (SymbolTableEntry(lbl, !pc), rest)
+            (SymbolTableEntry(lbl, int !pc), rest)
             |> Some
         | _ -> None
 
@@ -706,10 +745,10 @@ type Assembler(dlxfile:string) =
                                     Operands.IType(rs1, rd, Immediate.Label lbl)
                                 | Immediate.BasePlusOffset(b,o) -> 
                                     //printfn "BPO ==> (%A, %A)" b o
-                                    let b,o = 
-                                        b.ReplaceWithAddress(symtab),
-                                        o.RepalceWithAddress(symtab)
-                                    Operands.IType(rs1, rd, Immediate.BasePlusOffset(b,o))
+//                                    let b,o = 
+//                                        b.ReplaceWithAddress(symtab),
+//                                        o.RepalceWithAddress(symtab)
+                                    Operands.IType(rs1, rd, Immediate.BasePlusOffset(b,o.RepalceWithAddress(symtab)))
                                 | _ -> operands
                             | _ -> operands
                         printfn "I Made it!"
@@ -721,10 +760,10 @@ type Assembler(dlxfile:string) =
                                     let lbl = lbl.ReplaceWithAddress(symtab)
                                     Operands.JType(Immediate.Label lbl)
                                 | Immediate.BasePlusOffset(b,o) ->
-                                    let b,o =
-                                        b.ReplaceWithAddress(symtab),
-                                        o.RepalceWithAddress(symtab)
-                                    Operands.JType(Immediate.BasePlusOffset(b,o))
+//                                    let b,o =
+//                                        b.ReplaceWithAddress(symtab),
+//                                        o.RepalceWithAddress(symtab)
+                                    Operands.JType(Immediate.BasePlusOffset(b,o.RepalceWithAddress(symtab)))
                                 | _ -> operands
                             | _ -> operands
                         Instruction.JType(opcode, operands)
