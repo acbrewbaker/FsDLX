@@ -129,42 +129,42 @@ let bin2hex (s:string) =
 //        (byte0 |> Array.fold (fun s c -> string c + s) (""))
 
 
-let [<Test>] `` asm test `` () =
-    let op = "8"
-    let rs1 = "1"
-    let rd = "2"
-    let imm = "3"
-    
-    printi op rs1 rd imm
-    let op' = (op |> tobin).PadLeft(6,'0')
-    let rs1' = (rs1 |> tobin).PadLeft(5,'0')
-    let rd' = (rd |> tobin).PadLeft(5,'0')
-    let imm' = (imm |> tobin).PadLeft(16,'0')
-    printfn "op, rs1, rd, imm = %s, %s, %s, %s" op rs1 rd imm
-    printfn "op', rs1', rd', imm' = %s, %s, %s, %s" op' rs1' rd' imm'
-    let s = op' + rs1' + rd' + imm'
-    
-    let itypeIn = op, rd, rs1, imm
-    
-    printfn "S: %A" s
-    let b0 = s.Substring(0,8)
-    let b1 = s.Substring(8,8)
-    let b2 = s.Substring(16,8)
-    let b3 = s.Substring(24,8)
-    printfn "b0 ==> %A" b0
-    printfn "b1 ==> %A" b1
-    printfn "b2 ==> %A" b2
-    printfn "b3 ==> %A" b3
-    let b0' = byte2hex b0
-    let b1' = byte2hex b1
-    let b2' = byte2hex b2
-    let b3' = byte2hex b3
-    printfn "b0' ==> %A" b0'
-    printfn "b1' ==> %A" b1'
-    printfn "b2' ==> %A" b2'
-    printfn "b3' ==> %A" b3'
-    
-    let actual = bin2hex s
-    printi op' rs1' rd' imm'
-    let expected = "20410003"
-    expected |> should equal actual
+//let [<Test>] `` asm test `` () =
+//    let op = "8"
+//    let rs1 = "1"
+//    let rd = "2"
+//    let imm = "3"
+//    
+//    printi op rs1 rd imm
+//    let op' = (op |> tobin).PadLeft(6,'0')
+//    let rs1' = (rs1 |> tobin).PadLeft(5,'0')
+//    let rd' = (rd |> tobin).PadLeft(5,'0')
+//    let imm' = (imm |> tobin).PadLeft(16,'0')
+//    printfn "op, rs1, rd, imm = %s, %s, %s, %s" op rs1 rd imm
+//    printfn "op', rs1', rd', imm' = %s, %s, %s, %s" op' rs1' rd' imm'
+//    let s = op' + rs1' + rd' + imm'
+//    
+//    let itypeIn = op, rd, rs1, imm
+//    
+//    printfn "S: %A" s
+//    let b0 = s.Substring(0,8)
+//    let b1 = s.Substring(8,8)
+//    let b2 = s.Substring(16,8)
+//    let b3 = s.Substring(24,8)
+//    printfn "b0 ==> %A" b0
+//    printfn "b1 ==> %A" b1
+//    printfn "b2 ==> %A" b2
+//    printfn "b3 ==> %A" b3
+//    let b0' = byte2hex b0
+//    let b1' = byte2hex b1
+//    let b2' = byte2hex b2
+//    let b3' = byte2hex b3
+//    printfn "b0' ==> %A" b0'
+//    printfn "b1' ==> %A" b1'
+//    printfn "b2' ==> %A" b2'
+//    printfn "b3' ==> %A" b3'
+//    
+//    let actual = bin2hex s
+//    printi op' rs1' rd' imm'
+//    let expected = "20410003"
+//    expected |> should equal actual

@@ -59,7 +59,6 @@
     <None Include="TestGen.fsx" />
     <Compile Include="Common.fs" />
     <Compile Include="Patterns.fs" />
-    <Compile Include="Grammar.fs" />
     <Compile Include="Interface.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />

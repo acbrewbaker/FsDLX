@@ -72,35 +72,27 @@ let printContent dlx expected actual =
     printfn "HEX - Actual:\n%s" actual
    
 
-[<Test>]
-let ``simple assembler test`` () =
-    let dlx = inputdir @@ "asciiz1.dlx"
-    use assembler = new Assembler(dlx)
-    assembler.Run(testdir, verbose)
-    compare "asciiz1.dlx"
+//[<Test>]
+//let ``simple assembler test`` () =
+//    let dlx = inputdir @@ "asciiz1.dlx"
+//    use assembler = new Assembler(dlx)
+//    assembler.Run(testdir, verbose)
+//    compare "asciiz1.dlx"
+//
+//[<Test>]
+//let ``arithImmed.dlx`` () =
+//    let dlx = inputdir @@ "arithImmed.dlx"
+//    use assembler = new Assembler(dlx)
+//    assembler.Run(testdir, verbose)
+//    compare "arithImmed"
+//
+//[<Test>]
+//let ``directives1.dlx`` () =
+//    let dlx = inputdir @@ "directives1.dlx"
+//    use assembler = new Assembler(dlx)
+//    assembler.Run(testdir, verbose)
+//    compare "directives1"
 
-[<Test>]
-let ``arithImmed.dlx`` () =
-    let dlx = inputdir @@ "arithImmed.dlx"
-    use assembler = new Assembler(dlx)
-    assembler.Run(testdir, verbose)
-    compare "arithImmed"
-
-[<Test>]
-let ``directives1.dlx`` () =
-    let dlx = inputdir @@ "directives1.dlx"
-    use assembler = new Assembler(dlx)
-    assembler.Run(testdir, verbose)
-    compare "directives1"
-
-[<Test>]
-let ``all files`` () =
-    let dlx = Directory.GetFiles(inputdir, "*.dlx")
-    //printfn "Input files: %A" dlx 
-    let assemble f =
-        use assembler = new Assembler(f)
-        assembler.Run(testdir, verbose)
-    dlx |> Seq.iter assemble
 
 let assemble (file:string) = 
     use assembler = new Assembler(file)
