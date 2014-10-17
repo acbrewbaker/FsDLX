@@ -10,15 +10,21 @@ type DLXInput =
         | Comment c -> c
         | Directive d -> d.ToString()
         | Instruction(pc, instruction, comment) ->
-            sprintf "%s: %s#%s"
-                (pc.ToString("x8") + ": ")
-                (instruction.ToString())
+            //printfn "Instruction length: %A" (instruction.ToString().Length)
+            sprintf "%s: %s\t#\t%s"
+                (pc.ToString("x8"))
+                (instruction.ToString() |> bin2hex)
                 (comment)
 
 and Directive(pc:uint32, data:string, comment:string) =
     member val PC = pc
     member val Data = data
     member val Comment = comment
+
+    override d.ToString() =
+        sprintf "%s: %s"
+            (d.PC.ToString("x8"))
+            (d.Data + d.Comment)
 
 and Instruction =
     | IType of Opcode * Operands
@@ -27,6 +33,7 @@ and Instruction =
     
     override i.ToString() = i |> function
         | IType(opcode, operands) -> 
+            //printfn "IType opcode, operands: (%A, %A)" (opcode.ToString()) (operands.ToString())
             sprintf "%s%s" 
                 (opcode.ToString()) 
                 (operands.ToString())
@@ -37,9 +44,15 @@ and Instruction =
                 (unused.ToString()) 
                 (func.ToString())
         | JType(opcode, operands) ->
+            printfn "JType opcode, operands ==> %A, %A" opcode operands
+            let imm = operands.ToString() //|> revstr
+            printfn "JType imm, len ==> %A, %A" imm imm.Length
+            let imm = if imm.Length > 26 then imm.Substring(0, 26) else imm
+            let sign = imm.Chars(imm.Length - 1)
+            printfn "JType sign ==> %A" sign
             sprintf "%s%s" 
                 (opcode.ToString())
-                (operands.ToString())
+                (imm.PadLeft(26, sign))
 
 and Opcode =
     | IType of int
@@ -101,12 +114,14 @@ and Immediate =
         | Label imm -> imm.ToString().PadLeft(16, '0')
         | Register imm -> imm.ToString().PadLeft(16, '0')
         | BasePlusOffset(b,o) -> 
-            printfn "Immediate BPO to string"
-            let bpo = (b,o) |> function
-                | bv, Offset.Value ov -> bv + ov
-                | bv, Offset.Label ol -> bv + ol                
-                | bv, Offset.Register oreg -> bv + (oreg.ToString() |> int)
-            bpo.ToString()
+            let bpo = o |> function
+                | Offset.Value ov -> b + ov
+                | Offset.Label ol -> b + ol                
+                | Offset.Register oreg -> 
+                    b + Convert.ToInt32(oreg.ToString(), 2)
+                    
+            printfn "Imm.BPO.TOString  ===> %A" bpo
+            Convert.ToString(bpo, 2).PadLeft(16, '0') //|> revstr
         | Unused -> "0".PadLeft(16, '0')
         
 and Base = int
@@ -124,8 +139,8 @@ and Offset =
     static member (+) (b:Base, o:Offset) = (b, o) |> function
         | b, Value o -> b + o
         | b, Label o -> b + o
-        | b, Register o -> b + (o.ToString() |> int) 
-
+        | b, Register o -> b + Convert.ToInt32(o.ToString(), 2)
+            
     override o.ToString() = o |> function
         | Value v -> v.ToString()
         | Label l -> l.ToString()
@@ -138,20 +153,30 @@ and Label =
     | Reference of SymbolTableEntry
     | Value of Value
 
-    member l.ReplaceWithAddress(st:SymbolTable) = l |> function
-        | Inline l -> Value (st.Lookup(l))
+    member l.ReplaceWithAddress(st:SymbolTable) = 
+        printfn "Replacing: %A" l
+        l |> function
+        | Inline l -> 
+            printfn "Looking up.... %A" l
+            Value (st.Lookup(l))
         | _ -> failwith "Can't replace label when not inline type"
 
     static member (+) (l1:Label, l2:Label) = (l1,l2) |> function
-        | Reference r1, Reference r2 -> r1.Value + r2.Value
+        | Reference r1, Reference r2 -> 
+            printfn "Adding label label"
+            r1.Value + r2.Value
         | _ -> failwith "Can't add inline labels"
 
     static member (+) (l:Label, v:Value) = (l,v) |> function
-        | Reference r, x -> r.Value + x
+        | Reference r, x -> 
+            printfn "Adding label value"
+            r.Value + x
         | _ -> failwith "Can't add inline labels"
 
     static member (+) (v:Value, l:Label) = (v,l) |> function
-        | x, Reference r -> x + r.Value
+        | x, Reference r -> 
+            printfn "Adding value label"
+            x + r.Value
         | _ -> failwith "Can't add inline labels"
 
     override l.ToString() = l |> function
@@ -184,6 +209,9 @@ and SymbolTableEntry(symbol:string, value:int) =
     member val Symbol = symbol
     member val Value = value
 
+    override ste.ToString() =
+        sprintf "%s <==> %d" ste.Symbol ste.Value
+
 and SymbolTable() =
     let mutable entries = List.empty<SymbolTableEntry>
     let mutable tab = Map.empty<string, int>
@@ -201,3 +229,7 @@ and SymbolTable() =
         tab |> Map.toList |> List.fold (fun s (k,v) -> 
             let s' = sprintf "(k,v) ==> (%A, %A)" k (v.ToString("x8"))
             s + s' + "\n") ("")
+
+    member st.Dump() =
+        printfn "============  Symbole Table  ============"
+        printfn "%s" (st.ToString())

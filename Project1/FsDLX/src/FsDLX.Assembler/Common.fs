@@ -13,7 +13,7 @@ let inline (+|+) (a:string) (b:string) = a + "|" + b
 
 let matches (r:Regex) s = r.IsMatch(s)
 
-let asComment str = "\t#" + str
+let asComment str = "    \t# " + str
 
 let addLeadingZero (str:string) =
     str |> function
@@ -23,12 +23,16 @@ let addLeadingZero (str:string) =
 
 let floatingPointAsComment = addLeadingZero >> asComment
 
+let strAsComment str = "\t#\"" + str + "\""
+
 let bytes2hex (b:byte[]) =
     (b |> Array.rev |> BitConverter.ToString)
         .Replace("-","").ToLower()
 
 let str2hex (str:string) =
     (Encoding.Default.GetBytes(str) |> BitConverter.ToString).Replace("-","").ToLower() + "00"
+
+let revstr (s:string) = s.ToCharArray() |> Array.rev |> Array.fold(fun s c -> s + string c) ("")
 
 let concatLines lines = lines |> List.fold (fun s l -> s + l + "\n") ("")
 
@@ -40,65 +44,57 @@ let b2hmap =
     (bin, hex) ||> List.zip 
     |> Map.ofList
 
-module Support =
-    let srcdir = 
-        if NCrunch.Framework.NCrunchEnvironment.NCrunchIsResident() then 
-            Directory.GetParent(NCrunch.Framework.NCrunchEnvironment.GetOriginalProjectPath()).FullName
-        else 
-            Environment.CurrentDirectory
+let nibble2hex (s:string) = b2hmap.[s.Substring(0,4)]
 
-    let inputdir = srcdir @@ @"../../../Inputs"
-
-    let itypesfile, rtypesfile, jtypesfile = 
-        srcdir @@ @"../../../Itypes",
-        srcdir @@ @"../../../Rtypes",
-        srcdir @@ @"../../../Jtypes"
-
-    type Defaults = 
-        { Directories : Directories; Files : Files}
-        static member Init =
-            { Directories = Directories.Default; Files = Files.Default }
-
-    and Directories =
-        { Source : string; Input : string }
-        static member Default =
-            { Source = srcdir; Input = inputdir}
-
-    and Files =
-        { IType : string; RType : string; JType : string }
-        static member Default =
-            { IType = itypesfile; RType = rtypesfile; JType = jtypesfile }
-
-
-
-    let parseTypeFile filepath =
-        let pattern = @"(?<opcode>[^\s]+)\s+(?<rrid>\d\s+)*\s*(?<encoding>\d+)"
-        let regex = new Regex(pattern, RegexOptions.Multiline)
-        let matches = File.ReadAllText(filepath) |> regex.Matches
-        [for m in matches -> 
-            m.Groups.["opcode"].Value.Trim(), 
-            m.Groups.["rrid"].Value.Trim(), 
-            m.Groups.["encoding"].Value.Trim()]
-
-    let getInfo = parseTypeFile
+let byte2hex (s:string) = (b2hmap.[s.Substring(0, 4)] + b2hmap.[s.Substring(4, 4)])
     
-    let getOpEncOnly =
-        getInfo
-        >> List.map (fun (op, _, enc) -> (op, enc))
+let bin2hex (s:string) = 
+    s |> function
+    | _ when s.Length % 4 <> 0 -> failwith "binary string length needs to be multiple of 4"
+    | _ ->
+        let nibbles = s.Length / 4
+        [0..nibbles-1] 
+        |> List.map (fun nib -> s.Substring(nib * 4, 4)) 
+        |> List.map nibble2hex
+        |> List.reduce (+)
+//    s |> function
+//    | _ when s.Length = 32 ->
+//        let b0 = s.Substring(0,8) |> byte2hex
+//        let b1 = s.Substring(8,8) |> byte2hex
+//        let b2 = s.Substring(16,8) |> byte2hex
+//        let b3 = s.Substring(24,8) |> byte2hex
+//        (b0 + b1 + b2 + b3)
+    | _ -> failwith (sprintf "failed binary to hex conversion of: %A, of length %d\nbinary string must be length 32!" s s.Length)
 
-    let getPattern =
-        getInfo
-        >> List.map (fun (op, _, _) -> op)
-        >> List.fold (+|+) ("")
+let parseTypeFile filepath =
+    let pattern = @"(?<opcode>[^\s]+)\s+(?<rrid>\d\s+)*\s*(?<encoding>\d+)"
+    let regex = new Regex(pattern, RegexOptions.Multiline)
+    let matches = File.ReadAllText(filepath) |> regex.Matches
+    [for m in matches -> 
+        m.Groups.["opcode"].Value.Trim(), 
+        m.Groups.["rrid"].Value.Trim(), 
+        m.Groups.["encoding"].Value.Trim()]
 
-    let getLookupByOp =
-        getOpEncOnly
-        >> Map.ofList
+let getInfo = parseTypeFile
+    
+let getOpEncOnly =
+    getInfo
+    >> List.map (fun (op, _, enc) -> (op, enc))
 
-    let getLookupByEnc =
-        getOpEncOnly
-        >> List.map (fun (o,e) -> (int e, o))
-        >> Map.ofList
+let getPattern =
+    getInfo
+    >> List.map (fun (op, _, _) -> op)
+    >> List.fold (+|+) ("")
+
+let getLookupByOp =
+    getOpEncOnly
+    >> Map.ofList
+
+let getLookupByEnc =
+    getOpEncOnly
+    >> List.map (fun (o,e) -> (int e, o))
+    >> Map.ofList
+
 
 type ParsedOpcode = 
     { 
@@ -109,12 +105,12 @@ type ParsedOpcode =
     }
 
     static member create fp =
-        {   Info            = fp |> Support.parseTypeFile
-            Pattern         = (fp |> Support.getPattern).Substring(1) // remove extra or bar |
-            LookupByOpcode  = fp |> Support.getLookupByOp  
-            LookupByEncoding= fp |> Support.getLookupByEnc}
+        {   Info            = fp |> parseTypeFile
+            Pattern         = (fp |> getPattern).Substring(1) // remove extra or bar |
+            LookupByOpcode  = fp |> getLookupByOp  
+            LookupByEncoding= fp |> getLookupByEnc}
 
-and OpcodeInfo(itypesfile:string, rtypesfile:string, jtypesfile:string) = 
+type OpcodeInfo(srcdir:string, itypesfile:string, rtypesfile:string, jtypesfile:string) = 
     let itypes = itypesfile |> ParsedOpcode.create
     let rtypes = rtypesfile |> ParsedOpcode.create
     let jtypes = jtypesfile |> ParsedOpcode.create
@@ -130,15 +126,17 @@ and OpcodeInfo(itypesfile:string, rtypesfile:string, jtypesfile:string) =
         |> Map.ofList
 
     let allOpEncPairs = 
-        (itypesfile |> Support.getOpEncOnly) @
-        (rtypesfile |> Support.getOpEncOnly) @
-        (jtypesfile |> Support.getOpEncOnly)
+        (itypesfile |> getOpEncOnly) @
+        (rtypesfile |> getOpEncOnly) @
+        (jtypesfile |> getOpEncOnly)
         
     let lookupByOp = allOpEncPairs |> Map.ofList
     
     let lookupByEnc = 
         allOpEncPairs
         |> List.map (fun (o,e) -> (int e,o))
+
+    member val SrcDir = srcdir
 
     member val ITypes = itypes
     member val RTypes = rtypes
@@ -158,4 +156,18 @@ and OpcodeInfo(itypesfile:string, rtypesfile:string, jtypesfile:string) =
 
     member oi.Lookup(op:string) = lookupByOp.[op]
 //    member oi.Lookup(enc:int) = lookupByEnc.[enc]
-       
+
+
+    new() =
+        let srcdir = //Environment.CurrentDirectory
+            if NCrunch.Framework.NCrunchEnvironment.NCrunchIsResident() then 
+                Directory.GetParent(NCrunch.Framework.NCrunchEnvironment.GetOriginalProjectPath()).FullName
+            else 
+                Environment.CurrentDirectory
+            
+        let itypesfile, rtypesfile, jtypesfile = 
+            srcdir @@ @"../../../Itypes",
+            srcdir @@ @"../../../Rtypes",
+            srcdir @@ @"../../../Jtypes"
+        
+        new OpcodeInfo(srcdir, itypesfile, rtypesfile, jtypesfile)

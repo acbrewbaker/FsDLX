@@ -13,7 +13,7 @@ type InputRegex() =
     member val Instruction = Regex(@"\A(\w+)([^;]*)")
 
 type DirectiveRegex() =
-    member val Text    = Regex(@"(?<=\.(text).*)(\d*)")
+    member val Text    = Regex(@"(?<=\.(text))(?: 0x)?(\d*)")
     member val Data    = Regex(@"(?<=\.(data).*)(\d+)")
     member val Align   = Regex(@"(?<=\.(align).*)(\d)")
     member val Asciiz  = Regex(@"(?<=\.(asciiz).*)?""([^""]+)""")
@@ -84,9 +84,11 @@ let (|Instruction|_|) (info:OpcodeInfo) : (string*uint32 ref) -> Instruction opt
     let imm = ImmediateRegex()
     let reg = RegisterRegex()
     let i = InputRegex()
+    
+    let storeRegex = Regex(@"(?<offset>-?\d)\((?<rs1>r\d\d?)\), (?<rd>[rf]\d\d?)")
 
     let (|IType|_|) (info:OpcodeInfo) : (string*string) -> (Opcode*Operands) option =
-        let (|RRI|RI|R|IF|IR|) (ops:string[]) = ops.Length |> function
+        let (|RRI|RI|R|IF|IR|S|) (ops:string[]) = ops.Length |> function
             | 3 -> RRI ops
             | 2 -> ops |> function
                 | _ when (ops.[0] |> matches imm.Label) || (ops.[0] |> matches imm.BasePlusOffset) -> 
@@ -103,13 +105,15 @@ let (|Instruction|_|) (info:OpcodeInfo) : (string*uint32 ref) -> Instruction opt
                 Opcode.IType(info.Lookup(opcode) |> int),
                 operands.Split([|',';' '|], StringSplitOptions.RemoveEmptyEntries) |> function
                     | RRI ops ->
-                        Operands.IType(Register.R ops.[0], Register.R ops.[1], immediate ops.[2])
+                        Operands.IType(Register.R ops.[1], Register.R ops.[0], immediate ops.[2])
                     | RI ops -> 
-                        Operands.IType(Register.R ops.[0], Register.Unused, immediate ops.[1])
+                        Operands.IType(Register.R ops.[1], Register.Unused, immediate ops.[0])
                     | R ops -> 
                         Operands.IType(Register.R ops.[0], Register.Unused, Immediate.Unused)
                     | IF ops -> 
-                        Operands.IType(Register.F ops.[1], Register.Unused, immediate ops.[0])
+                        printfn "ops1, ops0 ==> %A, %A" (ops.[1]) (ops.[0])
+                        //let imm,rs1 = let g = imm.BasePlusOffset.Match(ops.[0]).Groups in (g.[1].Value, g.[2].Value)
+                        Operands.IType(Register.R ops.[1], Register.F ops.[1] , immediate ops.[0])
                     | IR ops -> 
                         Operands.IType(Register.R ops.[1], Register.Unused, immediate ops.[0])
             Some (opcode, operands)
@@ -134,11 +138,11 @@ let (|Instruction|_|) (info:OpcodeInfo) : (string*uint32 ref) -> Instruction opt
             let op, ops =
                 Opcode.RType(info.Lookup(opcode) |> int),
                 operands.Split([|',';' '|], StringSplitOptions.RemoveEmptyEntries) |> function
-                    | RRR ops -> Operands.RType(Register.R ops.[0], Register.R ops.[1], Register.R ops.[2])
-                    | FFF ops -> Operands.RType(Register.F ops.[0], Register.F ops.[1], Register.F ops.[2])
-                    | RR ops -> Operands.RType(Register.R ops.[0], Register.Unused, Register.R ops.[1])
-                    | FF ops -> Operands.RType(Register.F ops.[0], Register.Unused, Register.F ops.[1])
-                    | RF ops -> Operands.RType(Register.R ops.[0], Register.Unused, Register.F ops.[1])
+                    | RRR ops -> Operands.RType(Register.R ops.[1], Register.R ops.[2], Register.R ops.[0])
+                    | FFF ops -> Operands.RType(Register.F ops.[1], Register.F ops.[2], Register.F ops.[0])
+                    | RR ops -> Operands.RType(Register.R ops.[1], Register.Unused, Register.R ops.[0])
+                    | FF ops -> Operands.RType(Register.F ops.[1], Register.Unused, Register.F ops.[0])
+                    | RF ops -> Operands.RType(Register.R ops.[1], Register.Unused, Register.F ops.[0])
             Some (op, ops)
         | _ -> None
 
@@ -190,100 +194,106 @@ let (|Instruction|_|) (info:OpcodeInfo) : (string*uint32 ref) -> Instruction opt
             | "nop", _ ->
                 Instruction.RType(rrx opcode, Operands.NOP(), unused opcode, func opcode)
             | IType info (op, ops) -> 
-                pc := !pc + 4u
                 Instruction.IType(op, ops)    
             | RType info (op, ops) -> 
-                pc := !pc + 4u
                 Instruction.RType(rrx opcode, ops, unused opcode, func opcode)
             | JType info (op, ops) -> 
-                pc := !pc + 4u
                 Instruction.JType(op, ops)
             | _ -> failwith (sprintf "failed to make instruction from: %A" (opcode, operands))
         Some instruction
     | _ -> None
 
 let (|Directive|_|) : (string*uint32 ref) -> Directive list option =
-    let r = DirectiveRegex()
+    let d = DirectiveRegex()
     
     let groups (r:Regex) s = [for m in r.Matches(s) -> m.Groups.[2].Value]
     function
-    | s, pc when s |> matches r.Text ->
-        groups r.Text s |> List.map (fun (str:string) ->
+    | s, pc when s |> matches d.Text ->
+        groups d.Text s |> List.map (fun (s:string) ->
             let pc' = !pc
-            let s' = str
-            let comment = asComment str
-            if s'.Length <= 1 then pc := 0u else pc := UInt32.Parse(s')
+            printfn "Text directive: %A" s
+            let comment = asComment s
+            if s.Length <= 1 
+            then pc := 0u 
+            else pc := Convert.ToUInt32(s, 16)
+            (!pc, s, "")) 
+        |> List.map (fun e -> new Directive(e)) 
+        |> Some
+
+    | s, pc when s |> matches d.Data ->
+        groups d.Data s |> List.map (fun (s:string) ->
+            let pc' = !pc
+            let s' = s
+            let comment = asComment s'
             (pc', s', comment)) 
         |> List.map (fun e -> new Directive(e)) 
         |> Some
 
-    | s, pc when s |> matches r.Data ->
-        groups r.Data s |> List.map (fun (str:string) ->
+    | s, pc when s |> matches d.Align ->
+        groups d.Align s |> List.map (fun (s:string) ->
             let pc' = !pc
-            let s' = str
-            let comment = asComment str
-            (pc', s', comment)) 
-        |> List.map (fun e -> new Directive(e)) 
+            let a = uint32 s
+            pc := !pc + 4u
+            while !pc % a <> 0u do pc := !pc + 4u
+            //pc := pc' + n * 4u
+            (pc', s, s)) 
+        |> List.map (fun e -> new Directive(e))
+        |> List.choose (fun d -> if d.Data.Length > 1 then Some d else None)
         |> Some
 
-    | s, pc when s |> matches r.Align ->
-        groups r.Align s |> List.map (fun (str:string) ->
-            let pc' = !pc
-            let s' = str
-            let comment = asComment str
-            (pc', s', comment)) 
-        |> List.map (fun e -> new Directive(e)) 
-        |> Some
-
-    | s, pc when s |> matches r.Asciiz ->
-        groups r.Asciiz s |> List.map (fun (s:string) ->
+    | s, pc when s |> matches d.Asciiz ->
+        groups d.Asciiz s |> List.map (fun (s:string) ->
             let bytes = Encoding.Default.GetBytes(s)
             let pc' = !pc
             let s' = s |> str2hex
+            let comment = strAsComment s
             pc := !pc + uint32 bytes.Length + 1u
-            (pc', s', s)) 
+            (pc', s', comment)) 
         |> List.map (fun e -> new Directive(e)) 
         |> Some
         
-    | s, pc when s |> matches r.Double ->
-        groups r.Double s |> List.map (fun (str:string) ->
+    | s, pc when s |> matches d.Double ->
+        groups d.Double s |> List.map (fun (s:string) ->
             let pc' = !pc
-            let s' = (Double.Parse(str) |> BitConverter.GetBytes |> bytes2hex)
-            let comment = floatingPointAsComment str
+            let s' = (Double.Parse(s) |> BitConverter.GetBytes |> bytes2hex)
+            let comment = floatingPointAsComment s
             pc := !pc + 8u
             (pc', s', comment)) 
         |> List.map (fun e -> new Directive(e)) 
         |> Some
 
-    | s, pc when s |> matches r.Float ->
-        groups r.Float s |> List.map (fun (str:string) ->
+    | s, pc when s |> matches d.Float ->
+        groups d.Float s |> List.map (fun (s:string) ->
             let pc' = !pc
-            let s' = (Single.Parse(str) |> BitConverter.GetBytes |> bytes2hex)
-            let comment = floatingPointAsComment str
+            let s' = (Single.Parse(s) |> BitConverter.GetBytes |> bytes2hex)
+            let comment = floatingPointAsComment s
             pc := !pc + 4u
             (pc', s', comment)) 
         |> List.map (fun e -> new Directive(e)) 
         |> Some
 
-    | s, pc when s |> matches r.Word ->
-        groups r.Word s |> List.map (fun (str:string) ->
+    | s, pc when s |> matches d.Word ->
+        groups d.Word s |> List.map (fun (s:string) ->
             let pc' = !pc
-            let str, isNeg = if str.StartsWith("-") then str.Replace("-",""), true else str, false
-            let base' = if str.StartsWith("0x") then 16 else 10
-            let word = Convert.ToInt32(str, base') * (if isNeg then -1 else 1)
+            let s, isNeg = if s.StartsWith("-") then s.Replace("-",""), true else s, false
+            let base' = if s.StartsWith("0x") then 16 else 10
+            let word = Convert.ToInt32(s, base') * (if isNeg then -1 else 1)
             let s' = (word |> BitConverter.GetBytes |> bytes2hex)
             let comment = asComment (string word)
+            pc := pc' + 4u
             (pc', s', comment)) 
         |> List.map (fun e -> new Directive(e)) 
         |> Some
 
-    | s, pc when s |> matches r.Space ->
-        groups r.Space s |> List.map (fun (str:string) ->
+    | s, pc when s |> matches d.Space ->
+        groups d.Space s |> List.map (fun (s:string) ->
             let pc' = !pc
-            let s' = str
-            let comment = asComment str
+            let s' = s
+            let comment = asComment s
+            pc := pc' + (uint32 s)
             (pc', s', comment)) 
-        |> List.map (fun e -> new Directive(e)) 
+        |> List.map (fun e -> new Directive(e))
+        |> List.choose (fun d -> if d.Data.Length > 2 then Some d else None)
         |> Some
 
     | _ -> None
@@ -295,6 +305,7 @@ let (|Label|_|) : (string*uint32 ref) -> (SymbolTableEntry*string) option =
     function
     | (line, pc) when line |> matches i.Label ->
         let lbl, rest = (groups i.Label line)
+        //printfn "Label, PC  ===> %A, %A" lbl pc
         (SymbolTableEntry(lbl, int !pc), rest)
         |> Some
     | _ -> None

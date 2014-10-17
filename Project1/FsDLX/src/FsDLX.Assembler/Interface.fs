@@ -9,17 +9,16 @@ open System.Text.RegularExpressions
 open Grammar
    
 
-type Assembler(dlxfile:string, itypesfile:string, rtypesfile:string, jtypesfile:string) =
+type Assembler(dlxfile:string, info:OpcodeInfo) =
     do dlxfile |> function
     | _ when not (dlxfile.EndsWith(".dlx")) -> failwith "invalid input file"
     | _ -> ()
-    
+        
     let hexfile = Path.ChangeExtension(dlxfile, ".hex")
 
     let symtab = new SymbolTable()
 
     let parseInputs (lines:string[]) (pc:uint32 ref) (st:SymbolTable) =
-        let info = OpcodeInfo(itypesfile, rtypesfile, jtypesfile)
     
         let (|InlineComment|_|) : string -> (string*string) option = function
             | s when s.Contains(";") -> 
@@ -31,13 +30,15 @@ type Assembler(dlxfile:string, itypesfile:string, rtypesfile:string, jtypesfile:
 
         let (|Comment|_|) inputs = function
             | Patterns.Comment comment ->
-                [DLXInput.Comment comment]
-                |> newState inputs
+                //[DLXInput.Comment comment]
+                //|> newState inputs
+                inputs
                 |> Some
             | _ -> None
     
         let (|Instruction|_|) inputs comment = function
             | Patterns.Instruction info instruction ->
+                //printfn "Instruction Comment: %A" comment
                 [DLXInput.Instruction(!pc, instruction, comment)]
                 |> newState inputs
                 |> Some
@@ -45,32 +46,37 @@ type Assembler(dlxfile:string, itypesfile:string, rtypesfile:string, jtypesfile:
 
         let (|Directive|_|) inputs = function
             | Patterns.Directive directive ->
-                directive |> List.map DLXInput.Directive
+                directive |> List.choose (fun d -> if d.Comment.Length > 1 then Some d else None)
+                |> List.map DLXInput.Directive
                 |> newState inputs
                 |> Some
             | _ -> None
 
         lines |> Seq.fold (fun (inputs:DLXInput list) line ->
-            (line.Trim(), pc) |> function
+            //printfn "Line ===> %A" line
+            let line = line.Trim()
+            (line, pc) |> function
             | _ when line.Length <= 1 -> inputs
             | Comment inputs comment -> comment
             | Patterns.Label (ste, rest) ->
                 st.Add(ste)
                 let lbl = Label.Reference(ste)
+                //st.Dump()
                 let rest = rest.Trim()
+                //printfn "Rest: %A" rest
                 let data, comment = rest |> function | InlineComment c -> c | _ -> rest, rest
-            
-                (data, pc) |> function
-                | Instruction inputs comment i -> i
+                //printfn "Data, Comment ==> %A, %A" data comment
+                (data.Trim(), pc) |> function
+                | Instruction inputs line i -> pc := !pc + 4u; i
                 | Directive inputs d -> d
                 | _ when rest.StartsWith(";") ->
                     ("nop", pc) |> function
-                    | Instruction inputs comment i -> i
+                    | Instruction inputs comment i -> pc := !pc + 4u; i
                     | _ -> failwith "Failed creating nop"
                 | _ -> failwith "Failed to match info after matching label"
 
             | Directive inputs d -> d
-            | Instruction inputs line i -> i
+            | Instruction inputs line i -> pc := !pc + 4u; i
             | _ -> failwith (sprintf "Failed to create DLXInput from %A" line)
             ) (List.empty<DLXInput>)
 
@@ -82,15 +88,41 @@ type Assembler(dlxfile:string, itypesfile:string, rtypesfile:string, jtypesfile:
         let newState (hex:string list) (dlxin:DLXInput) = hex @ [dlxin.ToString()]
 
         let updateLabels = 
-            let procImmediate rs1 rd = function
-                | Immediate.Label lbl ->
-                    Operands.IType(rs1, rd, Immediate.Label (lbl.ReplaceWithAddress(symtab)))
-                | Immediate.BasePlusOffset(b,o) -> 
-                    Operands.IType(rs1, rd, Immediate.BasePlusOffset(b,o.RepalceWithAddress(symtab)))
-                | immediate -> Operands.IType(rs1, rd, immediate)
+            printfn "Update Labels"
+//            let procImmediate rs1 rd = function
+//                | Immediate.Label lbl ->
+//                    Operands.IType(rs1, rd, Immediate.Label (lbl.ReplaceWithAddress(symtab)))
+//                | Immediate.BasePlusOffset(b,o) -> 
+//                    Operands.IType(rs1, rd, Immediate.BasePlusOffset(b,o.RepalceWithAddress(symtab)))
+//                | immediate -> Operands.IType(rs1, rd, immediate)
 
-            let procOperands = function
-                | Operands.IType(rs1, rd, imm) -> (rs1, rd, imm) |||> procImmediate
+            let procOperands = 
+                //printfn "Proc operands"
+                function
+                | Operands.IType(rs1, rd, imm) -> 
+                    //printfn "Proc itype immediate"
+                    imm |> function
+                    | Immediate.Label lbl ->
+                        //printfn "Proc label"
+                        Operands.IType(rs1, rd, Immediate.Label (lbl.ReplaceWithAddress(symtab)))
+                    | Immediate.BasePlusOffset(b,o) -> 
+                        //printfn "Proc BPO"
+                        //printfn "base, offset ==> %A, %A" b o
+                        o |> function
+                        | Offset.Label l ->
+                            //printfn "Label"
+                            Operands.IType(rs1, rd, Immediate.BasePlusOffset(b,o.RepalceWithAddress(symtab)))
+                        | _ ->
+                            //printfn "Other offset"
+                            let o = Operands.IType(rs1, rd, imm)
+                            //printfn "Made other offset"
+                            o
+                    | immediate -> Operands.IType(rs1, rd, immediate)
+                | Operands.JType(name) -> name |> function
+                    | Immediate.Label lbl ->
+                        Operands.JType(Immediate.Label (lbl.ReplaceWithAddress(symtab)))
+                    | _ -> 
+                        Operands.JType(name)
                 | operands -> operands
 
             function
@@ -109,11 +141,21 @@ type Assembler(dlxfile:string, itypesfile:string, rtypesfile:string, jtypesfile:
         ) (List.empty<string>)
 
     new (dlxfile:string) =
-        let d = Support.Defaults.Init
-        let i, r, j =
-            d.Files.IType, d.Files.RType, d.Files.JType
-        new Assembler(dlxfile, i, r, j)
+        let info = new OpcodeInfo()
+        new Assembler(dlxfile, info)
         
+    new (dlxfile:string, srcdir:string) =
+        let itypesfile, rtypesfile, jtypesfile =
+            srcdir @@ "Itypes",
+            srcdir @@ "Rtypes",
+            srcdir @@ "Jtypes"
+        let info = new OpcodeInfo(srcdir, itypesfile, rtypesfile, jtypesfile)
+        new Assembler(dlxfile, info)
+
+    new (dlxfile, srcdir, itypesfile, rtypesfile, jtypesfile) =
+        new Assembler(dlxfile, new OpcodeInfo(srcdir, itypesfile, rtypesfile, jtypesfile))
+
+    member val SrcDir = info.SrcDir
     member val DlxFile = dlxfile
     member val HexFile = hexfile
 
@@ -128,7 +170,7 @@ type Assembler(dlxfile:string, itypesfile:string, rtypesfile:string, jtypesfile:
         if File.Exists(outpath) then File.Delete(outpath)
         File.AppendAllText(outpath, output)
     
-    member asm.Run() = asm.Run("/u/css/ab67597/5483/Project1/Tests/")
+    member asm.Run() = asm.Run(asm.SrcDir @@ "Tests")
 
     interface IDisposable with
         member this.Dispose() = ()

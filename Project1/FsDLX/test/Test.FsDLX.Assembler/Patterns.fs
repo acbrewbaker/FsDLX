@@ -7,7 +7,6 @@ open FsDLX.Assembler
 open NUnit.Framework
 open FsUnit
 
-open Support
 
 //[<Test>]
 //let ``get opcode regex`` () =

@@ -12,7 +12,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{D47CF4EC-5575-48C2-9AF8-09FC7DD0D0E2}"
 	ProjectSection(SolutionItems) = preProject
 		assemble.fs = assemble.fs
-		build.fsx = build.fsx
 		build.sh = build.sh
 		Itypes = Itypes
 		Jtypes = Jtypes
