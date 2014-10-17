@@ -70,7 +70,7 @@ and Operands =
     | JType of Immediate
 
     static member NOP() = RType(Register.R "r0", Register.R "r0", Register.R "r0")
-    static member TRAP(s:string) = JType(Immediate.Value (Convert.ToInt32(s)))
+    static member TRAP(s:string) = JType(Immediate.Value (Value.UInt (Convert.ToUInt32(s))))
 
     override o.ToString() = o |> function
         | IType(rs1, rd, imm) -> 
@@ -86,7 +86,7 @@ and Operands =
             
         | JType(name) -> 
             sprintf "%s" 
-                (name.ToString())
+                (name.ToString().PadLeft(26, '0'))
 
 and Register =
     | R of string
@@ -94,7 +94,7 @@ and Register =
     | Unused
 
     static member (+) (b:Base, r:Register) = (b, r) |> function
-        | b, R r -> b + int r
+        | b, R r -> b + int16 r
         | _ -> failwith "Cant add base to floating point register"
 
     override r.ToString() = r |> function
@@ -110,21 +110,21 @@ and Immediate =
     | Unused
 
     override i.ToString() = i |> function
-        | Value imm -> Convert.ToString(imm |> int, 2).PadLeft(16, '0')
+        | Value imm -> imm.ToString().PadLeft(16, '0')
         | Label imm -> imm.ToString().PadLeft(16, '0')
         | Register imm -> imm.ToString().PadLeft(16, '0')
         | BasePlusOffset(b,o) -> 
             let bpo = o |> function
-                | Offset.Value ov -> b + ov
-                | Offset.Label ol -> b + ol                
+                | Offset.Value o' -> b + o'
+                | Offset.Label o' -> o' + b               
                 | Offset.Register oreg -> 
-                    b + Convert.ToInt32(oreg.ToString(), 2)
+                    b + Convert.ToInt16(oreg.ToString(), 2)
                     
             printfn "Imm.BPO.TOString  ===> %A" bpo
             Convert.ToString(bpo, 2).PadLeft(16, '0') //|> revstr
         | Unused -> "0".PadLeft(16, '0')
         
-and Base = int
+and Base = int16
 
 and Offset =
     | Value of Value
@@ -137,16 +137,42 @@ and Offset =
         | Register r -> Register r
 
     static member (+) (b:Base, o:Offset) = (b, o) |> function
-        | b, Value o -> b + o
-        | b, Label o -> b + o
-        | b, Register o -> b + Convert.ToInt32(o.ToString(), 2)
+        | b, Value o' -> b + o'
+        | b, Label o' -> o' + b
+        | b, Register o' -> b + Convert.ToInt16(o'.ToString(), 2)
             
     override o.ToString() = o |> function
         | Value v -> v.ToString()
         | Label l -> l.ToString()
         | Register r -> r.ToString()
 
-and Value = int
+and Value = 
+    | Int of int
+    | UInt of uint32
+
+    static member (+) (v1:Value, v2:Value) = (v1,v2) |> function
+        | Int v1', Int v2' -> v1' + v2'
+        | Int v1', UInt v2' -> v1' + (int v2')
+        | UInt v1', Int v2' -> (int v1') + v2'
+        | UInt v1', UInt v2' -> int (v1' + v2')
+
+
+    static member (+) (b:Base, v:Value) = v |> function
+        | Int x -> b + int16 x
+        | UInt x -> b + int16 x
+
+    static member (+) (v:Value, b:Base) = v |> function
+        | Int v' -> b + int16 v'
+        | UInt v' -> b + int16 v'
+
+    static member (+) (l:Label, v:Value) = (l,v) |> function
+        | Label.Reference l', Int v' -> l'.Value + v'
+        | Label.Value l', v' -> l' + v' 
+        | _ -> failwith "cant add values to inline labels"
+
+    override v.ToString() = v |> function
+        | Int x -> Convert.ToString(x, 2).PadLeft(16, '0')
+        | UInt x -> Convert.ToString(int x, 2).PadLeft(16, '0')
 
 and Label =
     | Inline of string
@@ -161,6 +187,11 @@ and Label =
             Value (st.Lookup(l))
         | _ -> failwith "Can't replace label when not inline type"
 
+    static member (+) (l:Label, b:Base) = (l,b) |> function
+        | Reference l', b' -> l'.Value + b'
+        | Value l', b' -> l' + b'
+        | _ -> failwith "Can't add inline labels"
+
     static member (+) (l1:Label, l2:Label) = (l1,l2) |> function
         | Reference r1, Reference r2 -> 
             printfn "Adding label label"
@@ -170,19 +201,19 @@ and Label =
     static member (+) (l:Label, v:Value) = (l,v) |> function
         | Reference r, x -> 
             printfn "Adding label value"
-            r.Value + x
+            int16 r.Value + x
         | _ -> failwith "Can't add inline labels"
 
     static member (+) (v:Value, l:Label) = (v,l) |> function
-        | x, Reference r -> 
+        | Value.Int v', Reference l' -> 
             printfn "Adding value label"
-            x + r.Value
+            int16 v' + l'.Value
         | _ -> failwith "Can't add inline labels"
 
     override l.ToString() = l |> function
         | Inline s -> s
         | Reference r -> r.Symbol.ToString()
-        | Value v -> Convert.ToString(v |> int, 2)
+        | Value v -> v.ToString()
 
 and RRX =
     | RRalu of string
@@ -205,16 +236,16 @@ and Func =
         | F6 s -> Convert.ToString(int s, 2).PadLeft(6, '0')
         | F5 s -> Convert.ToString(int s, 2).PadLeft(5, '0')
 
-and SymbolTableEntry(symbol:string, value:int) =
+and SymbolTableEntry(symbol:string, value:int16) =
     member val Symbol = symbol
     member val Value = value
 
     override ste.ToString() =
-        sprintf "%s <==> %d" ste.Symbol ste.Value
+        sprintf "%s <==> %A" ste.Symbol ste.Value
 
 and SymbolTable() =
     let mutable entries = List.empty<SymbolTableEntry>
-    let mutable tab = Map.empty<string, int>
+    let mutable tab = Map.empty<string, int16>
     member st.UpdateTable() =  
         tab <- 
             entries 
@@ -222,7 +253,7 @@ and SymbolTable() =
             |> Map.ofList
     member st.Add(k,v) = tab <- tab.Add(k,v)
     member st.Add(ste:SymbolTableEntry) = tab <- tab.Add(ste.Symbol, ste.Value)
-    member st.Lookup(k) = tab.[k] 
+    member st.Lookup(k) = Value.Int (int tab.[k])
     member st.Lookup(ste:SymbolTableEntry) = st.Lookup(ste.Symbol)
 
     override st.ToString() =

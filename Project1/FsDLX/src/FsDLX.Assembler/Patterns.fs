@@ -59,11 +59,11 @@ let baseplusoffset =
     let imm = ImmediateRegex()
     function
     | bv,ol when bv |> matches imm.Value && ol |> matches imm.Value -> 
-        Convert.ToInt32(bv), Offset.Label (Label.Inline ol)
+        Convert.ToInt16(bv), Offset.Label (Label.Inline ol)
     | bv,ov when bv |> matches imm.Value && ov |> matches imm.Value ->
-        Convert.ToInt32(bv), Offset.Value (Convert.ToInt32(ov))
+        Convert.ToInt16(bv), Offset.Value (Value.Int (Convert.ToInt32(ov)))
     | bv,oreg when bv |> matches imm.Value && oreg |> matches imm.Register ->
-        Convert.ToInt32(bv), Offset.Register (register oreg)
+        Convert.ToInt16(bv), Offset.Register (register oreg)
     | bv,oreg -> 
         failwith (sprintf "failed to match base plus offset from: (%A, %A)" bv oreg)
 
@@ -71,7 +71,7 @@ let immediate =
     let r = ImmediateRegex()
     
     function
-    | imm when imm |> matches r.Value           -> Immediate.Value (Convert.ToInt32(imm))
+    | imm when imm |> matches r.Value           -> Immediate.Value (Value.Int(Convert.ToInt32(imm)))
     | imm when imm |> matches r.Label           -> Immediate.Label (Label.Inline imm)
     | imm when imm |> matches r.Register        -> Immediate.Register (register imm)
     | imm when imm |> matches r.BasePlusOffset  ->
@@ -88,7 +88,7 @@ let (|Instruction|_|) (info:OpcodeInfo) : (string*uint32 ref) -> Instruction opt
     let storeRegex = Regex(@"(?<offset>-?\d)\((?<rs1>r\d\d?)\), (?<rd>[rf]\d\d?)")
 
     let (|IType|_|) (info:OpcodeInfo) : (string*string) -> (Opcode*Operands) option =
-        let (|RRI|RI|R|IF|IR|S|) (ops:string[]) = ops.Length |> function
+        let (|RRI|RI|R|IF|IR|) (ops:string[]) = ops.Length |> function
             | 3 -> RRI ops
             | 2 -> ops |> function
                 | _ when (ops.[0] |> matches imm.Label) || (ops.[0] |> matches imm.BasePlusOffset) -> 
@@ -116,6 +116,9 @@ let (|Instruction|_|) (info:OpcodeInfo) : (string*uint32 ref) -> Instruction opt
                         Operands.IType(Register.R ops.[1], Register.F ops.[1] , immediate ops.[0])
                     | IR ops -> 
                         Operands.IType(Register.R ops.[1], Register.Unused, immediate ops.[0])
+                    | _ when operands |> matches storeRegex -> 
+                        let offset, rs1, rd = let g = storeRegex.Match(operands).Groups in (g.["offset"].Value, g.["rs1"].Value, g.["rd"].Value)
+                        Operands.IType(register rs1, register rd, Immediate.Value (Value.Int(int offset))) 
             Some (opcode, operands)
         | _ -> None
     
@@ -225,17 +228,19 @@ let (|Directive|_|) : (string*uint32 ref) -> Directive list option =
             let pc' = !pc
             let s' = s
             let comment = asComment s'
+            if s.Length > 1 then pc := Convert.ToUInt32(s, 16)
             (pc', s', comment)) 
-        |> List.map (fun e -> new Directive(e)) 
+        |> List.map (fun e -> new Directive(e))
+        |> List.choose (fun d -> if d.Data.Length > 1 then Some d else None)
         |> Some
 
     | s, pc when s |> matches d.Align ->
         groups d.Align s |> List.map (fun (s:string) ->
             let pc' = !pc
             let a = uint32 s
-            pc := !pc + 4u
-            while !pc % a <> 0u do pc := !pc + 4u
-            //pc := pc' + n * 4u
+            
+            while !pc % a <> 0u do pc := !pc + 1u
+//            pc := if !pc <> 0u then !pc - 1u else !pc
             (pc', s, s)) 
         |> List.map (fun e -> new Directive(e))
         |> List.choose (fun d -> if d.Data.Length > 1 then Some d else None)
@@ -306,7 +311,7 @@ let (|Label|_|) : (string*uint32 ref) -> (SymbolTableEntry*string) option =
     | (line, pc) when line |> matches i.Label ->
         let lbl, rest = (groups i.Label line)
         //printfn "Label, PC  ===> %A, %A" lbl pc
-        (SymbolTableEntry(lbl, int !pc), rest)
+        (SymbolTableEntry(lbl, int16 !pc), rest)
         |> Some
     | _ -> None
 

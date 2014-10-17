@@ -14,9 +14,9 @@ let srcdir =
     else 
         Environment.CurrentDirectory
 
-let inputdir = @"X:/GitHub/FsDLX/Project1/Inputs"
+let inputdir = srcdir @@ "../../../Inputs"
 
-let testdir    = @"X:/GitHub/FsDLX/Project1/Tests"
+let testdir    = srcdir @@ "../../../Tests"
 
 let printi op rs1 rd imm = printfn "op,rs1,rd,imm ==> %s,%s,%s,%s" op rs1 rd imm
 
