@@ -1,150 +1,259 @@
 ﻿[<AutoOpen>]
-module Test.FsDLX.Common
+module Test.FsDLX.Assembler.Common
 
 open System
 open System.IO
-open System.Text.RegularExpressions
-open NUnit.Framework
+open FsDLX.Assembler
 open NCrunch.Framework
+open NUnit.Framework
+open FsUnit
 
-open FsDLX
+let srcdir = 
+    if NCrunch.Framework.NCrunchEnvironment.NCrunchIsResident() then 
+        Directory.GetParent(NCrunch.Framework.NCrunchEnvironment.GetOriginalProjectPath()).FullName
+    else 
+        Environment.CurrentDirectory
 
-let dlxfiles = Directory.GetFiles(Support.inputdir) |> Array.filter(fun f -> f.EndsWith(".dlx"))
-let hexfiles = Directory.GetFiles(Support.inputdir) |> Array.filter(fun f -> f.EndsWith(".hex"))
+let inputdir = @"X:/GitHub/FsDLX/Project1/Inputs"
 
+let testdir    = @"X:/GitHub/FsDLX/Project1/Tests"
 
-//    module DLX =
-//        let aligns = dlxfiles |> Array.filter (fun f -> f.StartsWith("align"))
-//        let arithImmeds = dlxfiles |> Array.filter (fun f -> f.StartsWith("arithImmed"))
-//        let asciizs = dlxfiles |> Array.filter (fun f -> f.StartsWith("asciiz"))
-//        let branches = dlxfiles |> Array.filter (fun f -> f.StartsWith("branches"))
-//        let arithImmeds = dlxfiles |> Array.filter (fun f -> f.StartsWith("convert"))
-//        let arithImmed = dlxfiles |> Array.filter (fun f -> f.StartsWith("data"))
-//        let arithImmed = dlxfiles |> Array.filter (fun f -> f.StartsWith("directives"))
-//        let arithImmed = dlxfiles |> Array.filter (fun f -> f.StartsWith("double"))
-//        let arithImmed = dlxfiles |> Array.filter (fun f -> f.StartsWith("float"))
-//        let arithImmed = dlxfiles |> Array.filter (fun f -> f.StartsWith("fpArith"))
-//        let arithImmed = dlxfiles |> Array.filter (fun f -> f.StartsWith("intArith"))
-//        let arithImmed = dlxfiles |> Array.filter (fun f -> f.StartsWith("intLogical"))
-//        let arithImmed = dlxfiles |> Array.filter (fun f -> f.StartsWith("intSets"))
-//        let arithImmed = dlxfiles |> Array.filter (fun f -> f.StartsWith("intShift"))
-//        let arithImmed = dlxfiles |> Array.filter (fun f -> f.StartsWith("jump"))
-//        let arithImmed = dlxfiles |> Array.filter (fun f -> f.StartsWith("loadImmed"))
-//        let arithImmed = dlxfiles |> Array.filter (fun f -> f.StartsWith("loads"))
-//        let arithImmed = dlxfiles |> Array.filter (fun f -> f.StartsWith("logicalImmed"))
-
-//let srcdir = 
-//    if NCrunch.Framework.NCrunchEnvironment.NCrunchIsResident() then 
-//        Directory.GetParent(NCrunch.Framework.NCrunchEnvironment.GetOriginalProjectPath()).FullName
-//    else 
-//        Environment.CurrentDirectory
-//
-//let itypes, rtypes, jtypes = 
-//    Path.Combine(srcdir, @"../../support/Itypes"),
-//    Path.Combine(srcdir, @"../../support/Rtypes"),
-//    Path.Combine(srcdir, @"../../support/Jtypes")
-//
-//type Instruction =
-//    | RawItype of string * int
-//    | RawJtype of string * int
-//    | RawRtype of string * int * int
-//
-//let parseTypeFile fp =
-//    let pattern = @"(?<opcode>[^\s]+)\s+(?<alu>\d\s+)*\s*(?<encoding>\d+)"
-//    let regex = new Regex(pattern, RegexOptions.Multiline)
-//    let matches = File.ReadAllText(fp) |> regex.Matches
-//    [for m in matches -> 
-//        let opcode, alu, encoding = m.Groups.["opcode"].Value, m.Groups.["alu"].Value, m.Groups.["encoding"].Value
-//        fp |> function
-//        | _ when fp = itypes -> Instruction.RawItype(opcode, int encoding)
-//        | _ when fp = jtypes -> Instruction.RawJtype(opcode, int encoding)
-//        | _                  -> Instruction.RawRtype(opcode, int alu, int encoding) ]
-
-//type Instruction<'Opcode, 'Register, 'Immediate> =
-//    | IType of 'Opcode * 'Register * 'Register * 'Immediate
-//    | RType of int * 'Register * 'Register * 'Register * 'Opcode
-//    | JType of 'Opcode * 'Immediate 
-//
-//    member ins.Encode = (ins, typeof<'Opcode>) |> function
-//        | IType(opcode, rs1, rd, imm), ty -> function
-//            | _ when ty = typeof<string> -> ()
-//            | _ -> failwith ""
-//            
-//        | RType(rru, rs1, rs2, rd, func), ty -> ()
-//        | JType(opcode, name), ty -> ()
+let printi op rs1 rd imm = printfn "op,rs1,rd,imm ==> %s,%s,%s,%s" op rs1 rd imm
 
 
-//type Instruction =
-//    | IType of string * string * string * string
-//    | RType of int * string * string * string * string
-//    | JType of string * string
-//
-////    static member Invoke(symbolTable:Map<string, Instruction -> unit>) = f |> function
-////        | IType(_) -> ins.asBinaryString |> f
-////        | RType(_) -> ins.asBinaryString |> f
-////        | JType(_) -> ins.asBinaryString |> f
-//
-//    member private ins.Encode = ins |> function
-//        | IType(opcode, rs1, rd, imm) ->
-//            opcode  .PadLeft(6, '0') + 
-//            rs1     .PadLeft(5, '0') + 
-//            rd      .PadLeft(5, '0') + 
-//            imm     .PadLeft(16, '0')
-//            
-//        | RType(rru, rs1, rs2, rd, func) ->
-//            (string rru)    .PadLeft(6, '0') +
-//            rs1             .PadLeft(5, '0') +
-//            rs2             .PadLeft(5, '0') +
-//            rd              .PadLeft(5, '0') +
-//            unused                           +
-//            func            .PadLeft(5, '0')
-//        | JType(opcode, name) ->
-//            opcode  .PadLeft(6, '0') +
-//            name    .PadLeft(26, '0')
-//
-//    member ins.asBinaryString = ins.Encode
-//    member ins.asUInt32 = Convert.ToUInt32(ins.Encode, 2)
-//    member ins.asHexString = ins.asUInt32.ToString("x8")
-//
-//    override ins.ToString() = ins.asHexString
+let tobin (s:string) = Convert.ToString(s |> int, 2)
 
-//let ins = Instruction.IType("0", "0", "0", "0", null)
+let carray2string (c:char[]) = c |> Array.fold (fun s c -> string c + s) ("")
 
-//type ITypeInstruction<'Opcode, 'Register, 'Immediate> =
-//    abstract Opcode : 'Opcode
-//    abstract RS1    : 'Register
-//    abstract RD     : 'Register
-//    abstract Imm    : 'Immediate
-//
-//type RTypeInstruction<'Opcode, 'Register> =
-//    abstract RRKind : int
-//    abstract RS1    : 'Register
-//    abstract RS2    : 'Register
-//    abstract RD     : 'Register
-//    abstract Func   : 'Opcode
-//
-//type JTypeInstruction<'Opcode, 'Immediate> =
-//    abstract Opcode : 'Opcode
-//    abstract Name   : 'Immediate
+let revstr (s:string) = s.ToCharArray() |> Array.rev |> Array.fold(fun s c -> s + string c) ("")
 
-//type ITypeInstruction2() =
-//    member val Opcode   = "" with get, set
-//    member val RS1      = "" with get, set
-//    member val RD       = "" with get, set
-//    member val Imm      = "" with get, set
-////
-//type Opcode =
-//    | Raw of string
-//    | Num of uint32
-//
-//    member o.GetNum = 
-//        let zero4 = "0000"
-//        let zero26 = "00000000000000000000000000"
-//        o |> function
-//        | Raw(opcode) ->
-//            opcode.Length |> function 
-//            | 2 -> zero4 + opcode + zero26 |> UInt32.Parse
-//            | 1 -> "0" + zero4 + opcode + zero26 |> UInt32.Parse
-//            | _ -> failwith "invalid opcode"
-//        | Num(opcode) -> opcode
+let str2bytes (s:string) =
+    [   s.[0..7]
+        s.[8..15]
+        s.[16..23]
+        s.[24..31] ]
 
+let hex = ['0'..'9'] @ ['a'..'f']
+let bin = 
+    [
+        "0000"
+        "0001"
+        "0010"
+        "0011"
+        "0100"
+        "0101"
+        "0110"
+        "0111"
+        "1000"
+        "1001"
+        "1010"
+        "1011"
+        "1100"
+        "1101"
+        "1110"
+        "1111"
+    ]
+
+let b2hmap = 
+    let hex = 
+        ['0'..'9'] @ ['a'..'f']
+        |> List.map string
+    let bin = [for i in 0..15 -> Convert.ToString(i, 2).PadLeft(4, '0')]
+    (bin, hex) ||> List.zip 
+    |> Map.ofList
+
+let byte2hex (s:string) = (b2hmap.[s.Substring(0, 4)] + b2hmap.[s.Substring(4, 4)])
+    
+//let bin2hex (s:string) = 
+//    s |> function
+//    | _ when s.Length = 32 ->
+//        let b0 = s.Substring(0,8) |> byte2hex
+//        let b1 = s.Substring(8,8) |> byte2hex
+//        let b2 = s.Substring(16,8) |> byte2hex
+//        let b3 = s.Substring(24,8) |> byte2hex
+//        (b0 + b1 + b2 + b3)
+//    | _ -> failwith "binary string must be length 32"
+
+let bin2hex (s:string) = 
+    s |> function
+    | _ when s.Length % 4 <> 0 -> failwith "binary string length needs to be multiple of 4"
+    | _ ->
+        let nibbles = s.Length / 4
+        [0..nibbles-1] 
+        |> List.map (fun nib -> s.Substring(nib * 4, 4)) 
+        |> List.map nibble2hex
+        |> List.reduce (+)
+//    s |> function
+//    | _ when s.Length = 32 ->
+//        let b0 = s.Substring(0,8) |> byte2hex
+//        let b1 = s.Substring(8,8) |> byte2hex
+//        let b2 = s.Substring(16,8) |> byte2hex
+//        let b3 = s.Substring(24,8) |> byte2hex
+//        (b0 + b1 + b2 + b3)
+    | _ -> failwith (sprintf "failed binary to hex conversion of: %A, of length %d\nbinary string must be length 32!" s s.Length)
+
+
+let [<Test>] `` asm test `` () =
+    let op = "8"
+    let rs1 = "2"
+    let rd = "1"
+    let imm = "3"
+    
+    printi op rs1 rd imm
+    let op' = (op |> tobin).PadLeft(6,'0')
+    let rs1' = (rs1 |> tobin).PadLeft(5,'0')
+    let rd' = (rd |> tobin).PadLeft(5,'0')
+    let imm' = (imm |> tobin).PadLeft(16,'0')
+    printfn "op, rs1, rd, imm = %s, %s, %s, %s" op rs1 rd imm
+    printfn "op', rs1', rd', imm' = %s, %s, %s, %s" op' rs1' rd' imm'
+    let s = op' + rs1' + rd' + imm'
+    
+    let itypeIn = op, rd, rs1, imm
+    
+    printfn "S: %A" s
+    let b0 = s.Substring(0,8)
+    let b1 = s.Substring(8,8)
+    let b2 = s.Substring(16,8)
+    let b3 = s.Substring(24,8)
+    printfn "b0 ==> %A" b0
+    printfn "b1 ==> %A" b1
+    printfn "b2 ==> %A" b2
+    printfn "b3 ==> %A" b3
+    let b0' = byte2hex b0
+    let b1' = byte2hex b1
+    let b2' = byte2hex b2
+    let b3' = byte2hex b3
+    printfn "b0' ==> %A" b0'
+    printfn "b1' ==> %A" b1'
+    printfn "b2' ==> %A" b2'
+    printfn "b3' ==> %A" b3'
+    
+    let actual = bin2hex s
+    printi op' rs1' rd' imm'
+    let expected = "20410003"
+    expected |> should equal actual
+
+[<Test>]
+let ``asdfasdf`` () = 
+    let opcode = "sd"
+    let rs1 = "-8", "3"
+    let rd = "10"
+
+    let info = new OpcodeInfo()
+
+    let enc = Convert.ToString(info.Lookup(opcode) |> int, 2)
+
+//    let rs1 = 
+//        Convert.ToString(((rs1 |> fst |> int) + (rs1 |> snd |> int)), 2)
+
+
+    printfn "enc, rs1, rd ===> %A, %A, %A" enc rs1 rd
+
+    let o, b = rs1
+
+    printfn "basdfffffffffffffff %A" (uint32 (int o + int b))
+    let y = (uint32 (int o + int b))
+
+    printfn "y is ====> %A" (Convert.ToString(int y, 2))
+
+    let op = enc
+    let rs1 = Convert.ToString(b |> int, 2).PadLeft(5, '0')
+    let rd = Convert.ToString(rd |> int, 2).PadLeft(5, '0')
+    let imm = 
+        Convert.ToString(o |> int16,2)
+
+    let s = op + rs1 + rd + imm
+
+    printfn "op %A" op
+    printfn "rs1 %A" rs1
+    printfn "rd %A" rd
+    printfn "imm %A" imm
+
+    printfn "op len %A" (op.Length)
+    printfn "rs1 len %A" (rs1.Length)
+    printfn "rd len %A" (rd.Length)
+    printfn "imm len %A" (imm.Length)
+
+    printfn "result s: %A" s
+    printfn "s.length %A" (s.Length)
+
+    printfn "bin2hex: %A" (s |> bin2hex)
+    
+    printfn "asdfas:%A" (imm |> bin2hex)
+
+    let actual = s |> bin2hex
+    let expected = "bc6afff8"
+
+    actual |> should equal expected
+
+
+[<Test>]
+let ``func gen`` () =
+    let info = new OpcodeInfo()
+
+    let itypes, rtypes, jtypes = 
+        info.ITypes.Info,
+        info.RTypes.Info,
+        info.JTypes.Info
+
+    let itypestr name = 
+        sprintf "
+let %s opcode rs1 rd imm = ()" name
+
+    let rtypestr name = 
+        sprintf "
+let %s rrx rs1 rs2 rd = ()" name
+
+    let jtypestr name = 
+        sprintf "
+let %s opcode imm = ()" name
+
+
+    let genFunc (name:string) (f:string -> string) = f name
+
+    let ifun = itypes |> List.map (fun (op,_,_) -> genFunc op itypestr)
+    let rfun = rtypes |> List.map (fun (op,_,_) -> genFunc op rtypestr)
+    let jfun = jtypes |> List.map (fun (op,_,_) -> genFunc op jtypestr)
+
+
+    ifun |> List.iter (printfn "%s")
+    rfun |> List.iter (printfn "%s")
+    jfun |> List.iter (printfn "%s")
+
+
+[<Test>]
+let ``regex gen`` () =
+    let info = new OpcodeInfo()
+
+    let opOnly (info:(string*string*string) list) =
+        info |> List.map (fun (op,_,_) -> op)
+
+    let itypes, rtypes, jtypes = 
+        info.ITypes.Info,
+        info.RTypes.Info,
+        info.JTypes.Info
+
+
+
+    let genRegex (name:string) (f:string -> string) = f name
+
+    let genActivePattern (name:string) =
+        sprintf "
+let (|%s|_|) = 
+    function
+    | s when s |> matches r.%s -> Some (groups r.%s s)
+    | _ -> None" (name.ToUpper()) (name.ToUpper()) (name.ToUpper())
+
+//    let itypeMembers = 
+//        itypes |> opOnly 
+//        |> List.fold (fun state op ->
+//            state @ [(sprintf "member val %s = Regex(@\"%s\")" (op.ToUpper()) op) + "\n"]
+//            ) ([""])
+
+    let itypeMembers = 
+        itypes |> opOnly 
+        |> List.fold (fun state op ->
+            state @ [genActivePattern op]
+            ) ([""])
+
+    for itm in itypeMembers do printfn "%s" itm
