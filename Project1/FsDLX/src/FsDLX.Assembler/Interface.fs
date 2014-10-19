@@ -59,6 +59,7 @@ type Assembler(dlxfile:string, info:OpcodeInfo) =
             | _ when line.Length <= 1 -> inputs
             | Comment inputs comment -> comment
             | Patterns.Label (ste, rest) ->
+                //pc := !pc + 4u
                 st.Add(ste)
                 let lbl = Label.Reference(ste)
                 //st.Dump()
@@ -88,7 +89,7 @@ type Assembler(dlxfile:string, info:OpcodeInfo) =
         let newState (hex:string list) (dlxin:DLXInput) = hex @ [dlxin.ToString()]
 
         let updateLabels = 
-            printfn "Update Labels"
+            //printfn "Update Labels"
 //            let procImmediate rs1 rd = function
 //                | Immediate.Label lbl ->
 //                    Operands.IType(rs1, rd, Immediate.Label (lbl.ReplaceWithAddress(symtab)))
@@ -102,27 +103,12 @@ type Assembler(dlxfile:string, info:OpcodeInfo) =
                 | Operands.IType(rs1, rd, imm) -> 
                     //printfn "Proc itype immediate"
                     imm |> function
-                    | Immediate.Label lbl ->
-                        //printfn "Proc label"
-                        Operands.IType(rs1, rd, Immediate.Label (lbl.ReplaceWithAddress(symtab)))
-                    | Immediate.BasePlusOffset(b,o) -> 
-                        //printfn "Proc BPO"
-                        //printfn "base, offset ==> %A, %A" b o
-                        o |> function
-                        | Offset.Label l ->
-                            //printfn "Label"
-                            Operands.IType(rs1, rd, Immediate.BasePlusOffset(b,o.RepalceWithAddress(symtab)))
-                        | _ ->
-                            //printfn "Other offset"
-                            let o = Operands.IType(rs1, rd, imm)
-                            //printfn "Made other offset"
-                            o
-                    | immediate -> Operands.IType(rs1, rd, immediate)
+                    | Immediate.Label lbl ->            Operands.IType(rs1, rd, Immediate.Value (lbl.ReplaceWithAddress(symtab)))
+                    | Immediate.BasePlusOffset(b,o) ->  Operands.IType(rs1, rd, Immediate.Value ((b + o) |> int))
+                    | immediate ->                      Operands.IType(rs1, rd, immediate)
                 | Operands.JType(name) -> name |> function
-                    | Immediate.Label lbl ->
-                        Operands.JType(Immediate.Label (lbl.ReplaceWithAddress(symtab)))
-                    | _ -> 
-                        Operands.JType(name)
+                    | Immediate.Label label -> Operands.JType(Immediate.Name (Convert.ToString(label.ReplaceWithAddress(symtab), 2)))
+                    | _ -> Operands.JType(name)
                 | operands -> operands
 
             function
@@ -135,7 +121,8 @@ type Assembler(dlxfile:string, info:OpcodeInfo) =
             dlxin |> function
             | DLXInput.Comment(_)   -> dlxin |> newState hex
             | DLXInput.Directive(_) -> dlxin |> newState hex
-            | DLXInput.Instruction(pc, instruction, comment) ->
+            | DLXInput.Instruction(pc, instruction, comment) -> 
+                //printfn "ins ==> %A" instruction;
                 DLXInput.Instruction(pc, instruction |> updateLabels, comment)
                 |> newState hex
         ) (List.empty<string>)

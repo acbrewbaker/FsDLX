@@ -14,7 +14,7 @@ type InputRegex() =
 
 type DirectiveRegex() =
     member val Text    = Regex(@"(?<=\.(text))(?: 0x)?(\d*)")
-    member val Data    = Regex(@"(?<=\.(data).*)(\d+)")
+    member val Data    = Regex(@"(?<=\.(data))(?: 0x)?(\d*)")
     member val Align   = Regex(@"(?<=\.(align).*)(\d)")
     member val Asciiz  = Regex(@"(?<=\.(asciiz).*)?""([^""]+)""")
     member val Double  = Regex(@"(?<=\.(double).*)([+-]?\d*\.\d+)")
@@ -43,128 +43,104 @@ type ImmediateRegex() =
     member val Register         = Regex(@"([rf]\d\d?)$")
     member val BasePlusOffset   = Regex(@"([+-]?\d+)\((\w+)\)")
 
-type RegisterRegex() =
-    member val R = Regex(@"r\d\d?")
-    member val F = Regex(@"f\d\d?")
 
-let register =
-    let r = RegisterRegex()
 
-    function
-    | reg when reg |> matches r.R -> Register.R reg
-    | reg when reg |> matches r.F -> Register.F reg
-    | _ -> failwith "Failed to create register"
-
-let baseplusoffset =
-    let imm = ImmediateRegex()
-    function
-    | bv,ol when bv |> matches imm.Value && ol |> matches imm.Value -> 
-        Convert.ToInt16(bv), Offset.Label (Label.Inline ol)
-    | bv,ov when bv |> matches imm.Value && ov |> matches imm.Value ->
-        Convert.ToInt16(bv), Offset.Value (Value.Int (Convert.ToInt32(ov)))
-    | bv,oreg when bv |> matches imm.Value && oreg |> matches imm.Register ->
-        Convert.ToInt16(bv), Offset.Register (register oreg)
-    | bv,oreg -> 
-        failwith (sprintf "failed to match base plus offset from: (%A, %A)" bv oreg)
-
-let immediate =
-    let r = ImmediateRegex()
-    
-    function
-    | imm when imm |> matches r.Value           -> Immediate.Value (Value.Int(Convert.ToInt32(imm)))
-    | imm when imm |> matches r.Label           -> Immediate.Label (Label.Inline imm)
-    | imm when imm |> matches r.Register        -> Immediate.Register (register imm)
-    | imm when imm |> matches r.BasePlusOffset  ->
-        let b,o = let g = r.BasePlusOffset.Match(imm).Groups in (g.[1].Value, g.[2].Value)
-        Immediate.BasePlusOffset (baseplusoffset (b,o))
-    | imm -> failwith (sprintf "Failed to create immediate from: %A" imm)
 
 let (|Instruction|_|) (info:OpcodeInfo) : (string*uint32 ref) -> Instruction option =
     let o = OpcodeRegex(info)
     let imm = ImmediateRegex()
-    let reg = RegisterRegex()
     let i = InputRegex()
     
     let storeRegex = Regex(@"(?<offset>-?\d)\((?<rs1>r\d\d?)\), (?<rd>[rf]\d\d?)")
 
     let (|IType|_|) (info:OpcodeInfo) : (string*string) -> (Opcode*Operands) option =
-        let (|RRI|RI|R|IF|IR|) (ops:string[]) = ops.Length |> function
-            | 3 -> RRI ops
-            | 2 -> ops |> function
-                | _ when (ops.[0] |> matches imm.Label) || (ops.[0] |> matches imm.BasePlusOffset) -> 
-                    if ops.[1].StartsWith("f")
-                    then IF ops
-                    else IR ops
-                | _ -> RI ops
-            | 1 -> R ops
-            | _ -> failwith "no 0 register IType operands"
+        let (|RRI|RI|RBPO|RL|RRL|BPOR|LR|) = 
+            let rri = Regex(@"\A(?<rd>r\d\d?), (?<rs1>r\d\d?), (?<imm>\d+)$")
+            let ri = Regex(@"\A(?<rd>r\d\d?),(?<rs1>) (?<imm>\d+)$")
+            let rbpo = Regex(@"\A(?<rd>[rf]\d\d?), (?<offset>-?\d+)\((?<rs1>r\d\d?)\)$")
+            let rl = Regex(@"\A(?<rd>[rf]\d\d?),(?<rs1>) (?<imm>\w+)$")
+            let rrl = Regex(@"\A(?<rd>r\d\d?), (?<rs1>r\d\d?), (?<label>\w+)$")
+            let bpor = Regex(@"(?<offset>-?\d+)\((?<rs1>r\d\d?)\), (?<rd>[rf]\d\d?)")
+            let lr = Regex(@"(?<label>\w+), (?<rd>[rf]\d\d?)")
+            function
+            | s when s |> matches rri -> 
+                //printfn "s matches rri =======> %A" s
+                RRI (let g = rri.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.RD g.["rd"].Value, Immediate.Value (g.["imm"].Value |> int)))
+            | s when s |> matches ri -> 
+                //printfn "s matches ri =======> %A" s
+                RI (let g = ri.Match(s).Groups in (Register.Unused, Register.RD g.["rd"].Value, Immediate.Value (g.["imm"].Value |> int))) 
+            | s when s |> matches rbpo ->
+                //printfn "s matches rbpo =====> %A" s
+                RBPO (let g = rbpo.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.RD g.["rd"].Value, Immediate.Value( (g.["offset"].Value |> int))))
+            | s when s |> matches rl ->
+                //printfn "s matches rl =======> %A" s
+                RL (let g = rl.Match(s).Groups in (Register.Unused, Register.RD g.["rd"].Value, Immediate.Label (Label.Inline g.["imm"].Value)))
+            | s when s |> matches rrl ->
+                //printfn "s matches rrl =======> %A" s
+                RRL (let g = rrl.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.RD g.["rd"].Value, Immediate.Label (Label.Inline g.["label"].Value)))
+            | s when s |> matches bpor ->
+                printfn "s matches bpor =======> %A" s
+                BPOR (let g = bpor.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.RD g.["rd"].Value, Immediate.Value((g.["offset"].Value |> int))))
+            | s when s |> matches lr ->
+                printfn "s matches bpor =======> %A" s
+                LR (let g = lr.Match(s).Groups in (Register.Unused, Register.RD g.["rd"].Value, Immediate.Label (Label.Inline g.["label"].Value)))
+            | s -> failwith (sprintf "failed getting itype operands from %A" s)
         
         function
         | (opcode, operands) when opcode |> matches o.IType ->
-            let opcode, operands =
-                Opcode.IType(info.Lookup(opcode) |> int),
-                operands.Split([|',';' '|], StringSplitOptions.RemoveEmptyEntries) |> function
-                    | RRI ops ->
-                        Operands.IType(Register.R ops.[1], Register.R ops.[0], immediate ops.[2])
-                    | RI ops -> 
-                        Operands.IType(Register.R ops.[1], Register.Unused, immediate ops.[0])
-                    | R ops -> 
-                        Operands.IType(Register.R ops.[0], Register.Unused, Immediate.Unused)
-                    | IF ops -> 
-                        printfn "ops1, ops0 ==> %A, %A" (ops.[1]) (ops.[0])
-                        //let imm,rs1 = let g = imm.BasePlusOffset.Match(ops.[0]).Groups in (g.[1].Value, g.[2].Value)
-                        Operands.IType(Register.R ops.[1], Register.F ops.[1] , immediate ops.[0])
-                    | IR ops -> 
-                        Operands.IType(Register.R ops.[1], Register.Unused, immediate ops.[0])
-                    | _ when operands |> matches storeRegex -> 
-                        let offset, rs1, rd = let g = storeRegex.Match(operands).Groups in (g.["offset"].Value, g.["rs1"].Value, g.["rd"].Value)
-                        Operands.IType(register rs1, register rd, Immediate.Value (Value.Int(int offset))) 
-            Some (opcode, operands)
+            let op, ops =
+                Opcode.IType(opcode, info.Lookup(opcode) |> int),
+                operands.Trim() |> function
+                    | RRI ops -> Operands.IType ops
+                    | RI ops -> Operands.IType ops
+                    | RBPO ops -> Operands.IType ops
+                    | RL ops -> Operands.IType ops
+                    | RRL ops -> Operands.IType ops
+                    | BPOR ops -> Operands.IType ops
+                    | LR ops -> Operands.IType ops
+            Some (op, ops)
         | _ -> None
     
     let (|RType|_|) (info:OpcodeInfo) : (string*string) -> (Opcode*Operands) option =
-        let (|RRR|FFF|RR|FF|RF|) (ops:string[]) = 
-            let allR, allF, len =
-                ops |> Array.forall (fun reg -> reg.StartsWith("r")),
-                ops |> Array.forall (fun reg -> reg.StartsWith("f")),
-                ops.Length
-            (allR, allF, len) |> function
-            | true, false, 3 -> RRR ops
-            | false, true, 3 -> FFF ops
-            | true, false, 2 -> RR ops
-            | false, true, 2 -> FF ops
-            | false, false,2 -> RF ops
-            | _ -> failwith "no 1 register RType operands"
+        let (|RRR|FFF|FF|) = 
+            let rrr = Regex(@"(?<rd>r\d\d?), (?<rs1>r\d\d?), (?<rs2>r\d\d?)")
+            let fff = Regex(@"(?<rd>f\d\d?), (?<rs1>f\d\d?), (?<rs2>f\d\d?)")
+            let ff = Regex(@"(?<rd>[rf]\d\d?), (?<rs1>[rf]\d\d?)")
+            let regs (r:Regex) s = let g = r.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.RS2 g.["rs2"].Value, Register.RD g.["rd"].Value)
+            function
+            | s when s |> matches rrr -> RRR (s |> regs rrr)
+            | s when s |> matches fff -> FFF (s |> regs fff)
+            | s when s |> matches ff -> 
+                printfn "s matches ff =====> %A" s
+                FF (let g = ff.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.Unused, Register.RD g.["rd"].Value))
+            | _ -> failwith "failed getting rtype operands"
             
         function
         | (opcode, operands) when opcode |> matches o.RType ->
             let op, ops =
-                Opcode.RType(info.Lookup(opcode) |> int),
-                operands.Split([|',';' '|], StringSplitOptions.RemoveEmptyEntries) |> function
-                    | RRR ops -> Operands.RType(Register.R ops.[1], Register.R ops.[2], Register.R ops.[0])
-                    | FFF ops -> Operands.RType(Register.F ops.[1], Register.F ops.[2], Register.F ops.[0])
-                    | RR ops -> Operands.RType(Register.R ops.[1], Register.Unused, Register.R ops.[0])
-                    | FF ops -> Operands.RType(Register.F ops.[1], Register.Unused, Register.F ops.[0])
-                    | RF ops -> Operands.RType(Register.R ops.[1], Register.Unused, Register.F ops.[0])
+                Opcode.RType(opcode, info.Lookup(opcode) |> int),
+                operands |> function
+                    | RRR ops -> Operands.RType ops
+                    | FFF ops -> Operands.RType ops
+                    | FF ops -> Operands.RType ops
             Some (op, ops)
         | _ -> None
 
     let (|JType|_|) (info:OpcodeInfo) : (string*string) -> (Opcode*Operands) option =
-        let r = RegisterRegex()
-
-        let (|R|I|) (ops:string[]) = 
-            ops.Length |> function
-            | 1 -> ops.[0] |> function | o when o |> matches reg.R -> R o | _ -> I ops.[0]
+        let (|L|) = 
+            let l = Regex(@"(?<label>\w+)")
+            let name (r:Regex) s = let g = r.Match(s).Groups in Immediate.Label(Label.Inline g.["label"].Value)
+            function
+            | s when s |> matches l -> L (s |> name l)
             | _ -> failwith "failed to match JType operands in active pattern"
 
         function
         | (opcode, operands) when opcode |> matches o.JType ->
-            let opcode, operands =
-                Opcode.JType(info.Lookup(opcode) |> int),
-                operands.Split([|',';' '|], StringSplitOptions.RemoveEmptyEntries) |> function
-                    | R ops -> Operands.JType(immediate ops)
-                    | I ops -> Operands.JType(immediate ops)
-            Some (opcode, operands)
+            let op, ops =
+                Opcode.JType(opcode, info.Lookup(opcode) |> int),
+                operands |> function
+                    | L ops -> Operands.JType ops
+            Some (op, ops)
         | _ -> None    
             
     let groups (r:Regex) s = 
@@ -191,17 +167,11 @@ let (|Instruction|_|) (info:OpcodeInfo) : (string*uint32 ref) -> Instruction opt
 
         let instruction = 
             (opcode, operands) |> function
-            | "trap", _ ->
-                // trap is IType in the files, but JType in the book.
-                Instruction.JType(Opcode.JType(info.Lookup(opcode) |> int), Operands.TRAP(operands))
-            | "nop", _ ->
-                Instruction.RType(rrx opcode, Operands.NOP(), unused opcode, func opcode)
-            | IType info (op, ops) -> 
-                Instruction.IType(op, ops)    
-            | RType info (op, ops) -> 
-                Instruction.RType(rrx opcode, ops, unused opcode, func opcode)
-            | JType info (op, ops) -> 
-                Instruction.JType(op, ops)
+            | "trap", _ ->              Instruction.JType(Opcode.JType(opcode, info.Lookup(opcode) |> int), Operands.TRAP(operands))
+            | "nop", _ ->               Instruction.RType(rrx opcode, Operands.NOP(), unused opcode, func opcode)
+            | IType info (op, ops) ->   Instruction.IType(op, ops)    
+            | RType info (op, ops) ->   Instruction.RType(rrx opcode, ops, unused opcode, func opcode)
+            | JType info (op, ops) ->   Instruction.JType(op, ops)
             | _ -> failwith (sprintf "failed to make instruction from: %A" (opcode, operands))
         Some instruction
     | _ -> None
@@ -226,10 +196,8 @@ let (|Directive|_|) : (string*uint32 ref) -> Directive list option =
     | s, pc when s |> matches d.Data ->
         groups d.Data s |> List.map (fun (s:string) ->
             let pc' = !pc
-            let s' = s
-            let comment = asComment s'
             if s.Length > 1 then pc := Convert.ToUInt32(s, 16)
-            (pc', s', comment)) 
+            (pc', s, "")) 
         |> List.map (fun e -> new Directive(e))
         |> List.choose (fun d -> if d.Data.Length > 1 then Some d else None)
         |> Some
@@ -237,10 +205,11 @@ let (|Directive|_|) : (string*uint32 ref) -> Directive list option =
     | s, pc when s |> matches d.Align ->
         groups d.Align s |> List.map (fun (s:string) ->
             let pc' = !pc
-            let a = uint32 s
-            
-            while !pc % a <> 0u do pc := !pc + 1u
+            let a = int s
+            pc := !pc <<< a
+            //while pc' % a <> 0u do pc := !pc * 2u
 //            pc := if !pc <> 0u then !pc - 1u else !pc
+            //pc := if int (pc' - 1u) > 0 then pc' - 1u else pc'
             (pc', s, s)) 
         |> List.map (fun e -> new Directive(e))
         |> List.choose (fun d -> if d.Data.Length > 1 then Some d else None)
@@ -311,7 +280,7 @@ let (|Label|_|) : (string*uint32 ref) -> (SymbolTableEntry*string) option =
     | (line, pc) when line |> matches i.Label ->
         let lbl, rest = (groups i.Label line)
         //printfn "Label, PC  ===> %A, %A" lbl pc
-        (SymbolTableEntry(lbl, int16 !pc), rest)
+        (SymbolTableEntry(lbl, int !pc), rest)
         |> Some
     | _ -> None
 

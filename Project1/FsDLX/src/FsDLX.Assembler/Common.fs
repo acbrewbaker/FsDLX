@@ -44,11 +44,14 @@ let b2hmap =
     (bin, hex) ||> List.zip 
     |> Map.ofList
 
-let nibble2hex (s:string) = b2hmap.[s.Substring(0,4)]
+let nibble2hex (s:string) = 
+    //printfn "trying to change %A from %A to hex" (s.Substring(0,4)) s
+    b2hmap.[s.Substring(0,4)]
 
 let byte2hex (s:string) = (b2hmap.[s.Substring(0, 4)] + b2hmap.[s.Substring(4, 4)])
     
 let bin2hex (s:string) = 
+    //printfn "bin2hex ===> %A" s
     s |> function
     | _ when s.Length % 4 <> 0 -> failwith "binary string length needs to be multiple of 4"
     | _ ->
