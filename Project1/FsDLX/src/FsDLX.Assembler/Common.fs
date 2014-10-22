@@ -44,12 +44,21 @@ let b2hmap =
     (bin, hex) ||> List.zip 
     |> Map.ofList
 
+let h2bmap = 
+    let hex = 
+        ['0'..'9'] @ ['a'..'f']
+    let bin = [for i in 0..15 -> Convert.ToString(i, 2).PadLeft(4, '0')]
+    (hex, bin) ||> List.zip 
+    |> Map.ofList
+
 let nibble2hex (s:string) = 
     //printfn "trying to change %A from %A to hex" (s.Substring(0,4)) s
     b2hmap.[s.Substring(0,4)]
 
 let byte2hex (s:string) = (b2hmap.[s.Substring(0, 4)] + b2hmap.[s.Substring(4, 4)])
     
+let hex2bin (s:string) = s.ToCharArray() |> Array.fold (fun s c -> s + string h2bmap.[c]) ("")
+
 let bin2hex (s:string) = 
     //printfn "bin2hex ===> %A" s
     s |> function

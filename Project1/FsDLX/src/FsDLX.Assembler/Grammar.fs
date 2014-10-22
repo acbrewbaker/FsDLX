@@ -37,6 +37,7 @@ and Instruction =
         | RType(rrx, ops, unused, func) -> 
             sprintf "%s%s%s%s" (rrx.ToString()) (ops.ToString()) (unused.ToString()) (func.ToString())
         | JType(op, ops) -> 
+            //printfn "JType: %A" (ops.ToString())
             sprintf "%s%s" (op.ToString()) (ops.ToString())
 
 and Opcode =
@@ -79,7 +80,10 @@ and Immediate =
         | Register imm -> imm.ToString().PadLeft(16, '0')
         | BasePlusOffset(b,o) -> Convert.ToString(b + o, 2).PadLeft(16, '0')
         | Value v -> Convert.ToString(v |> int16, 2).PadLeft(16, '0')
-        | Name n -> Convert.ToString(int n, 2).PadLeft(26, '0')
+        | Name n -> 
+            //let s = Convert.ToString(int n, 2)
+            printfn "name: %A" n
+            (n.Length > 26) |> function | true -> n.Substring(n.Length - 26, 26) | false -> n.PadLeft(26, '0')
         | Unused -> "0".PadLeft(16, '0')
         
 and Base = int16
@@ -92,6 +96,15 @@ and Label =
         //printfn "Replacing: %A" l
         l |> function
         | Inline l -> st.Lookup(l)
+        | _ -> failwith "Can't replace label when not inline type"
+
+    member l.ReplaceWithAddress(st:SymbolTable, pc:int) = 
+        //printfn "Replacing: %A" l
+        l |> function
+        | Inline l -> 
+            let lblPC = st.Lookup(l)
+            printfn "pc, lblpc = %A, %A" pc lblPC
+            if pc < lblPC then pc else lblPC - pc
         | _ -> failwith "Can't replace label when not inline type"
 
 and RRX =

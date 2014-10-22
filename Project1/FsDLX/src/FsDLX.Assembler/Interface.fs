@@ -85,7 +85,9 @@ type Assembler(dlxfile:string, info:OpcodeInfo) =
         let lines = dlxfile |> File.ReadAllLines 
         let pc = ref 0u
         let inputs = parseInputs lines pc symtab
-    
+        
+        pc := 0u
+
         let newState (hex:string list) (dlxin:DLXInput) = hex @ [dlxin.ToString()]
 
         let updateLabels = 
@@ -96,7 +98,6 @@ type Assembler(dlxfile:string, info:OpcodeInfo) =
 //                | Immediate.BasePlusOffset(b,o) -> 
 //                    Operands.IType(rs1, rd, Immediate.BasePlusOffset(b,o.RepalceWithAddress(symtab)))
 //                | immediate -> Operands.IType(rs1, rd, immediate)
-
             let procOperands = 
                 //printfn "Proc operands"
                 function
@@ -107,14 +108,18 @@ type Assembler(dlxfile:string, info:OpcodeInfo) =
                     | Immediate.BasePlusOffset(b,o) ->  Operands.IType(rs1, rd, Immediate.Value ((b + o) |> int))
                     | immediate ->                      Operands.IType(rs1, rd, immediate)
                 | Operands.JType(name) -> name |> function
-                    | Immediate.Label label -> Operands.JType(Immediate.Name (Convert.ToString(label.ReplaceWithAddress(symtab), 2)))
+                    | Immediate.Label label -> 
+                        let a = label.ReplaceWithAddress(symtab, int !pc)
+                        printfn "label, addr from table: %A  ==> %A" label a
+                        Operands.JType(Immediate.Name (Convert.ToString(a, 2)))
                     | _ -> Operands.JType(name)
                 | operands -> operands
 
+            
             function
-            | Instruction.IType(opcode, operands) -> Instruction.IType(opcode, operands |> procOperands)
-            | Instruction.JType(opcode, operands) -> Instruction.JType(opcode, operands |> procOperands)
-            | instruction -> instruction
+            | Instruction.IType(opcode, operands) -> pc := !pc + 4u; Instruction.IType(opcode, operands |> procOperands)
+            | Instruction.JType(opcode, operands) -> pc := !pc + 4u; Instruction.JType(opcode, operands |> procOperands)
+            | instruction -> pc := !pc + 4u; instruction
 
         inputs
         |> Seq.fold (fun (hex:string list) dlxin -> 

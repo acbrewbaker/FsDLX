@@ -54,6 +54,7 @@ let (|Instruction|_|) (info:OpcodeInfo) : (string*uint32 ref) -> Instruction opt
     let storeRegex = Regex(@"(?<offset>-?\d)\((?<rs1>r\d\d?)\), (?<rd>[rf]\d\d?)")
 
     let (|IType|_|) (info:OpcodeInfo) : (string*string) -> (Opcode*Operands) option =
+
         let (|RRI|RI|RBPO|RL|RRL|BPOR|LR|) = 
             let rri = Regex(@"\A(?<rd>r\d\d?), (?<rs1>r\d\d?), (?<imm>\d+)$")
             let ri = Regex(@"\A(?<rd>r\d\d?),(?<rs1>) (?<imm>\d+)$")
@@ -62,6 +63,8 @@ let (|Instruction|_|) (info:OpcodeInfo) : (string*uint32 ref) -> Instruction opt
             let rrl = Regex(@"\A(?<rd>r\d\d?), (?<rs1>r\d\d?), (?<label>\w+)$")
             let bpor = Regex(@"(?<offset>-?\d+)\((?<rs1>r\d\d?)\), (?<rd>[rf]\d\d?)")
             let lr = Regex(@"(?<label>\w+), (?<rd>[rf]\d\d?)")
+            let r = Regex(@"\A(?<rs1>r\d\d?)$")
+
             function
             | s when s |> matches rri -> 
                 //printfn "s matches rri =======> %A" s
@@ -84,6 +87,8 @@ let (|Instruction|_|) (info:OpcodeInfo) : (string*uint32 ref) -> Instruction opt
             | s when s |> matches lr ->
                 printfn "s matches bpor =======> %A" s
                 LR (let g = lr.Match(s).Groups in (Register.Unused, Register.RD g.["rd"].Value, Immediate.Label (Label.Inline g.["label"].Value)))
+            | s when s |> matches r ->
+                RI (let g = r.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.Unused, Immediate.Unused))
             | s -> failwith (sprintf "failed getting itype operands from %A" s)
         
         function
