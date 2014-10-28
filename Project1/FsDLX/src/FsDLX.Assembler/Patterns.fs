@@ -55,97 +55,82 @@ let (|Instruction|_|) (info:OpcodeInfo) : (string*uint32 ref) -> Instruction opt
 
     let (|IType|_|) (info:OpcodeInfo) : (string*string) -> (Opcode*Operands) option =
 
-        let (|RRI|RI|RBPO|RL|RRL|BPOR|LR|) = 
-            let rri = Regex(@"\A(?<rd>r\d\d?), (?<rs1>r\d\d?), (?<imm>\d+)$")
-            let ri = Regex(@"\A(?<rd>r\d\d?),(?<rs1>) (?<imm>\d+)$")
-            let rbpo = Regex(@"\A(?<rd>[rf]\d\d?), (?<offset>-?\d+)\((?<rs1>r\d\d?)\)$")
-            let rl = Regex(@"\A(?<rd>[rf]\d\d?),(?<rs1>) (?<imm>\w+)$")
-            let rrl = Regex(@"\A(?<rd>r\d\d?), (?<rs1>r\d\d?), (?<label>\w+)$")
-            let bpor = Regex(@"(?<offset>-?\d+)\((?<rs1>r\d\d?)\), (?<rd>[rf]\d\d?)")
-            let lr = Regex(@"(?<label>\w+), (?<rd>[rf]\d\d?)")
-            let r = Regex(@"\A(?<rs1>r\d\d?)$")
-
-            function
-            | s when s |> matches rri -> 
-                //printfn "s matches rri =======> %A" s
-                RRI (let g = rri.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.RD g.["rd"].Value, Immediate.Value (g.["imm"].Value |> int)))
-            | s when s |> matches ri -> 
-                //printfn "s matches ri =======> %A" s
-                RI (let g = ri.Match(s).Groups in (Register.Unused, Register.RD g.["rd"].Value, Immediate.Value (g.["imm"].Value |> int))) 
-            | s when s |> matches rbpo ->
-                //printfn "s matches rbpo =====> %A" s
-                RBPO (let g = rbpo.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.RD g.["rd"].Value, Immediate.Value( (g.["offset"].Value |> int))))
-            | s when s |> matches rl ->
-                //printfn "s matches rl =======> %A" s
-                RL (let g = rl.Match(s).Groups in (Register.Unused, Register.RD g.["rd"].Value, Immediate.Label (Label.Inline g.["imm"].Value)))
-            | s when s |> matches rrl ->
-                //printfn "s matches rrl =======> %A" s
-                RRL (let g = rrl.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.RD g.["rd"].Value, Immediate.Label (Label.Inline g.["label"].Value)))
-            | s when s |> matches bpor ->
-                printfn "s matches bpor =======> %A" s
-                BPOR (let g = bpor.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.RD g.["rd"].Value, Immediate.Value((g.["offset"].Value |> int))))
-            | s when s |> matches lr ->
-                printfn "s matches bpor =======> %A" s
-                LR (let g = lr.Match(s).Groups in (Register.Unused, Register.RD g.["rd"].Value, Immediate.Label (Label.Inline g.["label"].Value)))
-            | s when s |> matches r ->
-                RI (let g = r.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.Unused, Immediate.Unused))
-            | s -> failwith (sprintf "failed getting itype operands from %A" s)
+        let rri = Regex(@"\A(?<rd>r\d\d?), (?<rs1>r\d\d?), (?<imm>\d+)$")
+        let ri = Regex(@"\A(?<rd>r\d\d?),(?<rs1>) (?<imm>\d+)$")
+        let rbpo = Regex(@"\A(?<rd>[rf]\d\d?), (?<offset>-?\d+)\((?<rs1>r\d\d?)\)$")
+        let rl = Regex(@"\A(?<rd>[rf]\d\d?),(?<rs1>) (?<imm>\w+)$")
+        let rrl = Regex(@"\A(?<rd>r\d\d?), (?<rs1>r\d\d?), (?<label>\w+)$")
+        let bpor = Regex(@"(?<offset>-?\d+)\((?<rs1>r\d\d?)\), (?<rd>[rf]\d\d?)")
+        let lr = Regex(@"(?<label>\w+), (?<rd>[rf]\d\d?)")
+        let r = Regex(@"\A(?<rs1>r\d\d?)$")
         
+
         function
         | (opcode, operands) when opcode |> matches o.IType ->
-            let op, ops =
+            Some( 
+                
                 Opcode.IType(opcode, info.Lookup(opcode) |> int),
-                operands.Trim() |> function
-                    | RRI ops -> Operands.IType ops
-                    | RI ops -> Operands.IType ops
-                    | RBPO ops -> Operands.IType ops
-                    | RL ops -> Operands.IType ops
-                    | RRL ops -> Operands.IType ops
-                    | BPOR ops -> Operands.IType ops
-                    | LR ops -> Operands.IType ops
-            Some (op, ops)
+                Operands.IType(operands.Trim() |> function
+                    | s when s |> matches rri -> 
+                        //printfn "s matches rri =======> %A" s
+                        let g = rri.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.RD g.["rd"].Value, Immediate.Value (g.["imm"].Value |> int))
+                    | s when s |> matches ri -> 
+                        //printfn "s matches ri =======> %A" s
+                        let g = ri.Match(s).Groups in (Register.Unused, Register.RD g.["rd"].Value, Immediate.Value (g.["imm"].Value |> int))
+                    | s when s |> matches rbpo ->
+                        //printfn "s matches rbpo =====> %A" s
+                        let g = rbpo.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.RD g.["rd"].Value, Immediate.Value( (g.["offset"].Value |> int)))
+                    | s when s |> matches rl ->
+                        //printfn "s matches rl =======> %A" s
+                        let g = rl.Match(s).Groups in (Register.Unused, Register.RD g.["rd"].Value, Immediate.Label (Label.Inline g.["imm"].Value))
+                    | s when s |> matches rrl ->
+                        //printfn "s matches rrl =======> %A" s
+                        let g = rrl.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.RD g.["rd"].Value, Immediate.Label (Label.Inline g.["label"].Value))
+                    | s when s |> matches bpor ->
+                        printfn "s matches bpor =======> %A" s
+                        let g = bpor.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.RD g.["rd"].Value, Immediate.Value((g.["offset"].Value |> int)))
+                    | s when s |> matches lr ->
+                        printfn "s matches bpor =======> %A" s
+                        let g = lr.Match(s).Groups in (Register.Unused, Register.RD g.["rd"].Value, Immediate.Label (Label.Inline g.["label"].Value))
+                    | s when s |> matches r ->
+                        let g = r.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.Unused, Immediate.Unused)
+                    | s -> failwith (sprintf "Unable to match IType operands from %s." s)
+                ))
         | _ -> None
     
     let (|RType|_|) (info:OpcodeInfo) : (string*string) -> (Opcode*Operands) option =
-        let (|RRR|FFF|FF|) = 
-            let rrr = Regex(@"(?<rd>r\d\d?), (?<rs1>r\d\d?), (?<rs2>r\d\d?)")
-            let fff = Regex(@"(?<rd>f\d\d?), (?<rs1>f\d\d?), (?<rs2>f\d\d?)")
-            let ff = Regex(@"(?<rd>[rf]\d\d?), (?<rs1>[rf]\d\d?)")
-            let regs (r:Regex) s = let g = r.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.RS2 g.["rs2"].Value, Register.RD g.["rd"].Value)
-            function
-            | s when s |> matches rrr -> RRR (s |> regs rrr)
-            | s when s |> matches fff -> FFF (s |> regs fff)
-            | s when s |> matches ff -> 
-                printfn "s matches ff =====> %A" s
-                FF (let g = ff.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.Unused, Register.RD g.["rd"].Value))
-            | _ -> failwith "failed getting rtype operands"
+        let rrr = Regex(@"(?<rd>r\d\d?), (?<rs1>r\d\d?), (?<rs2>r\d\d?)")
+        let fff = Regex(@"(?<rd>f\d\d?), (?<rs1>f\d\d?), (?<rs2>f\d\d?)")
+        let ff = Regex(@"(?<rd>[rf]\d\d?), (?<rs1>[rf]\d\d?)")
             
+        let regs (r:Regex) s = let g = r.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.RS2 g.["rs2"].Value, Register.RD g.["rd"].Value)
+
         function
         | (opcode, operands) when opcode |> matches o.RType ->
-            let op, ops =
+            Some(
                 Opcode.RType(opcode, info.Lookup(opcode) |> int),
-                operands |> function
-                    | RRR ops -> Operands.RType ops
-                    | FFF ops -> Operands.RType ops
-                    | FF ops -> Operands.RType ops
-            Some (op, ops)
+                Operands.RType(operands.Trim() |> function
+                    | s when s |> matches rrr -> s |> regs rrr
+                    | s when s |> matches fff -> s |> regs fff
+                    | s when s |> matches ff -> 
+                        printfn "s matches ff =====> %A" s
+                        let g = ff.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.Unused, Register.RD g.["rd"].Value)
+                    | _ -> failwith "failed getting rtype operands"
+                    ))
         | _ -> None
 
     let (|JType|_|) (info:OpcodeInfo) : (string*string) -> (Opcode*Operands) option =
-        let (|L|) = 
-            let l = Regex(@"(?<label>\w+)")
-            let name (r:Regex) s = let g = r.Match(s).Groups in Immediate.Label(Label.Inline g.["label"].Value)
-            function
-            | s when s |> matches l -> L (s |> name l)
-            | _ -> failwith "failed to match JType operands in active pattern"
+        let l = Regex(@"(?<label>\w+)")
+        let name (r:Regex) s = let g = r.Match(s).Groups in Immediate.Label(Label.Inline g.["label"].Value)
 
         function
         | (opcode, operands) when opcode |> matches o.JType ->
-            let op, ops =
+            Some(
                 Opcode.JType(opcode, info.Lookup(opcode) |> int),
-                operands |> function
-                    | L ops -> Operands.JType ops
-            Some (op, ops)
+                Operands.JType(operands.Trim() |> function
+                    | s when s |> matches l -> s |> name l
+                    | s -> failwith (sprintf "Failed to create JType operands from %s" s)
+                    ))
         | _ -> None    
             
     let groups (r:Regex) s = 

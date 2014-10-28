@@ -61,6 +61,7 @@
     <Compile Include="Patterns.fs" />
     <Compile Include="Interface.fs" />
     <Compile Include="PcRelativeOffset.fs" />
+    <Compile Include="File1.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <Content Include="packages.config" />
