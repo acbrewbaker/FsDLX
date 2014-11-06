@@ -3,106 +3,51 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
 VisualStudioVersion = 12.0.30723.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{04B3CF7C-F2EC-4642-AA45-AF52E5BD6A99}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Project1", "Project1", "{DACEB980-8600-477F-86A3-B8905B385D31}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{9F702D84-7FC8-4D52-BEE2-396EA9E6C1B8}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Project2", "Project2", "{5739E74D-24F9-4A64-933B-8186663411A0}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Assembler", "FsDLX\test\Test.FsDLX.Assembler\Test.FsDLX.Assembler.fsproj", "{D45A63B0-C456-4756-9961-927E6A793674}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Inputs", "Inputs", "{FE3D70F6-8BCC-4DA0-A7AD-41451955CB62}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{D47CF4EC-5575-48C2-9AF8-09FC7DD0D0E2}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Tomasulo", "Project2\FsDLX.Tomasulo\FsDLX.Tomasulo.fsproj", "{49572F7C-4FF3-4448-9A23-8067BE0E733E}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Tomasulo", "Project2\Test.FsDLX.Tomasulo\Test.FsDLX.Tomasulo.fsproj", "{A82780E0-376C-4A04-8D66-3EC7F8191FF5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Inputs", "Inputs", "{9ADAA4E1-9E55-49DC-8734-1BA7839B7569}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misc", "Misc", "{1FFF5122-82C3-4FCB-9D69-70B402419CA2}"
 	ProjectSection(SolutionItems) = preProject
-		assemble.fs = assemble.fs
-		build.sh = build.sh
-		Itypes = Itypes
-		Jtypes = Jtypes
-		mydiff = mydiff
-		Rtypes = Rtypes
-		run.pl = run.pl
-		Script1.fsx = Script1.fsx
-		sftp-config.json = sftp-config.json
+		Project2\build.fsx = Project2\build.fsx
+		Project2\build.sh = Project2\build.sh
+		Project2\Makefile = Project2\Makefile
+		Project2\tomasulo.fs = Project2\tomasulo.fs
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Inputs", "Inputs", "{7EE8E897-CE40-4033-8D14-6A90D5602BE0}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misc", "Misc", "{18BA47AF-CE65-4126-857B-69C77AFDA875}"
 	ProjectSection(SolutionItems) = preProject
-		Inputs\align.dlx = Inputs\align.dlx
-		Inputs\align.hex = Inputs\align.hex
-		Inputs\arithImmed.dlx = Inputs\arithImmed.dlx
-		Inputs\arithImmed.hex = Inputs\arithImmed.hex
-		Inputs\asciiz1.dlx = Inputs\asciiz1.dlx
-		Inputs\asciiz1.hex = Inputs\asciiz1.hex
-		Inputs\asciiz2.dlx = Inputs\asciiz2.dlx
-		Inputs\asciiz2.hex = Inputs\asciiz2.hex
-		Inputs\branches.dlx = Inputs\branches.dlx
-		Inputs\branches.hex = Inputs\branches.hex
-		Inputs\convert.dlx = Inputs\convert.dlx
-		Inputs\convert.hex = Inputs\convert.hex
-		Inputs\data.dlx = Inputs\data.dlx
-		Inputs\data.hex = Inputs\data.hex
-		Inputs\directives.hex = Inputs\directives.hex
-		Inputs\directives1.dlx = Inputs\directives1.dlx
-		Inputs\directives1.hex = Inputs\directives1.hex
-		Inputs\directives2.dlx = Inputs\directives2.dlx
-		Inputs\directives2.hex = Inputs\directives2.hex
-		Inputs\double1.dlx = Inputs\double1.dlx
-		Inputs\double1.hex = Inputs\double1.hex
-		Inputs\double2.dlx = Inputs\double2.dlx
-		Inputs\double2.hex = Inputs\double2.hex
-		Inputs\float1.dlx = Inputs\float1.dlx
-		Inputs\float1.hex = Inputs\float1.hex
-		Inputs\float2.dlx = Inputs\float2.dlx
-		Inputs\float2.hex = Inputs\float2.hex
-		Inputs\fpArith.dlx = Inputs\fpArith.dlx
-		Inputs\fpArith.hex = Inputs\fpArith.hex
-		Inputs\intArith.dlx = Inputs\intArith.dlx
-		Inputs\intArith.hex = Inputs\intArith.hex
-		Inputs\intLogical.dlx = Inputs\intLogical.dlx
-		Inputs\intLogical.hex = Inputs\intLogical.hex
-		Inputs\intSets.dlx = Inputs\intSets.dlx
-		Inputs\intSets.hex = Inputs\intSets.hex
-		Inputs\intShift.dlx = Inputs\intShift.dlx
-		Inputs\intShift.hex = Inputs\intShift.hex
-		Inputs\jump.dlx = Inputs\jump.dlx
-		Inputs\jump.hex = Inputs\jump.hex
-		Inputs\jumpR.dlx = Inputs\jumpR.dlx
-		Inputs\jumpR.hex = Inputs\jumpR.hex
-		Inputs\loadImmed.dlx = Inputs\loadImmed.dlx
-		Inputs\loadImmed.hex = Inputs\loadImmed.hex
-		Inputs\loads.dlx = Inputs\loads.dlx
-		Inputs\loads.hex = Inputs\loads.hex
-		Inputs\logicalImmed.dlx = Inputs\logicalImmed.dlx
-		Inputs\logicalImmed.hex = Inputs\logicalImmed.hex
-		Inputs\move.dlx = Inputs\move.dlx
-		Inputs\move.hex = Inputs\move.hex
-		Inputs\nop.dlx = Inputs\nop.dlx
-		Inputs\nop.hex = Inputs\nop.hex
-		Inputs\setImmed.dlx = Inputs\setImmed.dlx
-		Inputs\setImmed.hex = Inputs\setImmed.hex
-		Inputs\shiftImmed.dlx = Inputs\shiftImmed.dlx
-		Inputs\shiftImmed.hex = Inputs\shiftImmed.hex
-		Inputs\space.dlx = Inputs\space.dlx
-		Inputs\space.hex = Inputs\space.hex
-		Inputs\stores.dlx = Inputs\stores.dlx
-		Inputs\stores.hex = Inputs\stores.hex
-		Inputs\text1.dlx = Inputs\text1.dlx
-		Inputs\text1.hex = Inputs\text1.hex
-		Inputs\text2.dlx = Inputs\text2.dlx
-		Inputs\text2.hex = Inputs\text2.hex
-		Inputs\trap.dlx = Inputs\trap.dlx
-		Inputs\trap.hex = Inputs\trap.hex
-		Inputs\word1.dlx = Inputs\word1.dlx
-		Inputs\word1.hex = Inputs\word1.hex
-		Inputs\word2.dlx = Inputs\word2.dlx
-		Inputs\word2.hex = Inputs\word2.hex
+		Project1\assemble.fs = Project1\assemble.fs
+		Project1\build.fsx = Project1\build.fsx
+		Project1\build.sh = Project1\build.sh
+		Project1\Itypes = Project1\Itypes
+		Project1\Jtypes = Project1\Jtypes
+		Project1\Makefile = Project1\Makefile
+		Project1\mydiff = Project1\mydiff
+		Project1\Rtypes = Project1\Rtypes
+		Project1\run.pl = Project1\run.pl
+		Project1\Script1.fsx = Project1\Script1.fsx
+		Project1\sftp-config.json = Project1\sftp-config.json
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{3195C3BF-ECD4-4A03-9912-38F507115A96}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Assembler", "Project1\FsDLX.Assembler\FsDLX.Assembler.fsproj", "{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Assembler", "Project1\Test.FsDLX.Assembler\Test.FsDLX.Assembler.fsproj", "{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{49388BF1-28A4-4441-A622-91ED6DD763E4}"
 	ProjectSection(SolutionItems) = preProject
 		.nuget\NuGet.Config = .nuget\NuGet.Config
 		.nuget\NuGet.exe = .nuget\NuGet.exe
 		.nuget\NuGet.targets = .nuget\NuGet.targets
 	EndProjectSection
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Assembler", "FsDLX\src\FsDLX.Assembler\FsDLX.Assembler.fsproj", "{B2F814DF-8B27-456C-A909-66186D4A6C0E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -110,20 +55,34 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{D45A63B0-C456-4756-9961-927E6A793674}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D45A63B0-C456-4756-9961-927E6A793674}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D45A63B0-C456-4756-9961-927E6A793674}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D45A63B0-C456-4756-9961-927E6A793674}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B2F814DF-8B27-456C-A909-66186D4A6C0E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B2F814DF-8B27-456C-A909-66186D4A6C0E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B2F814DF-8B27-456C-A909-66186D4A6C0E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B2F814DF-8B27-456C-A909-66186D4A6C0E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{49572F7C-4FF3-4448-9A23-8067BE0E733E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{49572F7C-4FF3-4448-9A23-8067BE0E733E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{49572F7C-4FF3-4448-9A23-8067BE0E733E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{49572F7C-4FF3-4448-9A23-8067BE0E733E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A82780E0-376C-4A04-8D66-3EC7F8191FF5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A82780E0-376C-4A04-8D66-3EC7F8191FF5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A82780E0-376C-4A04-8D66-3EC7F8191FF5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A82780E0-376C-4A04-8D66-3EC7F8191FF5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{D45A63B0-C456-4756-9961-927E6A793674} = {04B3CF7C-F2EC-4642-AA45-AF52E5BD6A99}
-		{B2F814DF-8B27-456C-A909-66186D4A6C0E} = {9F702D84-7FC8-4D52-BEE2-396EA9E6C1B8}
+		{FE3D70F6-8BCC-4DA0-A7AD-41451955CB62} = {DACEB980-8600-477F-86A3-B8905B385D31}
+		{49572F7C-4FF3-4448-9A23-8067BE0E733E} = {5739E74D-24F9-4A64-933B-8186663411A0}
+		{A82780E0-376C-4A04-8D66-3EC7F8191FF5} = {5739E74D-24F9-4A64-933B-8186663411A0}
+		{9ADAA4E1-9E55-49DC-8734-1BA7839B7569} = {5739E74D-24F9-4A64-933B-8186663411A0}
+		{1FFF5122-82C3-4FCB-9D69-70B402419CA2} = {5739E74D-24F9-4A64-933B-8186663411A0}
+		{18BA47AF-CE65-4126-857B-69C77AFDA875} = {DACEB980-8600-477F-86A3-B8905B385D31}
+		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC} = {DACEB980-8600-477F-86A3-B8905B385D31}
+		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1} = {DACEB980-8600-477F-86A3-B8905B385D31}
 	EndGlobalSection
 EndGlobal
