@@ -5,7 +5,7 @@ open System.Text
 open System.Text.RegularExpressions
 
 open Grammar
-
+//
 type InputRegex() =
     member val Comment = Regex(@"(;)(.*)")
     member val Directive = Regex(@"\.(\w+)\s(.*)")
