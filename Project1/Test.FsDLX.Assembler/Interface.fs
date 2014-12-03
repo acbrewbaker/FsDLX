@@ -24,9 +24,9 @@ let removeComments (lines:string[]) =
     lines |> Array.map (fun l -> l.Split('#').[0])
 
 let compare (dlx:string[]) (expected:string[]) (actual:string[]) =
-    let expected, actual =
-        expected    |> removeComments,
-        actual      |> removeComments
+//    let expected, actual =
+//        expected    |> removeComments,
+//        actual      |> removeComments
     
     (dlx, expected, actual)
     |||> displayFiles

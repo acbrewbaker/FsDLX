@@ -5,7 +5,6 @@ open System
 open System.IO
 open System.Text
 open System.Text.RegularExpressions
-open NCrunch.Framework
 
 let inline (@@) (a:string) (b:string) = Path.Combine(a, b)
 let inline (++) (a:string) (b:string) = a + " " + b

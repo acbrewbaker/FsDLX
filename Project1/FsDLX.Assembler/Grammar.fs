@@ -103,7 +103,7 @@ and Label =
         l |> function
         | Inline l -> 
             let lblPC = st.Lookup(l)
-            printfn "pc, lblpc = %A, %A" pc lblPC
+            //printfn "pc, lblpc = %A, %A" pc lblPC
             if pc < lblPC then pc else lblPC - pc
         | _ -> failwith "Can't replace label when not inline type"
 
