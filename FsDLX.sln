@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.30723.0
+VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Project1", "Project1", "{DACEB980-8600-477F-86A3-B8905B385D31}"
 EndProject
@@ -35,7 +35,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misc", "Misc", "{18BA47AF-C
 		Project1\Rtypes = Project1\Rtypes
 		Project1\run.pl = Project1\run.pl
 		Project1\Script1.fsx = Project1\Script1.fsx
-		Project1\sftp-config.json = Project1\sftp-config.json
 	EndProjectSection
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Assembler", "Project1\FsDLX.Assembler\FsDLX.Assembler.fsproj", "{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}"

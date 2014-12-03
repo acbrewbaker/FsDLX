@@ -7,8 +7,8 @@ open FsDLX.Assembler
 
 let inline (@@) (a:string) (b:string) = Path.Combine(a,b)
 
-let srcdir_student = "/u/css/ab67597/5483/Project1.Late/"
-let srcdir_home = "X:/GitHub/FsDLX/Project1/"
+let srcdir_student = "/u/css/ab67597/5483/FsDLX/Project1"
+let srcdir_home = "H:/FsDLX/Project1/"
 
 [<EntryPoint>]
 let main argv =

@@ -27,7 +27,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>H:\FsDLX\Project1\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <DocumentationFile>bin\Release\FsDLX.Assembler.XML</DocumentationFile>
@@ -45,8 +45,8 @@
     <None Include="codegen.fsx" />
     <None Include="tokengen.fsx" />
     <Compile Include="Common.fs" />
-    <Compile Include="Patterns.fs" />
     <Compile Include="Grammar.fs" />
+    <Compile Include="Patterns.fs" />
     <Compile Include="Interface.fs" />
     <None Include="Script.fsx" />
   </ItemGroup>
