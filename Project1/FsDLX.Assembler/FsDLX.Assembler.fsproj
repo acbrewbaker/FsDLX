@@ -45,9 +45,9 @@
     <None Include="codegen.fsx" />
     <None Include="tokengen.fsx" />
     <Compile Include="Common.fs" />
+    <Compile Include="Patterns.fs" />
     <Compile Include="Grammar.fs" />
     <Compile Include="Interface.fs" />
-    <Compile Include="Patterns.fs" />
     <None Include="Script.fsx" />
   </ItemGroup>
   <PropertyGroup>
