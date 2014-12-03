@@ -82,7 +82,7 @@ and Immediate =
         | Value v -> Convert.ToString(v |> int16, 2).PadLeft(16, '0')
         | Name n -> 
             //let s = Convert.ToString(int n, 2)
-            printfn "name: %A" n
+            //printfn "name: %A" n
             (n.Length > 26) |> function | true -> n.Substring(n.Length - 26, 26) | false -> n.PadLeft(26, '0')
         | Unused -> "0".PadLeft(16, '0')
         

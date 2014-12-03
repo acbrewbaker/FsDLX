@@ -90,7 +90,7 @@ let instruction (info:OpcodeInfo) : string -> string -> string -> string -> stri
 let ``new stuff test`` () =
 //    let itype = "opcode,rd,rs1,immediate"
 
-    let info = new OpcodeInfo()
+    let info = new OpcodeInfo(srcdir)
     let itype = itype info
     printfn "%A" (info.Lookup("addi"))
 //    let op2bin = op2bin info

@@ -3,3 +3,4 @@ obj
 _NCrunch_FsDLX
 packages
 /*.suo
+*.ncrunchsolution

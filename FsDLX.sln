@@ -23,20 +23,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misc", "Misc", "{1FFF5122-8
 		Project2\tomasulo.fs = Project2\tomasulo.fs
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misc", "Misc", "{18BA47AF-CE65-4126-857B-69C77AFDA875}"
-	ProjectSection(SolutionItems) = preProject
-		Project1\assemble.fs = Project1\assemble.fs
-		Project1\build.fsx = Project1\build.fsx
-		Project1\build.sh = Project1\build.sh
-		Project1\Itypes = Project1\Itypes
-		Project1\Jtypes = Project1\Jtypes
-		Project1\Makefile = Project1\Makefile
-		Project1\mydiff = Project1\mydiff
-		Project1\Rtypes = Project1\Rtypes
-		Project1\run.pl = Project1\run.pl
-		Project1\Script1.fsx = Project1\Script1.fsx
-	EndProjectSection
-EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Assembler", "Project1\FsDLX.Assembler\FsDLX.Assembler.fsproj", "{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Assembler", "Project1\Test.FsDLX.Assembler\Test.FsDLX.Assembler.fsproj", "{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}"
@@ -80,7 +66,6 @@ Global
 		{A82780E0-376C-4A04-8D66-3EC7F8191FF5} = {5739E74D-24F9-4A64-933B-8186663411A0}
 		{9ADAA4E1-9E55-49DC-8734-1BA7839B7569} = {5739E74D-24F9-4A64-933B-8186663411A0}
 		{1FFF5122-82C3-4FCB-9D69-70B402419CA2} = {5739E74D-24F9-4A64-933B-8186663411A0}
-		{18BA47AF-CE65-4126-857B-69C77AFDA875} = {DACEB980-8600-477F-86A3-B8905B385D31}
 		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC} = {DACEB980-8600-477F-86A3-B8905B385D31}
 		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1} = {DACEB980-8600-477F-86A3-B8905B385D31}
 	EndGlobalSection

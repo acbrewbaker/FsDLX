@@ -87,10 +87,10 @@ let (|Instruction|_|) (info:OpcodeInfo) : (string*uint32 ref) -> Instruction opt
                         //printfn "s matches rrl =======> %A" s
                         let g = rrl.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.RD g.["rd"].Value, Immediate.Label (Label.Inline g.["label"].Value))
                     | s when s |> matches bpor ->
-                        printfn "s matches bpor =======> %A" s
+                        //printfn "s matches bpor =======> %A" s
                         let g = bpor.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.RD g.["rd"].Value, Immediate.Value((g.["offset"].Value |> int)))
                     | s when s |> matches lr ->
-                        printfn "s matches bpor =======> %A" s
+                        //printfn "s matches bpor =======> %A" s
                         let g = lr.Match(s).Groups in (Register.Unused, Register.RD g.["rd"].Value, Immediate.Label (Label.Inline g.["label"].Value))
                     | s when s |> matches r ->
                         let g = r.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.Unused, Immediate.Unused)
@@ -113,7 +113,7 @@ let (|Instruction|_|) (info:OpcodeInfo) : (string*uint32 ref) -> Instruction opt
                     | s when s |> matches rrr -> s |> regs rrr
                     | s when s |> matches fff -> s |> regs fff
                     | s when s |> matches ff -> 
-                        printfn "s matches ff =====> %A" s
+                        //printfn "s matches ff =====> %A" s
                         let g = ff.Match(s).Groups in (Register.RS1 g.["rs1"].Value, Register.Unused, Register.RD g.["rd"].Value)
                     | _ -> failwith "failed getting rtype operands"
                     ))
@@ -174,7 +174,7 @@ let (|Directive|_|) : (string*uint32 ref) -> Directive list option =
     | s, pc when s |> matches d.Text ->
         groups d.Text s |> List.map (fun (s:string) ->
             let pc' = !pc
-            printfn "Text directive: %A" s
+            //printfn "Text directive: %A" s
             let comment = asComment s
             if s.Length <= 1 
             then pc := 0u 

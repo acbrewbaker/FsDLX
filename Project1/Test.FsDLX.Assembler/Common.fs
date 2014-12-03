@@ -14,9 +14,9 @@ let srcdir =
     else 
         Environment.CurrentDirectory
 
-let inputdir = srcdir @@ "../../../Inputs"
+let inputdir = srcdir @@ "../Inputs"
 
-let testdir    = srcdir @@ "../../../Tests"
+let testdir    = srcdir @@ "../Tests"
 
 let printi op rs1 rd imm = printfn "op,rs1,rd,imm ==> %s,%s,%s,%s" op rs1 rd imm
 
@@ -92,6 +92,9 @@ let bin2hex (s:string) =
 //        (b0 + b1 + b2 + b3)
     | _ -> failwith (sprintf "failed binary to hex conversion of: %A, of length %d\nbinary string must be length 32!" s s.Length)
 
+let [<Test>] `` dir test `` () =
+    printfn "srcdir ===> %A" srcdir
+    printfn "inputdir ===> %A" inputdir
 
 let [<Test>] `` asm test `` () =
     let op = "8"
@@ -139,7 +142,7 @@ let ``asdfasdf`` () =
     let rs1 = "-8", "3"
     let rd = "10"
 
-    let info = new OpcodeInfo()
+    let info = new OpcodeInfo(srcdir)
 
     let enc = Convert.ToString(info.Lookup(opcode) |> int, 2)
 
@@ -189,7 +192,7 @@ let ``asdfasdf`` () =
 
 [<Test>]
 let ``func gen`` () =
-    let info = new OpcodeInfo()
+    let info = new OpcodeInfo(srcdir)
 
     let itypes, rtypes, jtypes = 
         info.ITypes.Info,
@@ -223,7 +226,7 @@ let %s opcode imm = ()" name
 
 [<Test>]
 let ``regex gen`` () =
-    let info = new OpcodeInfo()
+    let info = new OpcodeInfo(srcdir)
 
     let opOnly (info:(string*string*string) list) =
         info |> List.map (fun (op,_,_) -> op)

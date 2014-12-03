@@ -110,7 +110,7 @@ type Assembler(dlxfile:string, info:OpcodeInfo) =
                 | Operands.JType(name) -> name |> function
                     | Immediate.Label label -> 
                         let a = label.ReplaceWithAddress(symtab, int !pc)
-                        printfn "label, addr from table: %A  ==> %A" label a
+                        //printfn "label, addr from table: %A  ==> %A" label a
                         Operands.JType(Immediate.Name (Convert.ToString(a, 2)))
                     | _ -> Operands.JType(name)
                 | operands -> operands
@@ -132,9 +132,9 @@ type Assembler(dlxfile:string, info:OpcodeInfo) =
                 |> newState hex
         ) (List.empty<string>)
 
-    new (dlxfile:string) =
-        let info = new OpcodeInfo()
-        new Assembler(dlxfile, info)
+//    new (dlxfile:string) =
+//        let info = new OpcodeInfo()
+//        new Assembler(dlxfile, info)
         
     new (dlxfile:string, srcdir:string) =
         let itypesfile, rtypesfile, jtypesfile =

@@ -5,7 +5,7 @@ open System
 open System.IO
 open System.Text
 open System.Text.RegularExpressions
-//open NCrunch.Framework
+open NCrunch.Framework
 
 let inline (@@) (a:string) (b:string) = Path.Combine(a, b)
 let inline (++) (a:string) (b:string) = a + " " + b
@@ -170,16 +170,16 @@ type OpcodeInfo(srcdir:string, itypesfile:string, rtypesfile:string, jtypesfile:
 //    member oi.Lookup(enc:int) = lookupByEnc.[enc]
 
 
-    new() =
-        let srcdir = Environment.CurrentDirectory
+    new(srcdir) =
+//        let srcdir = //Environment.CurrentDirectory
 //            if NCrunch.Framework.NCrunchEnvironment.NCrunchIsResident() then 
 //                Directory.GetParent(NCrunch.Framework.NCrunchEnvironment.GetOriginalProjectPath()).FullName
 //            else 
 //                Environment.CurrentDirectory
             
         let itypesfile, rtypesfile, jtypesfile = 
-            srcdir @@ @"../../../Itypes",
-            srcdir @@ @"../../../Rtypes",
-            srcdir @@ @"../../../Jtypes"
+            srcdir @@ @"../Itypes",
+            srcdir @@ @"../Rtypes",
+            srcdir @@ @"../Jtypes"
         
         new OpcodeInfo(srcdir, itypesfile, rtypesfile, jtypesfile)

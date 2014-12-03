@@ -35,7 +35,7 @@ let compare (dlx:string[]) (expected:string[]) (actual:string[]) =
     ||> Array.iter2 (fun e a -> Assert.AreEqual(e, a))
 
 let assemble (dlxfile:string) = 
-    use assembler = new Assembler(dlxfile, new OpcodeInfo())
+    use assembler = new Assembler(dlxfile, new OpcodeInfo(srcdir))
     assembler.Run(testdir, verbose)
     let resultfile = testdir @@ (Path.GetFileName(Path.ChangeExtension(dlxfile, ".hex")))
     printfn "Finised assembling %A ===> %A" dlxfile resultfile
