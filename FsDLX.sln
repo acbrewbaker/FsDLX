@@ -1,0 +1,88 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.30723.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Project1", "Project1", "{DACEB980-8600-477F-86A3-B8905B385D31}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Project2", "Project2", "{5739E74D-24F9-4A64-933B-8186663411A0}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Inputs", "Inputs", "{FE3D70F6-8BCC-4DA0-A7AD-41451955CB62}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Tomasulo", "Project2\FsDLX.Tomasulo\FsDLX.Tomasulo.fsproj", "{49572F7C-4FF3-4448-9A23-8067BE0E733E}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Tomasulo", "Project2\Test.FsDLX.Tomasulo\Test.FsDLX.Tomasulo.fsproj", "{A82780E0-376C-4A04-8D66-3EC7F8191FF5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Inputs", "Inputs", "{9ADAA4E1-9E55-49DC-8734-1BA7839B7569}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misc", "Misc", "{1FFF5122-82C3-4FCB-9D69-70B402419CA2}"
+	ProjectSection(SolutionItems) = preProject
+		Project2\build.fsx = Project2\build.fsx
+		Project2\build.sh = Project2\build.sh
+		Project2\Makefile = Project2\Makefile
+		Project2\tomasulo.fs = Project2\tomasulo.fs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misc", "Misc", "{18BA47AF-CE65-4126-857B-69C77AFDA875}"
+	ProjectSection(SolutionItems) = preProject
+		Project1\assemble.fs = Project1\assemble.fs
+		Project1\build.fsx = Project1\build.fsx
+		Project1\build.sh = Project1\build.sh
+		Project1\Itypes = Project1\Itypes
+		Project1\Jtypes = Project1\Jtypes
+		Project1\Makefile = Project1\Makefile
+		Project1\mydiff = Project1\mydiff
+		Project1\Rtypes = Project1\Rtypes
+		Project1\run.pl = Project1\run.pl
+		Project1\Script1.fsx = Project1\Script1.fsx
+		Project1\sftp-config.json = Project1\sftp-config.json
+	EndProjectSection
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Assembler", "Project1\FsDLX.Assembler\FsDLX.Assembler.fsproj", "{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Assembler", "Project1\Test.FsDLX.Assembler\Test.FsDLX.Assembler.fsproj", "{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{49388BF1-28A4-4441-A622-91ED6DD763E4}"
+	ProjectSection(SolutionItems) = preProject
+		.nuget\NuGet.Config = .nuget\NuGet.Config
+		.nuget\NuGet.exe = .nuget\NuGet.exe
+		.nuget\NuGet.targets = .nuget\NuGet.targets
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{49572F7C-4FF3-4448-9A23-8067BE0E733E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{49572F7C-4FF3-4448-9A23-8067BE0E733E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{49572F7C-4FF3-4448-9A23-8067BE0E733E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{49572F7C-4FF3-4448-9A23-8067BE0E733E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A82780E0-376C-4A04-8D66-3EC7F8191FF5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A82780E0-376C-4A04-8D66-3EC7F8191FF5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A82780E0-376C-4A04-8D66-3EC7F8191FF5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A82780E0-376C-4A04-8D66-3EC7F8191FF5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{FE3D70F6-8BCC-4DA0-A7AD-41451955CB62} = {DACEB980-8600-477F-86A3-B8905B385D31}
+		{49572F7C-4FF3-4448-9A23-8067BE0E733E} = {5739E74D-24F9-4A64-933B-8186663411A0}
+		{A82780E0-376C-4A04-8D66-3EC7F8191FF5} = {5739E74D-24F9-4A64-933B-8186663411A0}
+		{9ADAA4E1-9E55-49DC-8734-1BA7839B7569} = {5739E74D-24F9-4A64-933B-8186663411A0}
+		{1FFF5122-82C3-4FCB-9D69-70B402419CA2} = {5739E74D-24F9-4A64-933B-8186663411A0}
+		{18BA47AF-CE65-4126-857B-69C77AFDA875} = {DACEB980-8600-477F-86A3-B8905B385D31}
+		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC} = {DACEB980-8600-477F-86A3-B8905B385D31}
+		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1} = {DACEB980-8600-477F-86A3-B8905B385D31}
+	EndGlobalSection
+EndGlobal
