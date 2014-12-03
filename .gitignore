@@ -4,3 +4,4 @@ _NCrunch_FsDLX
 packages
 /*.suo
 *.ncrunchsolution
+*.ncrunchsolution.user

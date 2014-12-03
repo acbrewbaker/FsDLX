@@ -31,6 +31,6 @@ let main argv =
         
     let info = new OpcodeInfo(srcdir, itypesfile, rtypesfile, jtypesfile)
     let assembler = new Assembler(inputfile, info)
-    let outpath = srcdir @@ "Tests/"
+    let outpath = srcdir //@@ "Tests/"
     assembler.Run(outpath)
     0
