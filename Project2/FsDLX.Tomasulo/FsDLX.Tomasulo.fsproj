@@ -43,7 +43,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Common.fs" />
-    <Compile Include="FunctionalUnit.fs" />
+    <Compile Include="Instruction.fs" />
+    <Compile Include="IntegerUnit.fs" />
+    <Compile Include="MemoryUnit.fs" />
+    <Compile Include="BranchUnit.fs" />
+    <Compile Include="FloatingPointUnit.fs" />
+    <Compile Include="TrapUnit.fs" />
+    <Compile Include="Simulator.fs" />
     <None Include="Script.fsx" />
   </ItemGroup>
   <PropertyGroup>

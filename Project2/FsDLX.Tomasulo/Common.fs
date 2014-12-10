@@ -30,11 +30,18 @@ type FunctionalUnitConfig =
             Instructions = [| "addf"; "subf"; "multf"; "divf"; "mult"; "div"; "cvtf2i"; "cvti2f" |]}
 
 
+
+
+type Opcode = 
+    { Name : string; Code : int }
+    static member Null = { Name = ""; Code = 0 }
+    override o.ToString() = o.Name
+
 type ReservationStation =
     {
         Name                    : string
         mutable Busy            : bool
-        mutable Op              : string
+        mutable Op              : Opcode
         mutable Vj              : int
         mutable Vk              : int
         mutable Qj              : string
@@ -47,7 +54,7 @@ type ReservationStation =
 
     member rs.Clear() =
         rs.Busy <- false
-        rs.Op <- ""
+        rs.Op <- Opcode.Null
         rs.Vj <- 0; rs.Vk <- 0
         rs.Qj <- ""; rs.Qk <- ""
         rs.A <- 0
@@ -55,17 +62,29 @@ type ReservationStation =
     override rs.ToString() =
         sprintf "
 Name    Busy    Op    Vj    Vk    Qj    Qk    A    ResultReady    ResultWritten    Result
-%s      %A      %s    %d    %d    %s    %s    %d   %A             %A               %d\n"
+%s      %A      %O    %d    %d    %s    %s    %d   %A             %A               %d\n"
             rs.Name rs.Busy rs.Op rs.Vj rs.Vk rs.Qj rs.Qk rs.A
             rs.ResultReady rs.ResultWritten rs.Result
 
     static member Init name =
-        {   Name = name; Busy = false; Op = ""; 
+        {   Name = name; Busy = false; Op = Opcode.Null; 
             Vj = 0; Vk = 0; Qj = ""; Qk = ""; A = 0
             ResultReady = false;
             ResultWritten = false;
             Result = 0 }
 
+
+[<AbstractClass>]
+type FunctionalUnit(cfg:FunctionalUnitConfig) =
+    
+    abstract RS : ReservationStation[]
+
+    member fu.MaxCycles = cfg.nExecutionTime
+    member fu.RSCount   = cfg.nReservationStations
+     
+
+    member val CyclesRemaining = 0 with get, set
+    member val Busy = false with get, set
 
 
 type RegisterFile =
@@ -98,3 +117,4 @@ type Clock private () =
     member val Cycles = 0 with get, set
     member c.Tic() = c.Cycles <- c.Cycles + 1
     static member GetInstance = instance
+
