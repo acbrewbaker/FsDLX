@@ -32,14 +32,17 @@ type FunctionalUnitConfig =
 
 type ReservationStation =
     {
-        Name            : string
-        mutable Busy    : bool
-        mutable Op      : string
-        mutable Vj      : int
-        mutable Vk      : int
-        mutable Qj      : string
-        mutable Qk      : string
-        mutable A       : int
+        Name                    : string
+        mutable Busy            : bool
+        mutable Op              : string
+        mutable Vj              : int
+        mutable Vk              : int
+        mutable Qj              : string
+        mutable Qk              : string
+        mutable A               : int
+        mutable ResultReady     : bool
+        mutable ResultWritten   : bool
+        mutable Result          : int
     }
 
     member rs.Clear() =
@@ -51,12 +54,17 @@ type ReservationStation =
 
     override rs.ToString() =
         sprintf "
-Name    Busy    Op    Vj    Vk    Qj    Qk    A
-%s      %A      %s    %d    %d    %s    %s    %d\n"
+Name    Busy    Op    Vj    Vk    Qj    Qk    A    ResultReady    ResultWritten    Result
+%s      %A      %s    %d    %d    %s    %s    %d   %A             %A               %d\n"
             rs.Name rs.Busy rs.Op rs.Vj rs.Vk rs.Qj rs.Qk rs.A
+            rs.ResultReady rs.ResultWritten rs.Result
 
     static member Init name =
-        { Name = name; Busy = false; Op = ""; Vj = 0; Vk = 0; Qj = ""; Qk = ""; A = 0}
+        {   Name = name; Busy = false; Op = ""; 
+            Vj = 0; Vk = 0; Qj = ""; Qk = ""; A = 0
+            ResultReady = false;
+            ResultWritten = false;
+            Result = 0 }
 
 
 
