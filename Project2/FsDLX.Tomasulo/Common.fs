@@ -74,17 +74,6 @@ Name    Busy    Op    Vj    Vk    Qj    Qk    A    ResultReady    ResultWritten 
             Result = 0 }
 
 
-[<AbstractClass>]
-type FunctionalUnit(cfg:FunctionalUnitConfig) =
-    
-    abstract RS : ReservationStation[]
-
-    member fu.MaxCycles = cfg.nExecutionTime
-    member fu.RSCount   = cfg.nReservationStations
-     
-
-    member val CyclesRemaining = 0 with get, set
-    member val Busy = false with get, set
 
 
 type RegisterFile =
