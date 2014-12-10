@@ -29,3 +29,33 @@ type FunctionalUnitConfig =
         { nReservationStations = 8; nExecutionUnits = 2; nExecutionTime = 4;
             Instructions = [| "addf"; "subf"; "multf"; "divf"; "mult"; "div"; "cvtf2i"; "cvti2f" |]}
 
+
+type ReservationStation =
+    {
+        Name            : string
+        mutable Busy    : bool
+        mutable Op      : string
+        mutable Vj      : int
+        mutable Vk      : int
+        mutable Qj      : string
+        mutable Qk      : string
+        mutable A       : int
+    }
+
+    member rs.Clear() =
+        rs.Busy <- false
+        rs.Op <- ""
+        rs.Vj <- 0; rs.Vk <- 0
+        rs.Qj <- ""; rs.Qk <- ""
+        rs.A <- 0
+
+    override rs.ToString() =
+        sprintf "
+Name    Busy    Op    Vj    Vk    Qj    Qk    A
+%s      %A      %s    %d    %d    %s    %s    %d\n"
+            rs.Name rs.Busy rs.Op rs.Vj rs.Vk rs.Qj rs.Qk rs.A
+
+    static member Init name =
+        { Name = name; Busy = false; Op = ""; Vj = 0; Vk = 0; Qj = ""; Qk = ""; A = 0}
+
+

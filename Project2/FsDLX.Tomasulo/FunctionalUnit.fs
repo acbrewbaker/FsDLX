@@ -2,3 +2,5 @@
 
 
 
+type T() =
+    member val x = 0
