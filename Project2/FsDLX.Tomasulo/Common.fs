@@ -59,3 +59,27 @@ Name    Busy    Op    Vj    Vk    Qj    Qk    A
         { Name = name; Busy = false; Op = ""; Vj = 0; Vk = 0; Qj = ""; Qk = ""; A = 0}
 
 
+
+type RegisterFile =
+    | GPR of Register[]
+    | FPR of Register[]
+
+    static member InitGPR n =
+        let regs = Array.init<Register> n (Register.Init())
+        RegisterFile.GPR regs
+
+    static member InitFPR n =
+        let regs = Array.init<Register> n (Register.Init())
+        RegisterFile.FPR regs
+
+and Register =
+    {
+        mutable Qi          : Qi
+        mutable Contents    : int    
+    }
+
+    static member Init _ _ = { Qi = Qi.Blank; Contents = 0 }
+
+and Qi =
+    | Blank
+    | Contents of int
