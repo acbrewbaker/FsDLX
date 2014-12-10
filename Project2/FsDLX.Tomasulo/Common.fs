@@ -83,3 +83,10 @@ and Register =
 and Qi =
     | Blank
     | Contents of int
+
+
+type Clock private () =
+    static let instance = Clock()
+    member val Cycles = 0 with get, set
+    member c.Tic() = c.Cycles <- c.Cycles + 1
+    static member GetInstance = instance
