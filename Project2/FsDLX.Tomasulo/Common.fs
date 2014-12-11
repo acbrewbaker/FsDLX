@@ -31,7 +31,6 @@ type FunctionalUnitConfig =
 
 
 
-
 type Opcode = 
     { Name : string; Code : int }
     static member Null = { Name = ""; Code = 0 }
@@ -44,8 +43,8 @@ type ReservationStation =
         mutable Op              : Opcode
         mutable Vj              : int
         mutable Vk              : int
-        mutable Qj              : string
-        mutable Qk              : string
+        mutable Qj              : string option
+        mutable Qk              : string option
         mutable A               : int
         mutable ResultReady     : bool
         mutable ResultWritten   : bool
@@ -56,36 +55,49 @@ type ReservationStation =
         rs.Busy <- false
         rs.Op <- Opcode.Null
         rs.Vj <- 0; rs.Vk <- 0
-        rs.Qj <- ""; rs.Qk <- ""
+        rs.Qj <- None; rs.Qk <- None
         rs.A <- 0
+
+    member rs.IsEmpty = 
+        rs.Busy = false         &&
+        rs.Op   = Opcode.Null   &&
+        rs.Vj   = 0             &&
+        rs.Vk   = 0             &&
+        rs.Qj   = None          &&
+        rs.Qk   = None          &&
+        rs.A    = 0
+
 
     override rs.ToString() =
         sprintf "
 Name    Busy    Op    Vj    Vk    Qj    Qk    A    ResultReady    ResultWritten    Result
-%s      %A      %O    %d    %d    %s    %s    %d   %A             %A               %d\n"
+%s      %A      %O    %d    %d    %O    %O    %d   %A             %A               %d\n"
             rs.Name rs.Busy rs.Op rs.Vj rs.Vk rs.Qj rs.Qk rs.A
             rs.ResultReady rs.ResultWritten rs.Result
 
     static member Init name =
         {   Name = name; Busy = false; Op = Opcode.Null; 
-            Vj = 0; Vk = 0; Qj = ""; Qk = ""; A = 0
+            Vj = 0; Vk = 0; Qj = None; Qk = None; A = 0
             ResultReady = false;
             ResultWritten = false;
             Result = 0 }
 
 
+type Buffer() =
+    member val IsEmpty = true with get, set
 
+type CDB = int option
 
 type RegisterFile =
     | GPR of Register[]
     | FPR of Register[]
 
     static member InitGPR n =
-        let regs = Array.init<Register> n (Register.Init())
+        let regs = Register.ArrayInit n
         RegisterFile.GPR regs
 
     static member InitFPR n =
-        let regs = Array.init<Register> n (Register.Init())
+        let regs = Register.ArrayInit n
         RegisterFile.FPR regs
 
 and Register =
@@ -94,11 +106,10 @@ and Register =
         mutable Contents    : int    
     }
 
-    static member Init _ _ = { Qi = Qi.Blank; Contents = 0 }
+    static member Init _ = { Qi = None; Contents = 0 }
+    static member ArrayInit n = Array.init n Register.Init
 
-and Qi =
-    | Blank
-    | Contents of int
+and Qi = string option
 
 
 type Clock private () =

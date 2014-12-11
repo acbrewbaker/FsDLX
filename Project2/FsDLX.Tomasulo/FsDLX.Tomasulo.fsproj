@@ -45,7 +45,8 @@
     <Compile Include="Common.fs" />
     <Compile Include="Instruction.fs" />
     <Compile Include="FunctionalUnit.fs" />
-    <Compile Include="Simulator.fs" />
+    <Compile Include="Memory.fs" />
+    <Compile Include="Interface.fs" />
     <None Include="Script.fsx" />
   </ItemGroup>
   <PropertyGroup>
