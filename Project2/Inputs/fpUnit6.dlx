@@ -1,0 +1,22 @@
+    addi r1, r0, -9
+    movi2fp f1, r1
+    addi r2, r0, 2
+    movi2fp f2, r2
+    div f3, f1, f2
+    movfp2i r3, f3
+    addi r4, r0, s1         
+    trap r4, 3              ;dump string
+    trap r1, 1              ;dump register
+    addi r4, r0, s2         
+    trap r4, 3              ;dump string
+    trap r2, 1              ;dump register
+    addi r4, r0, s3         
+    trap r4, 3              ;dump string
+    trap r3, 1              ;dump register
+    addi r4, r0, s4         
+    trap r4, 3              ;dump string
+    trap r0, 0
+s1: .asciiz "\n"
+s2: .asciiz " divided by "
+s3: .asciiz " is "
+s4: .asciiz ".\n"

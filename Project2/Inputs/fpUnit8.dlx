@@ -1,0 +1,28 @@
+    addi r1, r0, num
+    lw r1, 0(r1)
+    movi2fp f1, r1
+    cvti2f f2, f1
+
+    ; print newline
+    addi r4, r0, s1         
+    trap r4, 3              ;dump string
+
+    ; print r1 register
+    trap r1, 1              ;dump int register
+
+    ; printed "converted to float is"
+    addi r4, r0, s2         
+    trap r4, 3              ;dump string
+
+    ; print f2 register
+    trap f2, 2              ;dump float register
+
+    ; print newline
+    addi r4, r0, s1         
+    trap r4, 3              ;dump string
+
+    ; halt
+    trap r0, 0
+num: .word -43
+s1: .asciiz "\n"
+s2: .asciiz " converted to float is "

@@ -1,0 +1,28 @@
+    addi r1, r0, num
+    lf f1, 0(r1)
+    cvtf2i f2, f1
+    movfp2i r2, f2
+
+    ; print newline
+    addi r4, r0, s1         
+    trap r4, 3              ;dump string
+
+    ; print fp register
+    trap f1, 2              ;dump register
+
+    ; printed "converted to int is"
+    addi r4, r0, s2         
+    trap r4, 3              ;dump string
+
+    ; print integer register
+    trap r2, 1              ;dump register
+
+    ; print newline
+    addi r4, r0, s1         
+    trap r4, 3              ;dump string
+
+    ; halt
+    trap r0, 0
+num: .float 33.2
+s1: .asciiz "\n"
+s2: .asciiz " converted to int is "

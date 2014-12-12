@@ -1,0 +1,70 @@
+00000000: 20010003	#    addi r1, r0, 3
+00000004: 20020006	#    addi r2, r0, 6
+00000008: 00221820	#    add r3, r1, r2
+0000000c: 00222022	#    sub r4, r1, r2
+00000010: 00222824	#    and r5, r1, r2
+00000014: 00223025	#    or r6, r1, r2
+00000018: 00223826	#    xor r7, r1, r2
+0000001c: 200800fc	#    addi r8, r0, s1         
+00000020: 45000003	#    trap r8, 3              ;dump string
+00000024: 44200001	#    trap r1, 1              ;dump register
+00000028: 20080104	#    addi r8, r0, s3         
+0000002c: 45000003	#    trap r8, 3              ;dump string
+00000030: 44400001	#    trap r2, 1              ;dump register
+00000034: 200800ff	#    addi r8, r0, s2         
+00000038: 45000003	#    trap r8, 3              ;dump string
+0000003c: 44600001	#    trap r3, 1              ;dump register
+00000040: 200800fc	#    addi r8, r0, s1         
+00000044: 45000003	#    trap r8, 3              ;dump string
+00000048: 200800fc	#    addi r8, r0, s1         
+0000004c: 45000003	#    trap r8, 3              ;dump string
+00000050: 44200001	#    trap r1, 1              ;dump register
+00000054: 2008010b	#    addi r8, r0, s4         
+00000058: 45000003	#    trap r8, 3              ;dump string
+0000005c: 44400001	#    trap r2, 1              ;dump register
+00000060: 200800ff	#    addi r8, r0, s2         
+00000064: 45000003	#    trap r8, 3              ;dump string
+00000068: 44800001	#    trap r4, 1              ;dump register
+0000006c: 200800fc	#    addi r8, r0, s1         
+00000070: 45000003	#    trap r8, 3              ;dump string
+00000074: 200800fc	#    addi r8, r0, s1         
+00000078: 45000003	#    trap r8, 3              ;dump string
+0000007c: 44200001	#    trap r1, 1              ;dump register
+00000080: 20080113	#    addi r8, r0, s5         
+00000084: 45000003	#    trap r8, 3              ;dump string
+00000088: 44400001	#    trap r2, 1              ;dump register
+0000008c: 200800ff	#    addi r8, r0, s2         
+00000090: 45000003	#    trap r8, 3              ;dump string
+00000094: 44a00001	#    trap r5, 1              ;dump register
+00000098: 200800fc	#    addi r8, r0, s1         
+0000009c: 45000003	#    trap r8, 3              ;dump string
+000000a0: 200800fc	#    addi r8, r0, s1         
+000000a4: 45000003	#    trap r8, 3              ;dump string
+000000a8: 44200001	#    trap r1, 1              ;dump register
+000000ac: 20080119	#    addi r8, r0, s6         
+000000b0: 45000003	#    trap r8, 3              ;dump string
+000000b4: 44400001	#    trap r2, 1              ;dump register
+000000b8: 200800ff	#    addi r8, r0, s2         
+000000bc: 45000003	#    trap r8, 3              ;dump string
+000000c0: 44c00001	#    trap r6, 1              ;dump register
+000000c4: 200800fc	#    addi r8, r0, s1         
+000000c8: 45000003	#    trap r8, 3              ;dump string
+000000cc: 200800fc	#    addi r8, r0, s1         
+000000d0: 45000003	#    trap r8, 3              ;dump string
+000000d4: 44200001	#    trap r1, 1              ;dump register
+000000d8: 2008011e	#    addi r8, r0, s7         
+000000dc: 45000003	#    trap r8, 3              ;dump string
+000000e0: 44400001	#    trap r2, 1              ;dump register
+000000e4: 200800ff	#    addi r8, r0, s2         
+000000e8: 45000003	#    trap r8, 3              ;dump string
+000000ec: 44e00001	#    trap r7, 1              ;dump register
+000000f0: 200800fc	#    addi r8, r0, s1         
+000000f4: 45000003	#    trap r8, 3              ;dump string
+000000f8: 44000000	#    trap r0, 0
+000000fc: 0a00	#"\n"
+000000ff: 2069732000	#" is "
+00000104: 20706c75732000	#" plus "
+0000010b: 206d696e75732000	#" minus "
+00000113: 20616e642000	#" and "
+00000119: 206f722000	#" or "
+0000011e: 20786f722000	#" xor "

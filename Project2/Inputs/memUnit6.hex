@@ -1,0 +1,42 @@
+00000000: 98010084	#    lf f1, num1
+00000004: b8010088	#    sf num2, f1
+00000008: 9802008c	#    lf f2, num3
+0000000c: b8020090	#    sf num4, f2
+00000010: 200600f4	#    addi r6, r0, nl     ;put address of newline in r6
+00000014: 20050094	#    addi r5, r0, s1     ;put string address in r5
+00000018: 44a00003	#    trap r5, 3          ;dump string
+0000001c: 20050084	#    addi r5, r0, num1   ;put int address in r5
+00000020: 98a50000	#    lf   f5, 0(r5)
+00000024: 44a00002	#    trap f5, 2          ;dump register 5
+00000028: 44c00003	#    trap r6, 3          ;dump string
+0000002c: 200600f4	#    addi r6, r0, nl     ;put address of newline in r6
+00000030: 200500ac	#    addi r5, r0, s2     ;put string address in r5
+00000034: 44a00003	#    trap r5, 3          ;dump string
+00000038: 20050088	#    addi r5, r0, num2   ;put int address in r5
+0000003c: 98a50000	#    lf   f5, 0(r5)
+00000040: 44a00002	#    trap f5, 2          ;dump register 5
+00000044: 44c00003	#    trap r6, 3          ;dump string
+00000048: 200600f4	#    addi r6, r0, nl     ;put address of newline in r6
+0000004c: 200500c4	#    addi r5, r0, s3     ;put string address in r5
+00000050: 44a00003	#    trap r5, 3          ;dump string
+00000054: 2005008c	#    addi r5, r0, num3   ;put int address in r5
+00000058: 98a50000	#    lf   f5, 0(r5)
+0000005c: 44a00002	#    trap f5, 2          ;dump register 5
+00000060: 44c00003	#    trap r6, 3          ;dump string
+00000064: 200600f4	#    addi r6, r0, nl     ;put address of newline in r6
+00000068: 200500dc	#    addi r5, r0, s4     ;put string address in r5
+0000006c: 44a00003	#    trap r5, 3          ;dump string
+00000070: 20050090	#    addi r5, r0, num4   ;put int address in r5
+00000074: 98a50000	#    lf   f5, 0(r5)
+00000078: 44a00002	#    trap f5, 2          ;dump register 5
+0000007c: 44c00003	#    trap r6, 3          ;dump string
+00000080: 44000000	#    trap r0, 0        ;halt
+00000084: c1bb3333    	# -23.4
+00000088: 3fb33333    	# 1.4
+0000008c: 41440000    	# 12.25
+00000090: 4101999a    	# 8.1
+00000094: 0a5468652076616c756520696e206e756d312069732000	#"\nThe value in num1 is "
+000000ac: 0a5468652076616c756520696e206e756d322069732000	#"\nThe value in num2 is "
+000000c4: 0a5468652076616c756520696e206e756d332069732000	#"\nThe value in num3 is "
+000000dc: 0a5468652076616c756520696e206e756d342069732000	#"\nThe value in num4 is "
+000000f4: 0a00	#"\n"

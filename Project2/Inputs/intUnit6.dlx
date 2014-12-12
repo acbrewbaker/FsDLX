@@ -1,0 +1,77 @@
+    addi r1, r0, 3
+    addi r2, r0, 6
+    add r3, r1, r2
+    sub r4, r1, r2
+    and r5, r1, r2
+    or r6, r1, r2
+    xor r7, r1, r2
+
+    addi r8, r0, s1         
+    trap r8, 3              ;dump string
+    trap r1, 1              ;dump register
+    addi r8, r0, s3         
+    trap r8, 3              ;dump string
+    trap r2, 1              ;dump register
+    addi r8, r0, s2         
+    trap r8, 3              ;dump string
+    trap r3, 1              ;dump register
+    addi r8, r0, s1         
+    trap r8, 3              ;dump string
+
+    addi r8, r0, s1         
+    trap r8, 3              ;dump string
+    trap r1, 1              ;dump register
+    addi r8, r0, s4         
+    trap r8, 3              ;dump string
+    trap r2, 1              ;dump register
+    addi r8, r0, s2         
+    trap r8, 3              ;dump string
+    trap r4, 1              ;dump register
+    addi r8, r0, s1         
+    trap r8, 3              ;dump string
+
+    addi r8, r0, s1         
+    trap r8, 3              ;dump string
+    trap r1, 1              ;dump register
+    addi r8, r0, s5         
+    trap r8, 3              ;dump string
+    trap r2, 1              ;dump register
+    addi r8, r0, s2         
+    trap r8, 3              ;dump string
+    trap r5, 1              ;dump register
+    addi r8, r0, s1         
+    trap r8, 3              ;dump string
+
+    addi r8, r0, s1         
+    trap r8, 3              ;dump string
+    trap r1, 1              ;dump register
+    addi r8, r0, s6         
+    trap r8, 3              ;dump string
+    trap r2, 1              ;dump register
+    addi r8, r0, s2         
+    trap r8, 3              ;dump string
+    trap r6, 1              ;dump register
+    addi r8, r0, s1         
+    trap r8, 3              ;dump string
+
+    addi r8, r0, s1         
+    trap r8, 3              ;dump string
+    trap r1, 1              ;dump register
+    addi r8, r0, s7         
+    trap r8, 3              ;dump string
+    trap r2, 1              ;dump register
+    addi r8, r0, s2         
+    trap r8, 3              ;dump string
+    trap r7, 1              ;dump register
+    addi r8, r0, s1         
+    trap r8, 3              ;dump string
+
+
+    trap r0, 0
+s1: .asciiz "\n"
+s2: .asciiz " is "
+s3: .asciiz " plus "
+s4: .asciiz " minus "
+s5: .asciiz " and "
+s6: .asciiz " or "
+s7: .asciiz " xor "

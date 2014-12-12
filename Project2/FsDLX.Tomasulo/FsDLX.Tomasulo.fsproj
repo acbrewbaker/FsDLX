@@ -43,8 +43,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Common.fs" />
-    <Compile Include="Instruction.fs" />
-    <Compile Include="FunctionalUnit.fs" />
+    <Compile Include="Instructions.fs" />
+    <Compile Include="FunctionalUnits.fs" />
     <Compile Include="Memory.fs" />
     <Compile Include="Interface.fs" />
     <None Include="Script.fsx" />

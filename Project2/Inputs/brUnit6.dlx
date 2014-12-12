@@ -1,0 +1,57 @@
+        addi r30, r0, stack   ; use r30 as stack pointer
+        addi r29, r30, 0      ; use r29 as frame pointer
+        addi r1, r0, op
+        lw r1, 0(r1)
+
+; print "The factorial of "
+        addi r2, r0, s1
+        trap r2, 3    
+
+; print r1
+        trap r1, 1
+
+; print " is "
+        addi r2, r0, s2
+        trap r2, 3
+
+; call function to compute result
+        sw -4(r30), r1
+        addi r30, r30, -12     ; make room for the param, ret addr, frame ptr
+        addi r2, r0, fact      ; put address in register r2
+        jalr r2
+
+; print out result
+        trap r1, 1            ; print out r1
+
+; print newline
+        addi r2, r0, nl
+        trap r2, 3
+
+; stop execution
+        trap r0, 0            ; halt
+fact:   sw 4(r30), r31        ; save return address
+        sw 0(r30), r29        ; store frame pointer
+        addi r29, r30, 0      ; adjust frame pointer
+        lw r1, 8(r29)         ; get op
+        addi r2, r1, -1       ; see if param is 1
+        beqz r2, done
+        sw -4(r30), r2        ; put it onto stack
+        addi r30, r30, -12    ; make room for the param, ret addr, frame ptr
+        jal fact              ; return result in r1
+        lw r2, 8(r29)         ; retrieve param again
+        movi2fp f1, r1        ; copy bits to fp register
+        movi2fp f2, r2        ; copy bits to fp register
+        mult f1, f2, f1       ; integer multiplication
+        movfp2i r1, f1        ; copy bits to int register
+done:   addi r30, r29, 0      ; set esp back to ebp
+        lw r29, 0(r30)        ; get old ebp 
+        lw r31, 4(r30)        ; get ret addr
+        jr r31
+op:    .word 7
+s1:    .asciiz "\nThe factorial of "
+s2:    .asciiz " is "
+nl:    .asciiz "\n"
+       .data 0x400           ; make space for stack
+stack:  
+
+

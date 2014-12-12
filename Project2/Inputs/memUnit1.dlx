@@ -1,0 +1,40 @@
+    lw r1, num3
+    lw r2, num4
+    lw r3, num5
+    lw r4, numN1
+    lw r3, num3       ;final value in r3 should be 3
+
+    addi r6, r0, nl   ;put address of newline in r6
+    addi r5, r0, s1   ;put string address in r5
+    trap r5, 3        ;dump string
+    trap r1, 1        ;dump register 1
+    trap r6, 3        ;dump string
+
+    addi r6, r0, nl   ;put address of newline in r6
+    addi r5, r0, s2   ;put string address in r5
+    trap r5, 3        ;dump string
+    trap r2, 1        ;dump register 2
+    trap r6, 3        ;dump string
+
+    addi r6, r0, nl   ;put address of newline in r6
+    addi r5, r0, s3   ;put string address in r5
+    trap r5, 3        ;dump string
+    trap r3, 1        ;dump register 3
+    trap r6, 3        ;dump string
+
+    addi r6, r0, nl   ;put address of newline in r6
+    addi r5, r0, s4   ;put string address in r5
+    trap r5, 3        ;dump string
+    trap r4, 1        ;dump register 4
+    trap r6, 3        ;dump string
+
+    trap r0, 0        ;halt
+num3:  .word 3
+num4:  .word 4
+num5:  .word 5
+numN1: .word -1
+s1: .asciiz "\nThe value of r1 is "
+s2: .asciiz "\nThe value of r2 is "
+s3: .asciiz "\nThe value of r3 is "
+s4: .asciiz "\nThe value of r4 is "
+nl: .asciiz "\n"

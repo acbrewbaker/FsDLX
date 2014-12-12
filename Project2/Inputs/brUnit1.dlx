@@ -1,0 +1,61 @@
+      addi r1, r0, op1
+      lw r1, 0(r1)
+      addi r2, r0, op2
+      lw r2, 0(r2) 
+      sub r3, r1, r2
+      addi r4, r0, Nsign
+      lw r4, 0(r4)
+
+; check to see if result of subtraction is negative
+; if so then op1 is less than op2
+      and r4, r4, r3
+      beqz r4, notNeg
+      add r5, r0, r2      
+      j join           
+notNeg:  
+      add r5, r0, r1
+join: addi r6, r0, max
+      sw 0(r6), r5
+
+; print "The max of "
+      addi r4, r0, s1
+      trap r4, 3              ;dump string
+
+; print value of op1
+      addi r1, r0, op1
+      lw r1, 0(r1)
+      trap r1, 1              ;dump register
+
+; print " and "
+      addi r4, r0, s2         
+      trap r4, 3              ;dump string
+
+; print value of op2
+      addi r1, r0, op2
+      lw r1, 0(r1)
+      trap r1, 1              ;dump register
+
+; print " is "
+      addi r4, r0, s3         
+      trap r4, 3              ;dump string
+
+; print value of max
+      addi r4, r0, max
+      lw r4, 0(r4)
+      trap r4, 1              ;dump register
+
+; print "."
+      addi r4, r0, s4         
+      trap r4, 3              ;dump string
+
+; halt
+      trap r0, 0
+; data
+Nsign: .word 0x80000000
+op1:   .word 3
+op2:   .word 6
+max:   .word 0
+s1: .asciiz "\nThe max of "
+s2: .asciiz " and "
+s3: .asciiz " is "
+s4: .asciiz ".\n"

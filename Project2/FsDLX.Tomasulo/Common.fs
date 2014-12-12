@@ -1,33 +1,54 @@
-﻿[<AutoOpen>]
-module FsDLX.Tomasulo.Common
+﻿//[<AutoOpen>]
+//module FsDLX.Tomasulo.Common
+namespace FsDLX.Tomasulo
 
-type FunctionalUnitConfig =
-    {
-        nReservationStations : int
-        nExecutionUnits : int
-        nExecutionTime : int
-        Instructions : string[]
-    }
+open System
+open System.Linq
 
-    static member IntegerUnit =
-        { nReservationStations = 8; nExecutionUnits = 3; nExecutionTime = 1;
-            Instructions = [| "addi"; "nop"; "add"; "sub"; "and"; "or"; "xor"; "movf"; "movfp2i"; "movi2fp" |]}
 
-    static member TrapUnit =
-        { nReservationStations = 4; nExecutionUnits = 1; nExecutionTime = 1;
-            Instructions = [| "trap" |]}
+module Convert =
+    let hex2bytes (hex:string) = hex.Length |> function
+        | 8 -> 
+            Enumerable.Range(0, hex.Length)
+                      .Where(fun x -> x % 2 = 0)
+                      .Select(fun x -> Convert.ToByte(hex.Substring(x,2), 16))
+                      .ToArray()
+        | _ -> failwith "Instruction length greater than 8 bytes"
 
-    static member BranchUnit =
-        { nReservationStations = 1; nExecutionUnits = 1; nExecutionTime = 1;
-            Instructions = [| "beqqz"; "j"; "jr"; "jal"; "jalr" |]}
+    let hex2int hex = Convert.ToInt32(hex, 16)
 
-    static member MemoryUnit =
-        { nReservationStations = 8; nExecutionUnits = 1; nExecutionTime = 2;
-            Instructions = [| "lw"; "lf"; "sw"; "sf" |]}
+    let int2hex (hex:int) = hex.ToString("x8")
 
-    static member FloatingPointUnit =
-        { nReservationStations = 8; nExecutionUnits = 2; nExecutionTime = 4;
-            Instructions = [| "addf"; "subf"; "multf"; "divf"; "mult"; "div"; "cvtf2i"; "cvti2f" |]}
+
+module Config =
+    type FU =
+        {
+            RSPrefix    : string
+            RSCount     : int
+            XUnitCount  : int
+            XCycles     : int
+            Instructions: string[]
+        }
+
+        static member IntegerUnit =
+            { RSPrefix = "Integer"; RSCount = 8; XUnitCount = 3; XCycles = 1;
+                Instructions = [| "addi"; "nop"; "add"; "sub"; "and"; "or"; "xor"; "movf"; "movfp2i"; "movi2fp" |]}
+
+        static member TrapUnit =
+            { RSPrefix = "Trap"; RSCount = 4; XUnitCount = 1; XCycles = 1;
+                Instructions = [| "trap" |]}
+
+        static member BranchUnit =
+            { RSPrefix = "Branch"; RSCount = 1; XUnitCount = 1; XCycles = 1;
+                Instructions = [| "beqqz"; "j"; "jr"; "jal"; "jalr" |]}
+
+        static member MemoryUnit =
+            { RSPrefix = "Memory"; RSCount = 8; XUnitCount = 1; XCycles = 2;
+                Instructions = [| "lw"; "lf"; "sw"; "sf" |]}
+
+        static member FloatingPointUnit =
+            { RSPrefix = "FloatingPoint"; RSCount = 8; XUnitCount = 2; XCycles = 4;
+                Instructions = [| "addf"; "subf"; "multf"; "divf"; "mult"; "div"; "cvtf2i"; "cvti2f" |]}
 
 
 
@@ -58,6 +79,8 @@ type ReservationStation =
         rs.Qj <- None; rs.Qk <- None
         rs.A <- 0
 
+    member rs.ClearIfResultWritten() = if rs.ResultWritten then rs.Clear()
+
     member rs.IsEmpty = 
         rs.Busy = false         &&
         rs.Op   = Opcode.Null   &&
@@ -82,11 +105,19 @@ Name    Busy    Op    Vj    Vk    Qj    Qk    A    ResultReady    ResultWritten 
             ResultWritten = false;
             Result = 0 }
 
+    static member ArrayInit(n, namePrefix) =
+        Array.init n (fun i -> ReservationStation.Init (namePrefix + string i))
 
-type Buffer() =
-    member val IsEmpty = true with get, set
+    static member ArrayInit(cfg:Config.FU) =
+        ReservationStation.ArrayInit(cfg.RSCount, cfg.RSPrefix)
 
-type CDB = int option
+    static member Clear (r:ReservationStation) = r.Clear()
+    static member ClearIfResultWritten (r:ReservationStation) = r.ClearIfResultWritten()
+
+
+type CDB() =
+    member val Src      = "" with get, set
+    member val Result   = Some 0 with get, set
 
 type RegisterFile =
     | GPR of Register[]

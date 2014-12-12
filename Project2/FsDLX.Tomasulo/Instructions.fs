@@ -1,12 +1,34 @@
-﻿module FsDLX.Tomasulo.Instruction
+﻿//module FsDLX.Tomasulo.Instructions
+namespace FsDLX.Tomasulo
 
 open System.Collections
 
 type IntegerInstruction =
     | ADDI
     | NOP
+    | ADD
+    | SUB
+    | AND
+    | OR
+    | XOR
+    | MOVF
+    | MOVFP2I
+    | MOVI2FP
 
-type Instruction =
+    member ii.Match hex = ()
+
+type FloatingPointInstruction =
+    | ADDF
+    | SUBF
+    | MULTF
+    | DIVF
+    | MULT
+    | DIV
+    | CVTF2I
+    | CVTI2F
+    
+
+type T =
     {
         Opcode      : Opcode
         FunCode     : int
@@ -19,7 +41,6 @@ type Instruction =
         ImmedField  : bool
         ImmedFieldStartBit  : int
         ImmedFieldEndBit  : int
-
     }
 
 
@@ -29,7 +50,7 @@ type InstructionState =
     | X of Execute
     | W of WriteResult
 
-and WaitCondition(cdb:CDB, RS:ReservationStation[], Buffer:Buffer[], lsq:Queue) =
+and WaitCondition(cdb:CDB, RS:ReservationStation[], Buffer:ReservationStation[], lsq:Queue) =
     member wc.WaitUntil r = function
         | I i ->
             i |> function 

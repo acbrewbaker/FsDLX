@@ -1,0 +1,45 @@
+    addi r1, r0, num3 
+    lf f1, 0(r1)
+    addi r2, r0, num4 
+    lf f2, 0(r2)
+    addi r3, r0, num5 
+    lf f3, 0(r3)
+    addi r4, r0, numN1 
+    lf f4, 0(r4)
+    addi r5, r0, num3 
+    lf f3, 0(r5)      ;final value in r3 should be 3
+
+    addi r6, r0, nl   ;put address of newline in r6
+    addi r5, r0, s1   ;put string address in r5
+    trap r5, 3        ;dump string
+    trap f1, 2        ;dump register f1
+    trap r6, 3        ;dump string
+
+    addi r6, r0, nl   ;put address of newline in r6
+    addi r5, r0, s2   ;put string address in r5
+    trap r5, 3        ;dump string
+    trap f2, 2        ;dump register f2
+    trap r6, 3        ;dump string
+
+    addi r6, r0, nl   ;put address of newline in r6
+    addi r5, r0, s3   ;put string address in r5
+    trap r5, 3        ;dump string
+    trap f3, 2        ;dump register f3
+    trap r6, 3        ;dump string
+
+    addi r6, r0, nl   ;put address of newline in r6
+    addi r5, r0, s4   ;put string address in r5
+    trap r5, 3        ;dump string
+    trap f4, 2        ;dump register f4
+    trap r6, 3        ;dump string
+
+    trap r0, 0        ;halt
+num3:  .float 3.1
+num4:  .float 4.2
+num5:  .float 5.3
+numN1: .float -1.0
+s1: .asciiz "\nThe value of f1 is "
+s2: .asciiz "\nThe value of f2 is "
+s3: .asciiz "\nThe value of f3 is "
+s4: .asciiz "\nThe value of f4 is "
+nl: .asciiz "\n"

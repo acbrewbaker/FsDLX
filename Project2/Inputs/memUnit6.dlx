@@ -1,0 +1,48 @@
+    lf f1, num1
+    sf num2, f1
+    lf f2, num3
+    sf num4, f2
+
+    addi r6, r0, nl     ;put address of newline in r6
+    addi r5, r0, s1     ;put string address in r5
+    trap r5, 3          ;dump string
+    addi r5, r0, num1   ;put int address in r5
+    lf   f5, 0(r5)
+    trap f5, 2          ;dump register 5
+    trap r6, 3          ;dump string
+
+    addi r6, r0, nl     ;put address of newline in r6
+    addi r5, r0, s2     ;put string address in r5
+    trap r5, 3          ;dump string
+    addi r5, r0, num2   ;put int address in r5
+    lf   f5, 0(r5)
+    trap f5, 2          ;dump register 5
+    trap r6, 3          ;dump string
+
+    addi r6, r0, nl     ;put address of newline in r6
+    addi r5, r0, s3     ;put string address in r5
+    trap r5, 3          ;dump string
+    addi r5, r0, num3   ;put int address in r5
+    lf   f5, 0(r5)
+    trap f5, 2          ;dump register 5
+    trap r6, 3          ;dump string
+
+
+    addi r6, r0, nl     ;put address of newline in r6
+    addi r5, r0, s4     ;put string address in r5
+    trap r5, 3          ;dump string
+    addi r5, r0, num4   ;put int address in r5
+    lf   f5, 0(r5)
+    trap f5, 2          ;dump register 5
+    trap r6, 3          ;dump string
+
+    trap r0, 0        ;halt
+num1: .float -23.4
+num2: .float 1.4
+num3: .float 12.25
+num4: .float 8.1
+s1: .asciiz "\nThe value in num1 is "
+s2: .asciiz "\nThe value in num2 is "
+s3: .asciiz "\nThe value in num3 is "
+s4: .asciiz "\nThe value in num4 is "
+nl: .asciiz "\n"

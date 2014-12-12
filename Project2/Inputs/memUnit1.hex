@@ -1,0 +1,35 @@
+00000000: 8c010068	#    lw r1, num3
+00000004: 8c02006c	#    lw r2, num4
+00000008: 8c030070	#    lw r3, num5
+0000000c: 8c040074	#    lw r4, numN1
+00000010: 8c030068	#    lw r3, num3       ;final value in r3 should be 3
+00000014: 200600d0	#    addi r6, r0, nl   ;put address of newline in r6
+00000018: 20050078	#    addi r5, r0, s1   ;put string address in r5
+0000001c: 44a00003	#    trap r5, 3        ;dump string
+00000020: 44200001	#    trap r1, 1        ;dump register 1
+00000024: 44c00003	#    trap r6, 3        ;dump string
+00000028: 200600d0	#    addi r6, r0, nl   ;put address of newline in r6
+0000002c: 2005008e	#    addi r5, r0, s2   ;put string address in r5
+00000030: 44a00003	#    trap r5, 3        ;dump string
+00000034: 44400001	#    trap r2, 1        ;dump register 2
+00000038: 44c00003	#    trap r6, 3        ;dump string
+0000003c: 200600d0	#    addi r6, r0, nl   ;put address of newline in r6
+00000040: 200500a4	#    addi r5, r0, s3   ;put string address in r5
+00000044: 44a00003	#    trap r5, 3        ;dump string
+00000048: 44600001	#    trap r3, 1        ;dump register 3
+0000004c: 44c00003	#    trap r6, 3        ;dump string
+00000050: 200600d0	#    addi r6, r0, nl   ;put address of newline in r6
+00000054: 200500ba	#    addi r5, r0, s4   ;put string address in r5
+00000058: 44a00003	#    trap r5, 3        ;dump string
+0000005c: 44800001	#    trap r4, 1        ;dump register 4
+00000060: 44c00003	#    trap r6, 3        ;dump string
+00000064: 44000000	#    trap r0, 0        ;halt
+00000068: 00000003    	# 3
+0000006c: 00000004    	# 4
+00000070: 00000005    	# 5
+00000074: ffffffff    	# -1
+00000078: 0a5468652076616c7565206f662072312069732000	#"\nThe value of r1 is "
+0000008e: 0a5468652076616c7565206f662072322069732000	#"\nThe value of r2 is "
+000000a4: 0a5468652076616c7565206f662072332069732000	#"\nThe value of r3 is "
+000000ba: 0a5468652076616c7565206f662072342069732000	#"\nThe value of r4 is "
+000000d0: 0a00	#"\n"

@@ -1,0 +1,19 @@
+    addi r1, r0, 3
+    addi r2, r0, 6
+    and r3, r1, r2
+    addi r4, r0, s1         
+    trap r4, 3              ;dump string
+    trap r1, 1              ;dump register
+    addi r4, r0, s2         
+    trap r4, 3              ;dump string
+    trap r2, 1              ;dump register
+    addi r4, r0, s3         
+    trap r4, 3              ;dump string
+    trap r3, 1              ;dump register
+    addi r4, r0, s4         
+    trap r4, 3              ;dump string
+    trap r0, 0
+s1: .asciiz "\n"
+s2: .asciiz " and "
+s3: .asciiz " is "
+s4: .asciiz ".\n"

@@ -1,0 +1,38 @@
+    addi r1, r0, fp
+    lf   f1, 0(r1)
+    movf f2, f1
+    movf f3, f2
+    movf f4, f3
+    movf f5, f4
+    addi r1, r0, s1
+    trap r1, 3
+
+;   print number and newline
+    trap f1, 2
+    addi r1, r0, nl
+    trap r1, 3
+
+;   print number and newline
+    trap f2, 2
+    addi r1, r0, nl
+    trap r1, 3
+
+;   print number and newline
+    trap f3, 2
+    addi r1, r0, nl
+    trap r1, 3
+
+;   print number and newline
+    trap f4, 2
+    addi r1, r0, nl
+    trap r1, 3
+
+;   print number and newline
+    trap f5, 2
+    addi r1, r0, nl
+    trap r1, 3
+
+    trap r0, 0      ; halt
+fp: .float 2.75
+s1: .asciiz "\nThese float values should be the same:\n"
+nl: .asciiz "\n"

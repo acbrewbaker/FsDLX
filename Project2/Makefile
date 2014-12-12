@@ -1,9 +1,9 @@
 # Makefile
-PROJ_DIR=/u/css/ab67597/5483/Project1.Late/
-PROJ_DIR_WIN=X:/GitHub/FsDLX/Project1/
+PROJ_DIR=/u/css/ab67597/5483/FsDLX/Project2/
+PROJ_DIR_WIN=H:/FsDLX/Project2/
 
-SRC_DIR=$(PROJ_DIR)FsDLX/src/FsDLX.Assembler/
-SRC_DIR_WIN=$(PROJ_DIR_WIN)FsDLX/src/FsDLX.Assembler/
+SRC_DIR=$(PROJ_DIR)src/FsDLX.Tomasulo/
+SRC_DIR_WIN=$(PROJ_DIR_WIN)src/FsDLX.Tomasulo/
 
 FSC=fsharpc
 FSC_WIN=fsc

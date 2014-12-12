@@ -1,0 +1,40 @@
+00000000: 2001007c	#    addi r1, r0, num3 
+00000004: 98210000	#    lf f1, 0(r1)
+00000008: 20020080	#    addi r2, r0, num4 
+0000000c: 98420000	#    lf f2, 0(r2)
+00000010: 20030084	#    addi r3, r0, num5 
+00000014: 98630000	#    lf f3, 0(r3)
+00000018: 20040088	#    addi r4, r0, numN1 
+0000001c: 98840000	#    lf f4, 0(r4)
+00000020: 2005007c	#    addi r5, r0, num3 
+00000024: 98a30000	#    lf f3, 0(r5)      ;final value in r3 should be 3
+00000028: 200600e4	#    addi r6, r0, nl   ;put address of newline in r6
+0000002c: 2005008c	#    addi r5, r0, s1   ;put string address in r5
+00000030: 44a00003	#    trap r5, 3        ;dump string
+00000034: 44200002	#    trap f1, 2        ;dump register f1
+00000038: 44c00003	#    trap r6, 3        ;dump string
+0000003c: 200600e4	#    addi r6, r0, nl   ;put address of newline in r6
+00000040: 200500a2	#    addi r5, r0, s2   ;put string address in r5
+00000044: 44a00003	#    trap r5, 3        ;dump string
+00000048: 44400002	#    trap f2, 2        ;dump register f2
+0000004c: 44c00003	#    trap r6, 3        ;dump string
+00000050: 200600e4	#    addi r6, r0, nl   ;put address of newline in r6
+00000054: 200500b8	#    addi r5, r0, s3   ;put string address in r5
+00000058: 44a00003	#    trap r5, 3        ;dump string
+0000005c: 44600002	#    trap f3, 2        ;dump register f3
+00000060: 44c00003	#    trap r6, 3        ;dump string
+00000064: 200600e4	#    addi r6, r0, nl   ;put address of newline in r6
+00000068: 200500ce	#    addi r5, r0, s4   ;put string address in r5
+0000006c: 44a00003	#    trap r5, 3        ;dump string
+00000070: 44800002	#    trap f4, 2        ;dump register f4
+00000074: 44c00003	#    trap r6, 3        ;dump string
+00000078: 44000000	#    trap r0, 0        ;halt
+0000007c: 40466666    	# 3.1
+00000080: 40866666    	# 4.2
+00000084: 40a9999a    	# 5.3
+00000088: bf800000    	# -1.0
+0000008c: 0a5468652076616c7565206f662066312069732000	#"\nThe value of f1 is "
+000000a2: 0a5468652076616c7565206f662066322069732000	#"\nThe value of f2 is "
+000000b8: 0a5468652076616c7565206f662066332069732000	#"\nThe value of f3 is "
+000000ce: 0a5468652076616c7565206f662066342069732000	#"\nThe value of f4 is "
+000000e4: 0a00	#"\n"
