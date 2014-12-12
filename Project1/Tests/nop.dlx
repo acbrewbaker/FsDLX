@@ -1,3 +1,0 @@
-	nop
-label:             ; this should also encode as a nop
-	nop

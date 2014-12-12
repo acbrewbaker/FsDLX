@@ -4,18 +4,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Project1", "Project1", "{DACEB980-8600-477F-86A3-B8905B385D31}"
+	ProjectSection(SolutionItems) = preProject
+		Project1\assemble.fs = Project1\assemble.fs
+		Project1\build.fsx = Project1\build.fsx
+		Project1\build.sh = Project1\build.sh
+		Project1\Makefile = Project1\Makefile
+		Project1\mydiff = Project1\mydiff
+		Project1\run.pl = Project1\run.pl
+		Project1\Script1.fsx = Project1\Script1.fsx
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Project2", "Project2", "{5739E74D-24F9-4A64-933B-8186663411A0}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Inputs", "Inputs", "{FE3D70F6-8BCC-4DA0-A7AD-41451955CB62}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Tomasulo", "Project2\FsDLX.Tomasulo\FsDLX.Tomasulo.fsproj", "{49572F7C-4FF3-4448-9A23-8067BE0E733E}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Tomasulo", "Project2\Test.FsDLX.Tomasulo\Test.FsDLX.Tomasulo.fsproj", "{A82780E0-376C-4A04-8D66-3EC7F8191FF5}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Inputs", "Inputs", "{9ADAA4E1-9E55-49DC-8734-1BA7839B7569}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misc", "Misc", "{1FFF5122-82C3-4FCB-9D69-70B402419CA2}"
 	ProjectSection(SolutionItems) = preProject
 		Project2\build.fsx = Project2\build.fsx
 		Project2\build.sh = Project2\build.sh
@@ -23,9 +22,169 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misc", "Misc", "{1FFF5122-8
 		Project2\tomasulo.fs = Project2\tomasulo.fs
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Assembler", "Project1\FsDLX.Assembler\FsDLX.Assembler.fsproj", "{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Inputs", "Inputs", "{FE3D70F6-8BCC-4DA0-A7AD-41451955CB62}"
+	ProjectSection(SolutionItems) = preProject
+		Project1\Inputs\align.dlx = Project1\Inputs\align.dlx
+		Project1\Inputs\align.dlx.hex = Project1\Inputs\align.dlx.hex
+		Project1\Inputs\align.hex = Project1\Inputs\align.hex
+		Project1\Inputs\arithImmed.dlx = Project1\Inputs\arithImmed.dlx
+		Project1\Inputs\arithImmed.hex = Project1\Inputs\arithImmed.hex
+		Project1\Inputs\asciiz1.dlx = Project1\Inputs\asciiz1.dlx
+		Project1\Inputs\asciiz1.hex = Project1\Inputs\asciiz1.hex
+		Project1\Inputs\asciiz2.dlx = Project1\Inputs\asciiz2.dlx
+		Project1\Inputs\asciiz2.hex = Project1\Inputs\asciiz2.hex
+		Project1\Inputs\branches.dlx = Project1\Inputs\branches.dlx
+		Project1\Inputs\branches.hex = Project1\Inputs\branches.hex
+		Project1\Inputs\convert.dlx = Project1\Inputs\convert.dlx
+		Project1\Inputs\convert.hex = Project1\Inputs\convert.hex
+		Project1\Inputs\data.dlx = Project1\Inputs\data.dlx
+		Project1\Inputs\data.hex = Project1\Inputs\data.hex
+		Project1\Inputs\directives.hex = Project1\Inputs\directives.hex
+		Project1\Inputs\directives1.dlx = Project1\Inputs\directives1.dlx
+		Project1\Inputs\directives1.hex = Project1\Inputs\directives1.hex
+		Project1\Inputs\directives2.dlx = Project1\Inputs\directives2.dlx
+		Project1\Inputs\directives2.hex = Project1\Inputs\directives2.hex
+		Project1\Inputs\double1.dlx = Project1\Inputs\double1.dlx
+		Project1\Inputs\double1.hex = Project1\Inputs\double1.hex
+		Project1\Inputs\double2.dlx = Project1\Inputs\double2.dlx
+		Project1\Inputs\double2.hex = Project1\Inputs\double2.hex
+		Project1\Inputs\float1.dlx = Project1\Inputs\float1.dlx
+		Project1\Inputs\float1.hex = Project1\Inputs\float1.hex
+		Project1\Inputs\float2.dlx = Project1\Inputs\float2.dlx
+		Project1\Inputs\float2.hex = Project1\Inputs\float2.hex
+		Project1\Inputs\fpArith.dlx = Project1\Inputs\fpArith.dlx
+		Project1\Inputs\fpArith.hex = Project1\Inputs\fpArith.hex
+		Project1\Inputs\intArith.dlx = Project1\Inputs\intArith.dlx
+		Project1\Inputs\intArith.hex = Project1\Inputs\intArith.hex
+		Project1\Inputs\intLogical.dlx = Project1\Inputs\intLogical.dlx
+		Project1\Inputs\intLogical.hex = Project1\Inputs\intLogical.hex
+		Project1\Inputs\intSets.dlx = Project1\Inputs\intSets.dlx
+		Project1\Inputs\intSets.hex = Project1\Inputs\intSets.hex
+		Project1\Inputs\intShift.dlx = Project1\Inputs\intShift.dlx
+		Project1\Inputs\intShift.hex = Project1\Inputs\intShift.hex
+		Project1\Inputs\jump.dlx = Project1\Inputs\jump.dlx
+		Project1\Inputs\jump.hex = Project1\Inputs\jump.hex
+		Project1\Inputs\jumpR.dlx = Project1\Inputs\jumpR.dlx
+		Project1\Inputs\jumpR.hex = Project1\Inputs\jumpR.hex
+		Project1\Inputs\loadImmed.dlx = Project1\Inputs\loadImmed.dlx
+		Project1\Inputs\loadImmed.hex = Project1\Inputs\loadImmed.hex
+		Project1\Inputs\loads.dlx = Project1\Inputs\loads.dlx
+		Project1\Inputs\loads.hex = Project1\Inputs\loads.hex
+		Project1\Inputs\logicalImmed.dlx = Project1\Inputs\logicalImmed.dlx
+		Project1\Inputs\logicalImmed.hex = Project1\Inputs\logicalImmed.hex
+		Project1\Inputs\move.dlx = Project1\Inputs\move.dlx
+		Project1\Inputs\move.hex = Project1\Inputs\move.hex
+		Project1\Inputs\nop.dlx = Project1\Inputs\nop.dlx
+		Project1\Inputs\nop.hex = Project1\Inputs\nop.hex
+		Project1\Inputs\setImmed.dlx = Project1\Inputs\setImmed.dlx
+		Project1\Inputs\setImmed.hex = Project1\Inputs\setImmed.hex
+		Project1\Inputs\shiftImmed.dlx = Project1\Inputs\shiftImmed.dlx
+		Project1\Inputs\shiftImmed.hex = Project1\Inputs\shiftImmed.hex
+		Project1\Inputs\space.dlx = Project1\Inputs\space.dlx
+		Project1\Inputs\space.hex = Project1\Inputs\space.hex
+		Project1\Inputs\stores.dlx = Project1\Inputs\stores.dlx
+		Project1\Inputs\stores.hex = Project1\Inputs\stores.hex
+		Project1\Inputs\text1.dlx = Project1\Inputs\text1.dlx
+		Project1\Inputs\text1.hex = Project1\Inputs\text1.hex
+		Project1\Inputs\text2.dlx = Project1\Inputs\text2.dlx
+		Project1\Inputs\text2.hex = Project1\Inputs\text2.hex
+		Project1\Inputs\trap.dlx = Project1\Inputs\trap.dlx
+		Project1\Inputs\trap.hex = Project1\Inputs\trap.hex
+		Project1\Inputs\word1.dlx = Project1\Inputs\word1.dlx
+		Project1\Inputs\word1.hex = Project1\Inputs\word1.hex
+		Project1\Inputs\word2.dlx = Project1\Inputs\word2.dlx
+		Project1\Inputs\word2.hex = Project1\Inputs\word2.hex
+	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Assembler", "Project1\Test.FsDLX.Assembler\Test.FsDLX.Assembler.fsproj", "{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Inputs", "Inputs", "{9ADAA4E1-9E55-49DC-8734-1BA7839B7569}"
+	ProjectSection(SolutionItems) = preProject
+		Project2\Inputs\add.hex = Project2\Inputs\add.hex
+		Project2\Inputs\brUnit1.dlx = Project2\Inputs\brUnit1.dlx
+		Project2\Inputs\brUnit1.hex = Project2\Inputs\brUnit1.hex
+		Project2\Inputs\brUnit1.out = Project2\Inputs\brUnit1.out
+		Project2\Inputs\brUnit2.dlx = Project2\Inputs\brUnit2.dlx
+		Project2\Inputs\brUnit2.hex = Project2\Inputs\brUnit2.hex
+		Project2\Inputs\brUnit2.out = Project2\Inputs\brUnit2.out
+		Project2\Inputs\brUnit3.dlx = Project2\Inputs\brUnit3.dlx
+		Project2\Inputs\brUnit3.hex = Project2\Inputs\brUnit3.hex
+		Project2\Inputs\brUnit3.out = Project2\Inputs\brUnit3.out
+		Project2\Inputs\brUnit4.dlx = Project2\Inputs\brUnit4.dlx
+		Project2\Inputs\brUnit4.hex = Project2\Inputs\brUnit4.hex
+		Project2\Inputs\brUnit4.out = Project2\Inputs\brUnit4.out
+		Project2\Inputs\brUnit5.dlx = Project2\Inputs\brUnit5.dlx
+		Project2\Inputs\brUnit5.hex = Project2\Inputs\brUnit5.hex
+		Project2\Inputs\brUnit5.out = Project2\Inputs\brUnit5.out
+		Project2\Inputs\brUnit6.dlx = Project2\Inputs\brUnit6.dlx
+		Project2\Inputs\brUnit6.hex = Project2\Inputs\brUnit6.hex
+		Project2\Inputs\brUnit6.out = Project2\Inputs\brUnit6.out
+		Project2\Inputs\fpUnit1.dlx = Project2\Inputs\fpUnit1.dlx
+		Project2\Inputs\fpUnit1.hex = Project2\Inputs\fpUnit1.hex
+		Project2\Inputs\fpUnit1.out = Project2\Inputs\fpUnit1.out
+		Project2\Inputs\fpUnit2.dlx = Project2\Inputs\fpUnit2.dlx
+		Project2\Inputs\fpUnit2.hex = Project2\Inputs\fpUnit2.hex
+		Project2\Inputs\fpUnit2.out = Project2\Inputs\fpUnit2.out
+		Project2\Inputs\fpUnit3.dlx = Project2\Inputs\fpUnit3.dlx
+		Project2\Inputs\fpUnit3.hex = Project2\Inputs\fpUnit3.hex
+		Project2\Inputs\fpUnit3.out = Project2\Inputs\fpUnit3.out
+		Project2\Inputs\fpUnit4.dlx = Project2\Inputs\fpUnit4.dlx
+		Project2\Inputs\fpUnit4.hex = Project2\Inputs\fpUnit4.hex
+		Project2\Inputs\fpUnit4.out = Project2\Inputs\fpUnit4.out
+		Project2\Inputs\fpUnit5.dlx = Project2\Inputs\fpUnit5.dlx
+		Project2\Inputs\fpUnit5.hex = Project2\Inputs\fpUnit5.hex
+		Project2\Inputs\fpUnit5.out = Project2\Inputs\fpUnit5.out
+		Project2\Inputs\fpUnit6.dlx = Project2\Inputs\fpUnit6.dlx
+		Project2\Inputs\fpUnit6.hex = Project2\Inputs\fpUnit6.hex
+		Project2\Inputs\fpUnit6.out = Project2\Inputs\fpUnit6.out
+		Project2\Inputs\fpUnit7.dlx = Project2\Inputs\fpUnit7.dlx
+		Project2\Inputs\fpUnit7.hex = Project2\Inputs\fpUnit7.hex
+		Project2\Inputs\fpUnit7.out = Project2\Inputs\fpUnit7.out
+		Project2\Inputs\fpUnit8.dlx = Project2\Inputs\fpUnit8.dlx
+		Project2\Inputs\fpUnit8.hex = Project2\Inputs\fpUnit8.hex
+		Project2\Inputs\fpUnit8.out = Project2\Inputs\fpUnit8.out
+		Project2\Inputs\intUnit1.dlx = Project2\Inputs\intUnit1.dlx
+		Project2\Inputs\intUnit1.hex = Project2\Inputs\intUnit1.hex
+		Project2\Inputs\intUnit1.out = Project2\Inputs\intUnit1.out
+		Project2\Inputs\intUnit2.dlx = Project2\Inputs\intUnit2.dlx
+		Project2\Inputs\intUnit2.hex = Project2\Inputs\intUnit2.hex
+		Project2\Inputs\intUnit2.out = Project2\Inputs\intUnit2.out
+		Project2\Inputs\intUnit3.dlx = Project2\Inputs\intUnit3.dlx
+		Project2\Inputs\intUnit3.hex = Project2\Inputs\intUnit3.hex
+		Project2\Inputs\intUnit3.out = Project2\Inputs\intUnit3.out
+		Project2\Inputs\intUnit4.dlx = Project2\Inputs\intUnit4.dlx
+		Project2\Inputs\intUnit4.hex = Project2\Inputs\intUnit4.hex
+		Project2\Inputs\intUnit4.out = Project2\Inputs\intUnit4.out
+		Project2\Inputs\intUnit5.dlx = Project2\Inputs\intUnit5.dlx
+		Project2\Inputs\intUnit5.hex = Project2\Inputs\intUnit5.hex
+		Project2\Inputs\intUnit5.out = Project2\Inputs\intUnit5.out
+		Project2\Inputs\intUnit6.dlx = Project2\Inputs\intUnit6.dlx
+		Project2\Inputs\intUnit6.hex = Project2\Inputs\intUnit6.hex
+		Project2\Inputs\intUnit6.out = Project2\Inputs\intUnit6.out
+		Project2\Inputs\intUnit7.dlx = Project2\Inputs\intUnit7.dlx
+		Project2\Inputs\intUnit7.hex = Project2\Inputs\intUnit7.hex
+		Project2\Inputs\intUnit7.out = Project2\Inputs\intUnit7.out
+		Project2\Inputs\intUnit8.dlx = Project2\Inputs\intUnit8.dlx
+		Project2\Inputs\intUnit8.hex = Project2\Inputs\intUnit8.hex
+		Project2\Inputs\intUnit8.out = Project2\Inputs\intUnit8.out
+		Project2\Inputs\memUnit1.dlx = Project2\Inputs\memUnit1.dlx
+		Project2\Inputs\memUnit1.hex = Project2\Inputs\memUnit1.hex
+		Project2\Inputs\memUnit1.out = Project2\Inputs\memUnit1.out
+		Project2\Inputs\memUnit2.dlx = Project2\Inputs\memUnit2.dlx
+		Project2\Inputs\memUnit2.hex = Project2\Inputs\memUnit2.hex
+		Project2\Inputs\memUnit2.out = Project2\Inputs\memUnit2.out
+		Project2\Inputs\memUnit3.dlx = Project2\Inputs\memUnit3.dlx
+		Project2\Inputs\memUnit3.hex = Project2\Inputs\memUnit3.hex
+		Project2\Inputs\memUnit3.out = Project2\Inputs\memUnit3.out
+		Project2\Inputs\memUnit4.dlx = Project2\Inputs\memUnit4.dlx
+		Project2\Inputs\memUnit4.hex = Project2\Inputs\memUnit4.hex
+		Project2\Inputs\memUnit4.out = Project2\Inputs\memUnit4.out
+		Project2\Inputs\memUnit5.dlx = Project2\Inputs\memUnit5.dlx
+		Project2\Inputs\memUnit5.hex = Project2\Inputs\memUnit5.hex
+		Project2\Inputs\memUnit5.out = Project2\Inputs\memUnit5.out
+		Project2\Inputs\memUnit6.dlx = Project2\Inputs\memUnit6.dlx
+		Project2\Inputs\memUnit6.hex = Project2\Inputs\memUnit6.hex
+		Project2\Inputs\memUnit6.out = Project2\Inputs\memUnit6.out
+		Project2\Inputs\run.pl = Project2\Inputs\run.pl
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{49388BF1-28A4-4441-A622-91ED6DD763E4}"
 	ProjectSection(SolutionItems) = preProject
@@ -34,39 +193,64 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{49388B
 		.nuget\NuGet.targets = .nuget\NuGet.targets
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{D230C028-8AB9-40B9-9CEE-2FCD08B21FC2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{8CD8319E-52DC-403D-931E-E67EAE60BC9F}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Assembler", "src\FsDLX.Assembler\FsDLX.Assembler.fsproj", "{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Tomasulo", "src\FsDLX.Tomasulo\FsDLX.Tomasulo.fsproj", "{49572F7C-4FF3-4448-9A23-8067BE0E733E}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Assembler", "test\Test.FsDLX.Assembler\Test.FsDLX.Assembler.fsproj", "{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Tomasulo", "test\Test.FsDLX.Tomasulo\Test.FsDLX.Tomasulo.fsproj", "{A82780E0-376C-4A04-8D66-3EC7F8191FF5}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Common", "src\FsDLX.Common\FsDLX.Common.fsproj", "{3548B64C-D96E-4033-88EE-99C87BBA4793}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "info", "info", "{3CEC9686-1DF6-4B89-BA84-16888D458C13}"
+	ProjectSection(SolutionItems) = preProject
+		info\Itypes = info\Itypes
+		info\Jtypes = info\Jtypes
+		info\Rtypes = info\Rtypes
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{49572F7C-4FF3-4448-9A23-8067BE0E733E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{49572F7C-4FF3-4448-9A23-8067BE0E733E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{49572F7C-4FF3-4448-9A23-8067BE0E733E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{49572F7C-4FF3-4448-9A23-8067BE0E733E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A82780E0-376C-4A04-8D66-3EC7F8191FF5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A82780E0-376C-4A04-8D66-3EC7F8191FF5}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A82780E0-376C-4A04-8D66-3EC7F8191FF5}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A82780E0-376C-4A04-8D66-3EC7F8191FF5}.Release|Any CPU.Build.0 = Release|Any CPU
 		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{49572F7C-4FF3-4448-9A23-8067BE0E733E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{49572F7C-4FF3-4448-9A23-8067BE0E733E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{49572F7C-4FF3-4448-9A23-8067BE0E733E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{49572F7C-4FF3-4448-9A23-8067BE0E733E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A82780E0-376C-4A04-8D66-3EC7F8191FF5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A82780E0-376C-4A04-8D66-3EC7F8191FF5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A82780E0-376C-4A04-8D66-3EC7F8191FF5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A82780E0-376C-4A04-8D66-3EC7F8191FF5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3548B64C-D96E-4033-88EE-99C87BBA4793}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3548B64C-D96E-4033-88EE-99C87BBA4793}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3548B64C-D96E-4033-88EE-99C87BBA4793}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3548B64C-D96E-4033-88EE-99C87BBA4793}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{FE3D70F6-8BCC-4DA0-A7AD-41451955CB62} = {DACEB980-8600-477F-86A3-B8905B385D31}
-		{49572F7C-4FF3-4448-9A23-8067BE0E733E} = {5739E74D-24F9-4A64-933B-8186663411A0}
-		{A82780E0-376C-4A04-8D66-3EC7F8191FF5} = {5739E74D-24F9-4A64-933B-8186663411A0}
 		{9ADAA4E1-9E55-49DC-8734-1BA7839B7569} = {5739E74D-24F9-4A64-933B-8186663411A0}
-		{1FFF5122-82C3-4FCB-9D69-70B402419CA2} = {5739E74D-24F9-4A64-933B-8186663411A0}
-		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC} = {DACEB980-8600-477F-86A3-B8905B385D31}
-		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1} = {DACEB980-8600-477F-86A3-B8905B385D31}
+		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC} = {D230C028-8AB9-40B9-9CEE-2FCD08B21FC2}
+		{49572F7C-4FF3-4448-9A23-8067BE0E733E} = {D230C028-8AB9-40B9-9CEE-2FCD08B21FC2}
+		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1} = {8CD8319E-52DC-403D-931E-E67EAE60BC9F}
+		{A82780E0-376C-4A04-8D66-3EC7F8191FF5} = {8CD8319E-52DC-403D-931E-E67EAE60BC9F}
+		{3548B64C-D96E-4033-88EE-99C87BBA4793} = {D230C028-8AB9-40B9-9CEE-2FCD08B21FC2}
 	EndGlobalSection
 EndGlobal
