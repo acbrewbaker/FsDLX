@@ -4,6 +4,7 @@ namespace FsDLX.Tomasulo
 
 open System
 open System.Linq
+open FsDLX.Assembler
 
 
 module Convert =
@@ -21,6 +22,11 @@ module Convert =
 
 
 module Config =
+    let nGPRregisters = 32
+    let nFPRregisters = 32
+    let DefaultMemorySize = 1000
+
+
     type FU =
         {
             RSPrefix    : string
@@ -52,16 +58,17 @@ module Config =
 
 
 
-type Opcode = 
-    { Name : string; Code : int }
-    static member Null = { Name = ""; Code = 0 }
-    override o.ToString() = o.Name
+type Opcode(code:int) =
+    member val asInt = code with get 
+    member val asHex = Convert.int2hex code with get
+    override o.ToString() = o.asHex
+    new(code:string) = Opcode(Convert.hex2int code)
 
 type ReservationStation =
     {
         Name                    : string
         mutable Busy            : bool
-        mutable Op              : Opcode
+        mutable Op              : Opcode option
         mutable Vj              : int
         mutable Vk              : int
         mutable Qj              : string option
@@ -74,7 +81,7 @@ type ReservationStation =
 
     member rs.Clear() =
         rs.Busy <- false
-        rs.Op <- Opcode.Null
+        rs.Op <- None
         rs.Vj <- 0; rs.Vk <- 0
         rs.Qj <- None; rs.Qk <- None
         rs.A <- 0
@@ -83,13 +90,12 @@ type ReservationStation =
 
     member rs.IsEmpty = 
         rs.Busy = false         &&
-        rs.Op   = Opcode.Null   &&
+        rs.Op.IsNone            &&
         rs.Vj   = 0             &&
         rs.Vk   = 0             &&
         rs.Qj   = None          &&
         rs.Qk   = None          &&
         rs.A    = 0
-
 
     override rs.ToString() =
         sprintf "
@@ -99,7 +105,7 @@ Name    Busy    Op    Vj    Vk    Qj    Qk    A    ResultReady    ResultWritten 
             rs.ResultReady rs.ResultWritten rs.Result
 
     static member Init name =
-        {   Name = name; Busy = false; Op = Opcode.Null; 
+        {   Name = name; Busy = false; Op = None; 
             Vj = 0; Vk = 0; Qj = None; Qk = None; A = 0
             ResultReady = false;
             ResultWritten = false;
@@ -123,12 +129,22 @@ type RegisterFile =
     | GPR of Register[]
     | FPR of Register[]
 
-    static member InitGPR n =
-        let regs = Register.ArrayInit n
+    member rf.Item
+        with get(reg) = rf |> function 
+            | GPR gpr -> gpr.[reg] 
+            | FPR fpr -> fpr.[reg]
+        
+        and set reg value = rf |> function
+            | GPR gpr -> gpr.[reg] <- value
+            | FPR fpr -> fpr.[reg] <- value
+        
+
+    static member InitGPR() =
+        let regs = Register.ArrayInit Config.nGPRregisters
         RegisterFile.GPR regs
 
-    static member InitFPR n =
-        let regs = Register.ArrayInit n
+    static member InitFPR() =
+        let regs = Register.ArrayInit Config.nFPRregisters
         RegisterFile.FPR regs
 
 and Register =
@@ -142,6 +158,11 @@ and Register =
 
 and Qi = string option
 
+
+type PC private () =
+    static let instance = PC()
+    member val Value = 0 with get, set
+    static member GetInstance = instance
 
 type Clock private () =
     static let instance = Clock()

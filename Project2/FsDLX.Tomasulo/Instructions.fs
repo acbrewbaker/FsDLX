@@ -4,18 +4,35 @@ namespace FsDLX.Tomasulo
 open System.Collections
 
 type IntegerInstruction =
-    | ADDI
-    | NOP
-    | ADD
-    | SUB
-    | AND
-    | OR
-    | XOR
-    | MOVF
-    | MOVFP2I
-    | MOVI2FP
+    | ADDI      // IType
+    | NOP       // RType
+    | ADD       // Rtype
+    | SUB       // RType
+    | AND       // RType
+    | OR        // RType
+    | XOR       // RType
+    | MOVF      // RType
+    | MOVFP2I   // RType
+    | MOVI2FP   // RType
 
-    member ii.Match hex = ()
+//    member ii.Op(rs, rd, imm) = ()
+//    member ii.Op(rs, rt, rd) = ()
+
+type TrapInstruction =
+    | Trap
+
+type BranchInstruction =
+    | BEQZ
+    | J
+    | JR
+    | JAL
+    | JALR
+
+type MemoryInstruction =
+    | LW
+    | LF
+    | SW
+    | SF
 
 type FloatingPointInstruction =
     | ADDF
@@ -28,20 +45,37 @@ type FloatingPointInstruction =
     | CVTI2F
     
 
+type Instruction =
+    | IntegerInstruction
+    | TrapInstruction
+    | BranchInstruction
+    | MemoryInstruction
+    | FloatingPointInstruction
+
 type T =
     {
-        Opcode      : Opcode
-        FunCode     : int
-        DstReg      : string
-        //DstRegBit   : DstRegBit
-        S1Reg       : string
-        S1RegBit    : int
-        S2Reg       : string
-        S2RegBit    : int
-        ImmedField  : bool
-        ImmedFieldStartBit  : int
-        ImmedFieldEndBit  : int
+        Opcode  : Opcode
+        FunCode : int option
+        rs      : string option
+        rt      : string option
+        rd      : string option
+        imm     : string option
     }
+
+
+//    {
+//        Opcode      : Opcode
+//        FunCode     : int
+//        DstReg      : string
+//        DstRegBit   : int
+//        S1Reg       : string
+//        S1RegBit    : int
+//        S2Reg       : string
+//        S2RegBit    : int
+//        ImmedField  : bool
+//        ImmedFieldStartBit  : int
+//        ImmedFieldEndBit  : int
+//    }
 
 
 
@@ -63,7 +97,7 @@ and WaitCondition(cdb:CDB, RS:ReservationStation[], Buffer:ReservationStation[],
             | Execute.LoadStep2 -> true //loadstorestep1 needs to be complete
         | W w -> 
             w |> function
-            | WriteResult.FPOperationOrLoad -> cdb = None && true //execution complete at r
+            | WriteResult.FPOperationOrLoad -> cdb.Result = None && true //execution complete at r
             | WriteResult.Store -> RS.[r].Qk = None && true //execution complete at r
 
 and Issue =
@@ -85,7 +119,7 @@ and Issue =
         
             RegisterStat.[rt].Qi |> function
             | Some _ -> RS.[r].Qk <- RegisterStat.[rt].Qi
-            | None -> RS.[r].Vj <- Regs.[rs]; RS.[r].Qj <- None
+            | None -> RS.[r].Vk <- Regs.[rs]; RS.[r].Qk <- None
         
             RS.[r].Busy <- true; RegisterStat.[rd].Qi <- Some(string r)
         

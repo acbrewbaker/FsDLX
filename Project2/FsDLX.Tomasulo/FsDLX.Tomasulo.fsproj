@@ -49,6 +49,13 @@
     <Compile Include="Interface.fs" />
     <None Include="Script.fsx" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Project1\FsDLX.Assembler\FsDLX.Assembler.fsproj">
+      <Name>FsDLX.Assembler</Name>
+      <Project>{dc1f9d91-b4e6-4471-9810-5ce92b50b4fc}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
   </PropertyGroup>
