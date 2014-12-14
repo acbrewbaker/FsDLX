@@ -24,14 +24,15 @@ type Simulator() =
     let Clock = Clock.GetInstance
     let mutable PC = 0
     let memory = Memory.GetInstance Config.DefaultMemorySize
-    let gpr = RegisterFile.InitGPR
-    let fpr = RegisterFile.InitFPR
+    let gpr = GPR()
+    let fpr = FPR()
     let funits = FunctionalUnits() //FU.InitAll()
     let mutable halt = false
     
 
     let finished() = funits.Finished()
 
+    let updateReservationStations() = funits.UpdateReservationStations(cdb)
     
     let branchInBranchUnit() = false
 
@@ -62,14 +63,14 @@ type Simulator() =
     // fails and is reattempted in the next clock cycle.
     let issue (instruction:int) = 
         let k = InstructionKind.ofInt instruction
-        let stall = 
-            InstructionKind.ofInt instruction |> function
-            | Integer ->
-                funits.IntegerUnits |> Array.tryFindIndex (fun u -> not(u.Busy))
-            | Trap ->
-            | Branch ->
-            | Memory ->
-            | FloatingPoint ->
+//        let stall = 
+//            InstructionKind.ofInt instruction |> function
+//            | Integer ->
+//                funits.IntegerUnits |> Array.tryFindIndex (fun u -> not(u.Busy))
+//            | Trap ->
+//            | Branch -> 
+//            | Memory ->
+//            | FloatingPoint ->
   
 //        (Instruction.ofInt instruction, InstructionKind.ofInt instruction) |> function
 //        | i, InstructionKind.Integer ->
@@ -93,7 +94,7 @@ type Simulator() =
                 let stall = issue(instruction)
                 if not(halt) && not(stall) then PC <- PC + 4
             // update RSs using name and value
-            updateReservationStations(cdb)
+            updateReservationStations()
 
         
 

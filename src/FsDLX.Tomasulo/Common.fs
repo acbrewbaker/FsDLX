@@ -45,22 +45,6 @@ module Config =
                 Instructions = [| "addf"; "subf"; "multf"; "divf"; "mult"; "div"; "cvtf2i"; "cvti2f" |]}
       
 
-//type Opcode(code:int) =
-//    member val asInt = code with get 
-//    member val asHex = Convert.int2hex code with get
-//    override o.ToString() = o.asHex
-//    new(code:string) = Opcode(Convert.hex2int code)
-//
-//    static member ofBin (bin:string) = bin.Length |> function
-//        | b when b = Config.nOpcodeBits -> Convert.bin2int bin
-//        | _ -> failwith "Invalid Binary Opcode Length"
-//
-//    static member ArrayInit(info:OpcodeInfo, opcodes:string[]) = 
-//        opcodes |> Array.map (fun op -> Opcode(info.Lookup(op)))
-//
-//    static member ArrayInit(info:OpcodeInfo, cfg:Config.FU) = 
-//        Opcode.ArrayInit(info, cfg.Instructions)
-
 
 // The ReservationStation class contains the fields of an individual reservation station: 
 // name, busy, opcode, Vj, Vk, Qj, Qk, A, result, resultReady, resultWritten.  It also 
@@ -125,41 +109,6 @@ Name    Busy    Op    Vj    Vk    Qj    Qk    A    ResultReady    ResultWritten 
 type CDB() =
     member val Src      = "" with get, set
     member val Result   = Some 0 with get, set
-
-type RegisterFile =
-    | GPR of Register[]
-    | FPR of Register[]
-
-    member rf.Item
-        with get(reg) = rf |> function 
-            | GPR gpr -> gpr.[reg] 
-            | FPR fpr -> fpr.[reg]
-        
-        and set reg value = rf |> function
-            | GPR gpr -> gpr.[reg] <- value
-            | FPR fpr -> fpr.[reg] <- value
-        
-
-    static member InitGPR() =
-        let regs = Register.ArrayInit Config.nGPRregisters
-        RegisterFile.GPR regs
-
-    static member InitFPR() =
-        let regs = Register.ArrayInit Config.nFPRregisters
-        RegisterFile.FPR regs
-
-and Register =
-    {
-        mutable Qi          : Qi
-        mutable Contents    : int    
-    }
-
-    member r.IsAvailable() = r.Qi |> function | Some _ -> false | _ -> true
-
-    static member Init _ = { Qi = None; Contents = 0 }
-    static member ArrayInit n = Array.init n Register.Init
-
-and Qi = string option
 
 
 type PC private () =

@@ -106,20 +106,20 @@ type FU(cfg:Config.FU) =
    
         
 
-and IntegerUnit(regs:RegisterFile) =
+and IntegerUnit() =
     inherit FU(Config.FU.IntegerUnit)
 
     static let instructions = 
         [| "addi", {    opcode = Opcode.ofName "addi"; funCode = FunCode.NONE; 
-                        rd = DstReg.GPR(11,15)
-                        rs = S1Reg.GPR(6,10)
+                        rd = DstReg.R(11,15)
+                        rs = S1Reg.R(6,10)
                         rt = S2Reg.NONE
                         imm = Imm.A(16,31) }
                         
            "add", {     opcode  = Opcode.ofName "add"; funCode = FunCode.NONE;
-                        rd      = DstReg.GPR(16,20)
-                        rs      = S1Reg.GPR(6,10)
-                        rt      = S2Reg.GPR(11,15)
+                        rd      = DstReg.R(16,20)
+                        rs      = S1Reg.R(6,10)
+                        rt      = S2Reg.R(11,15)
                         imm     = NONE } 
         |] |> Map.ofArray
 
@@ -136,8 +136,10 @@ and IntegerUnit(regs:RegisterFile) =
 
     override iu.Issue i =         
         let i = instructions.[(Opcode.ofInstructionInt i).Name]
-        iu.FindEmptyStation() |> function
-        | Some r -> regs.[i.rs]
+        let rd, rs, rt = 0,0,0
+            
+//        iu.FindEmptyStation() |> function
+//        | Some r -> regs.[i.rs]
         false
 //        let stall = ref false
 //        iu.RS |> Array.iter (fun r ->
@@ -188,10 +190,10 @@ and TrapUnit() =
     inherit FU(Config.FU.TrapUnit)
 
     static let regBits = (6,10)
-    static let trap0 = S1Reg.GPR(regBits) |> Instruction.InitTrap
-    static let trap1 = S1Reg.GPR(regBits) |> Instruction.InitTrap
-    static let trap2 = S1Reg.FPR(regBits) |> Instruction.InitTrap
-    static let trap3 = S1Reg.GPR(regBits) |> Instruction.InitTrap
+    static let trap0 = S1Reg.R(regBits) |> Instruction.InitTrap
+    static let trap1 = S1Reg.R(regBits) |> Instruction.InitTrap
+    static let trap2 = S1Reg.F(regBits) |> Instruction.InitTrap
+    static let trap3 = S1Reg.R(regBits) |> Instruction.InitTrap
     
     override tu.Issue i = false
 

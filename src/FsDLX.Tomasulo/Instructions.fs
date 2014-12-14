@@ -31,31 +31,31 @@ type InstructionKind =
 
 type DstReg =
     | NONE
-    | GPR of int * int
-    | FPR of int * int
+    | R of int * int
+    | F of int * int
 
-    member rd.GetReg (i:int) (regs:RegisterFile) = 
-        let rn a b = (Convert.int2bin i).[a..b] |> Convert.bin2int
-        rd |> function
-        | GPR (a,b) ->
-            regs |> function | RegisterFile.GPR gpr -> gpr.[rn a b] | _ -> failwith ""
-        | FPR (a,b) ->
-            regs |> function | RegisterFile.FPR fpr -> fpr.[rn a b] | _ -> failwith ""
-        | _ -> failwith ""
+//    member rd.GetReg (i:int) (regs:RegisterFile) = 
+//        let rn a b = (Convert.int2bin i).[a..b] |> Convert.bin2int
+//        rd |> function
+//        | GPR (a,b) ->
+//            regs |> function | RegisterFile.GPR gpr -> gpr.[rn a b] | _ -> failwith ""
+//        | FPR (a,b) ->
+//            regs |> function | RegisterFile.FPR fpr -> fpr.[rn a b] | _ -> failwith ""
+//        | _ -> failwith ""
 
 type S1Reg =
     | NONE
-    | GPR of int * int
-    | FPR of int * int
+    | R of int * int
+    | F of int * int
 
 type S2Reg =
     | NONE
-    | GPR of int * int
-    | FPR of int * int
+    | R of int * int
+    | F of int * int
 
 type FunCode =
     | NONE
-    | F of int * int
+    | FC of int * int
 
 type Imm =
     | NONE
@@ -82,12 +82,14 @@ type Instruction =
         imm     : Imm
     }
     
-//    member i.GetRS(instruction:int) = i.rs |> function
-//        | S1Reg.GPR (a,b) -> (Convert.int2bin instruction).[a..b] |> Convert.bin2int
+//    member ins.GetRS (instruction:int) (regs:RegisterFile) = 
+//        let idx a b = (Convert.int2bin instruction).[a..b] |> Convert.bin2int
+//        ins.rs |> function
+//        | S1Reg.GPR (a,b) -> regs.[idx a b]
 
 
     static member InitTrap rs =
-        {   opcode = Opcode.ofName "trap"; funCode = FunCode.F(27,31)
+        {   opcode = Opcode.ofName "trap"; funCode = FunCode.FC(27,31)
             rd = DstReg.NONE; rs = rs; rt = S2Reg.NONE; imm = Imm.NONE }
 
 
