@@ -63,24 +63,21 @@ type Simulator() =
     // fails and is reattempted in the next clock cycle.
     let issue (instruction:int) = 
         let k = InstructionKind.ofInt instruction
-//        let stall = 
-//            InstructionKind.ofInt instruction |> function
-//            | Integer ->
-//                funits.IntegerUnits |> Array.tryFindIndex (fun u -> not(u.Busy))
-//            | Trap ->
-//            | Branch -> 
-//            | Memory ->
-//            | FloatingPoint ->
-  
-//        (Instruction.ofInt instruction, InstructionKind.ofInt instruction) |> function
-//        | i, InstructionKind.Integer ->
-//        | i, InstructionKind.Trap ->
-//        | i, InstructionKind.Branch ->
-//        | i, InstructionKind.Memory ->
-//        | i, InstructionKind.FloatingPoint ->
-
-
-        false
+        let stall = 
+            InstructionKind.ofInt instruction |> function
+            | Integer ->
+                funits.IntegerUnits |> Array.tryFindIndex (fun u -> not(u.Busy)) |> function
+                | Some u -> funits.IntegerUnits.[u].Issue(instruction)
+                | _ -> false
+            | Trap -> 
+                funits.TrapUnits |> Array.tryFindIndex (fun u -> not(u.Busy)) |> function
+                | Some u -> funits.TrapUnits.[u].Issue(instruction)
+                | _ -> false
+            | Branch -> false
+            | Memory -> false
+            | FloatingPoint -> false
+        
+        stall
 
 
     member s.Run() =
