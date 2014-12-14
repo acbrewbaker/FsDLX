@@ -79,6 +79,10 @@ module Convert =
     
     let hex2bin (s:string) = s.ToCharArray() |> Array.fold (fun s c -> s + string h2bmap.[c]) ("")
 
+    let bin2int (s:string) = Convert.ToInt32(s, 2)
+
+    let int2bin (x:int) = Convert.ToString(x, 2)
+
     let bin2hex (s:string) = 
         s |> function
         | _ when s.Length % 4 <> 0 -> failwith "binary string length needs to be multiple of 4"

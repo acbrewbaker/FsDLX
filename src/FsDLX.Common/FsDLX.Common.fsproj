@@ -42,8 +42,10 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Constants.fs" />
     <Compile Include="Tools.fs" />
     <Compile Include="Types.fs" />
+    <Compile Include="Opcodes.fs" />
     <None Include="Script.fsx" />
   </ItemGroup>
   <PropertyGroup>

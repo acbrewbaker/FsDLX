@@ -4,8 +4,10 @@ open System
 open System.Text
 open System.Text.RegularExpressions
 
-open FsDLX.Common
+//open FsDLX.Common
 open FsDLX.Common.Convert
+
+type OpcodeInfo = FsDLX.Common.OpcodeInfo
 
 //
 type InputRegex() =

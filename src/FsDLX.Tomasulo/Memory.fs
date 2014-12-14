@@ -1,5 +1,4 @@
-﻿//module FsDLX.Tomasulo.Memory
-namespace FsDLX.Tomasulo
+﻿namespace FsDLX.Tomasulo
 
 open System.IO
 open FsDLX.Common.Convert

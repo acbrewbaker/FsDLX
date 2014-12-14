@@ -7,25 +7,13 @@ open System.Linq
 
 open FsDLX.Common
 
-//module Convert =
-//    let hex2bytes (hex:string) = hex.Length |> function
-//        | 8 -> 
-//            Enumerable.Range(0, hex.Length)
-//                      .Where(fun x -> x % 2 = 0)
-//                      .Select(fun x -> Convert.ToByte(hex.Substring(x,2), 16))
-//                      .ToArray()
-//        | _ -> failwith "Instruction length greater than 8 bytes"
-//
-//    let hex2int hex = Convert.ToInt32(hex, 16)
-//
-//    let int2hex (hex:int) = hex.ToString("x8")
-
 
 module Config =
+    let nOpcodeBits = 6
+    let nCharsInHexInstruction = 8
     let nGPRregisters = 32
     let nFPRregisters = 32
     let DefaultMemorySize = 1000
-
 
     type FU =
         {
@@ -55,15 +43,28 @@ module Config =
         static member FloatingPointUnit =
             { RSPrefix = "FloatingPoint"; RSCount = 8; XUnitCount = 2; XCycles = 4;
                 Instructions = [| "addf"; "subf"; "multf"; "divf"; "mult"; "div"; "cvtf2i"; "cvti2f" |]}
+      
+
+//type Opcode(code:int) =
+//    member val asInt = code with get 
+//    member val asHex = Convert.int2hex code with get
+//    override o.ToString() = o.asHex
+//    new(code:string) = Opcode(Convert.hex2int code)
+//
+//    static member ofBin (bin:string) = bin.Length |> function
+//        | b when b = Config.nOpcodeBits -> Convert.bin2int bin
+//        | _ -> failwith "Invalid Binary Opcode Length"
+//
+//    static member ArrayInit(info:OpcodeInfo, opcodes:string[]) = 
+//        opcodes |> Array.map (fun op -> Opcode(info.Lookup(op)))
+//
+//    static member ArrayInit(info:OpcodeInfo, cfg:Config.FU) = 
+//        Opcode.ArrayInit(info, cfg.Instructions)
 
 
-
-type Opcode(code:int) =
-    member val asInt = code with get 
-    member val asHex = Convert.int2hex code with get
-    override o.ToString() = o.asHex
-    new(code:string) = Opcode(Convert.hex2int code)
-
+// The ReservationStation class contains the fields of an individual reservation station: 
+// name, busy, opcode, Vj, Vk, Qj, Qk, A, result, resultReady, resultWritten.  It also 
+// contains methods to access or modify an individual reservation station.
 type ReservationStation =
     {
         Name                    : string
@@ -73,7 +74,7 @@ type ReservationStation =
         mutable Vk              : int
         mutable Qj              : string option
         mutable Qk              : string option
-        mutable A               : int
+        mutable A               : int option
         mutable ResultReady     : bool
         mutable ResultWritten   : bool
         mutable Result          : int
@@ -84,29 +85,29 @@ type ReservationStation =
         rs.Op <- None
         rs.Vj <- 0; rs.Vk <- 0
         rs.Qj <- None; rs.Qk <- None
-        rs.A <- 0
+        rs.A <- None
 
     member rs.ClearIfResultWritten() = if rs.ResultWritten then rs.Clear()
 
-    member rs.IsEmpty = 
+    member rs.IsEmpty() = 
         rs.Busy = false         &&
         rs.Op.IsNone            &&
         rs.Vj   = 0             &&
         rs.Vk   = 0             &&
         rs.Qj   = None          &&
         rs.Qk   = None          &&
-        rs.A    = 0
+        rs.A.IsNone
 
     override rs.ToString() =
         sprintf "
 Name    Busy    Op    Vj    Vk    Qj    Qk    A    ResultReady    ResultWritten    Result
-%s      %A      %O    %d    %d    %O    %O    %d   %A             %A               %d\n"
+%s      %A      %O    %d    %d    %O    %O    %O   %A             %A               %d\n"
             rs.Name rs.Busy rs.Op rs.Vj rs.Vk rs.Qj rs.Qk rs.A
             rs.ResultReady rs.ResultWritten rs.Result
 
     static member Init name =
         {   Name = name; Busy = false; Op = None; 
-            Vj = 0; Vk = 0; Qj = None; Qk = None; A = 0
+            Vj = 0; Vk = 0; Qj = None; Qk = None; A = None
             ResultReady = false;
             ResultWritten = false;
             Result = 0 }
@@ -152,6 +153,8 @@ and Register =
         mutable Qi          : Qi
         mutable Contents    : int    
     }
+
+    member r.IsAvailable() = r.Qi |> function | Some _ -> false | _ -> true
 
     static member Init _ = { Qi = None; Contents = 0 }
     static member ArrayInit n = Array.init n Register.Init
