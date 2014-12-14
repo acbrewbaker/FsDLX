@@ -16,7 +16,19 @@ namespace FsDLX.Tomasulo
 //
 //    member h.UpdateReservationStations() =
 //        h.FunctionalUnits |> Array.iter (fun fu -> fu.UpdateRS())
-            
+      
+type SimulatorState =
+    {
+        mutable ClockCycle      : int
+        mutable CurrentFUnit    : FU
+        mutable Memory          : Memory
+        mutable Executing       : string option
+    }
+
+    member ss.Update (clock:Clock) fu mem =
+        ss.ClockCycle <- clock.Cycles
+        ss.CurrentFUnit <- fu
+        ss.Memory <- mem
 
 
 type Simulator() =
@@ -27,6 +39,9 @@ type Simulator() =
     let gpr = GPR()
     let fpr = FPR()
     let funits = FunctionalUnits() //FU.InitAll()
+    
+    let log = List.empty<SimulatorState>
+    
     let mutable halt = false
     
 
