@@ -127,6 +127,7 @@ type Instruction(opcode:string, funCode:int, rd:DstReg, rs:S1Reg, rt:S2Reg, imm:
     new(funCode, rs) = Instruction("trap", funCode, DstReg.NONE, rs, S2Reg.NONE, Imm.NONE)
     
 
+
     static member ThreeGpr opcode = Instruction(opcode, DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11)
     static member ThreeFpr opcode = Instruction(opcode, DstReg.FPR 16, S1Reg.FPR 6, S2Reg.FPR 11)
 
@@ -172,19 +173,58 @@ type Instruction(opcode:string, funCode:int, rd:DstReg, rs:S1Reg, rt:S2Reg, imm:
     static member CVTF2I = Instruction("cvtf2i", DstReg.FPR 16, S1Reg.FPR 6)
     static member CVTI2F = Instruction("cvti2f", DstReg.FPR 16, S1Reg.FPR 6)
 
+module ISA =
+    let lookup = 
+        [   "addi",     Instruction.ADDI
+            "nop",      Instruction.NOP
+            "add",      Instruction.ADD
+            "sub",      Instruction.SUB
+            "and",      Instruction.AND
+            "or",       Instruction.OR
+            "xor",      Instruction.XOR
+            "movf",     Instruction.MOVF
+            "movfp2i",  Instruction.MOVFP2I
+            "movi2fp",  Instruction.MOVI2FP
+            
+            "trap0",    Instruction.TRAP0
+            "trap1",    Instruction.TRAP1
+            "trap2",    Instruction.TRAP2
+            "trap3",    Instruction.TRAP3
+            
+            "beqz",     Instruction.BEQZ
+            "j",        Instruction.J
+            "jr",       Instruction.JR
+            "jal",      Instruction.JAL
+            "jalr",     Instruction.JALR
+
+            "lw",       Instruction.LW
+            "lf",       Instruction.LF
+            "sw",       Instruction.SW
+            "sf",       Instruction.SF
+
+            "addf",     Instruction.ADDF
+            "subf",     Instruction.SUBF
+            "multf",    Instruction.MULTF
+            "divf",     Instruction.DIVF
+            "mult",     Instruction.MULT
+            "div",      Instruction.DIV
+            "cvtf2i",   Instruction.CVTF2I
+            "cvti2f",   Instruction.CVTI2F  ] |> Map.ofList
+
+
 
 //    member ins.GetRs (instruction:int) (gpr:GeneralPurposeRegister) = 
 //        ins.rs |> function
 //        | S1Reg.GPR b -> let rs = (Convert.int2bin instruction).[b..b+4] in gpr.[Convert.bin2int rs]
     
 
-module ISA =
-    let addi = Instruction("addi", DstReg.GPR 11, S1Reg.GPR 6, Imm.A(16,31))
-    let add = Instruction("add", DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11)
-    let trap0 = Instruction(0, S1Reg.GPR 6)
-    let trap1 = Instruction(1, S1Reg.GPR 6)
-    let trap2 = Instruction(2, S1Reg.FPR 6)
-    let trap3 = Instruction(3, S1Reg.GPR 6)
+//module ISA =
+//    let addi = Instruction("addi", DstReg.GPR 11, S1Reg.GPR 6, Imm.A(16,31))
+//    let add = Instruction("add", DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11)
+//    let trap0 = Instruction(0, S1Reg.GPR 6)
+//    let trap1 = Instruction(1, S1Reg.GPR 6)
+//    let trap2 = Instruction(2, S1Reg.FPR 6)
+//    let trap3 = Instruction(3, S1Reg.GPR 6)
     
 
 //    member ins.ApplyToReservationStation (i:int) (regs:RegisterFile) (r:ReservationStation) =

@@ -2,24 +2,14 @@
 //module FsDLX.Tomasulo.Interface
 namespace FsDLX.Tomasulo
 
-//type Hardware(memSize:int) =
-//    let cdb = CDB()
-//    member val Clock            = Clock.GetInstance with get
-//    member val PC               = PC.GetInstance with get
-//    member val CDB              = cdb with get
-//    member val Mem              = Memory.GetInstance memSize
-//    member val GPR              = RegisterFile.InitGPR with get
-//    member val FPR              = RegisterFile.InitFPR with get
-//    member val FunctionalUnits  = FU.InitAll cdb with get
-//    
-//    new() = Hardware(Config.DefaultMemorySize)
-//
-//    member h.UpdateReservationStations() =
-//        h.FunctionalUnits |> Array.iter (fun fu -> fu.UpdateRS())
-     
+open System.Collections
+open FsDLX.Common
+
+
+
 type SimulatorState =
     {
-        ClockCycle          : string
+        Clock               : Clock
         PC                  : string
         Memory              : string
         GPR                 : string
@@ -34,15 +24,15 @@ type SimulatorState =
 //        ss.Memory <- mem
 
     override ss.ToString() =
-        [   sprintf "Clock Cycle: %s; PC: %s\n" (ss.ClockCycle) (ss.PC)
+        [   sprintf "%O\n" ss.Clock
             sprintf "Memory:\n%s\n" (ss.Memory)
-            sprintf "GPR:\n%s\n" (ss.GPR)
-            sprintf "FPR:\n%s\n" (ss.FPR)
-            sprintf "Current Functional Unit:\n%s" (ss.CurrentFUnit) ]
+            //sprintf "GPR:\n%s\n" (ss.GPR)
+            //sprintf "FPR:\n%s\n" (ss.FPR)
+            sprintf "EXECUTING:\n%s" (ss.CurrentFUnit) ]
         |> List.reduce (+)
 
     static member TakeSnapShot (clock:Clock) (pc:int) (mem:Memory) (gpr:GPR) (fpr:FPR) (fu:FU) =
-        {   ClockCycle = string clock.Cycles; PC = string pc
+        {   Clock = clock; PC = string pc
             Memory = mem.ToString()
             GPR = gpr.ToString(); FPR = fpr.ToString()
             CurrentFUnit = fu.ToString()
@@ -53,8 +43,8 @@ type Simulator(input:string, verbose:bool) =
     let clock = Clock.GetInstance
     let mutable PC = 0
     let memory = Memory.GetInstance Config.Memory.DefaultMemorySize
-    let gpr = GPR()
-    let fpr = FPR()
+    let gpr = GPR.GetInstance()
+    let fpr = FPR.GetInstance()
     let funits = FunctionalUnits() //FU.InitAll()
     
     let mutable log = List.empty<SimulatorState>
@@ -63,9 +53,7 @@ type Simulator(input:string, verbose:bool) =
     
 
     let finished() = 
-        if clock.Cycles = 0 
-        then    false
-        else    funits.Finished()
+        if clock.Cycles = 0 then false else funits.Finished()
         
 
     let updateReservationStations() = funits.UpdateReservationStations(cdb)
@@ -99,15 +87,28 @@ type Simulator(input:string, verbose:bool) =
     // fails and is reattempted in the next clock cycle.
     let issue (instruction:int) = 
         let k = InstructionKind.ofInt instruction
+        let opcode = (Opcode.ofInstructionInt instruction).Name
+        
+
         let stall = 
             InstructionKind.ofInt instruction |> function
             | Integer ->
                 funits.IntegerUnits |> Array.tryFindIndex (fun u -> not(u.Busy)) |> function
-                | Some u -> funits.IntegerUnits.[u].Issue(instruction)
+                | Some u -> 
+                    printfn "insert int instruction"
+                    funits.IntegerUnits.[u].Insert instruction
+//                    let iu = funits.IntegerUnits.[unitId].Issue instruction 
+//                    
+//
+//                    instruction.rs |> function 
+//                    | S1Reg.GPR rs ->
+//                        if gpr.[rs].Qi.IsSome then
                 | _ -> false
             | Trap -> 
                 funits.TrapUnits |> Array.tryFindIndex (fun u -> not(u.Busy)) |> function
-                | Some u -> funits.TrapUnits.[u].Issue(instruction)
+                | Some u -> 
+                    printfn "insert trap instruction"
+                    funits.TrapUnits.[u].Insert instruction
                 | _ -> false
             | Branch -> false
             | Memory -> false
@@ -137,7 +138,7 @@ type Simulator(input:string, verbose:bool) =
                 if not(halt) && not(stall) then PC <- PC + 4
             // update RSs using name and value
             updateReservationStations()
-            log()
+            //log()
             
 
     let runVerbose() =
@@ -159,7 +160,7 @@ type Simulator(input:string, verbose:bool) =
 
     let runDebug() =
         initialize()
-
+        //printfn "gpr %A" (gpr.[0])
         while not(halt) && not(finished()) do
             // get name of RS writing to CDB and the value to be written
             cdb.Result <- write()

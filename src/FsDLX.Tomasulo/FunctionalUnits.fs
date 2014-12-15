@@ -57,7 +57,8 @@ type FU(cfg:Config.FU) =
     member val MaxCycles        = cfg.XCycles
     member val RemainingCycles  = cfg.XCycles with get, set
     member val Busy             = false with get, set
-    
+       
+    member val CurrentInstruction : int option = None with get, set
 
     member fu.FindEmptyStation() =
         fu.RS |> Array.tryFindIndex (fun r -> r.IsEmpty())
@@ -73,26 +74,57 @@ type FU(cfg:Config.FU) =
         
     member fu.UpdateRS (cdb:CDB) =
         fu.RS |> Array.iter (fun r -> 
-            if r.Busy && cdb.Src = r.Qj.Value then 
-                r.Qj <- None; r.Vj <- cdb.Result.Value
-            if r.Busy && cdb.Src = r.Qk.Value then
-                r.Qk <- None; r.Vk <- cdb.Result.Value)
+            (r.Qj, r.Qk) |> function
+            | Some qj, _ -> 
+                if r.Busy && cdb.Src = r.Qj.Value then 
+                    r.Qj <- None; r.Vj <- cdb.Result.Value
+            | _, Some qk ->
+                if r.Busy && cdb.Src = r.Qk.Value then
+                    r.Qk <- None; r.Vk <- cdb.Result.Value
+            | _ -> ())
 
+
+    member fu.Execute() =
+        fu.CurrentInstruction <- fu.RS |> Array.tryFindIndex (fun r -> r.IsReady())
+        if not(fu.Busy) then
+            if fu.CurrentInstruction.IsSome then fu.Busy <- true; fu.RemainingCycles <- fu.RemainingCycles - 1
         
-//    member fu.Write(cdb:CDB) =
-//        //let cdb = CDB()
-//        let r = fu.RS |> Array.findIndex (fun r -> r.ResultReady)
-//        fu.RS.[r].ResultWritten <- true
-//        cdb.Src     <- fu.RS.[r].Name
-//        cdb.Result  <- fu.RS.[r].Result |> Some
-//        //cdb
+        else
+            if fu.RemainingCycles > 0 then fu.RemainingCycles <- fu.RemainingCycles - 1
+            if fu.CurrentInstruction.IsSome then
+                let r = fu.CurrentInstruction.Value
+                if fu.RemainingCycles = 0 && not(fu.RS.[r].ResultReady) then
+                    fu.Compute r
+                    fu.RS.[r].ResultReady <- true
+                    fu.Busy <- false
+        
+        false
+
+
+    member fu.Write (cdb:CDB) =
+        fu.RS |> Array.tryFindIndex (fun r -> r.ResultReady) |> function
+        | Some r ->
+            fu.RS.[r].ResultWritten <- true
+            cdb.Result <- fu.RS.[r].Result |> Some
+            cdb.Src <- fu.RS.[r].Name
+        | None -> ()
 
     override fu.ToString() =
         //sprintf "MaxCycles: %d; Remaining Cycles: %d; Busy: %A" fu.MaxCycles fu.RemainingCycles fu.Busy
-        [for r in fu.RS do
-            //if not(r.IsEmpty()) then
-                yield sprintf "%s\n" (r.ToString())]
-        |> List.reduce (+)
+        let s1 = 
+            sprintf "%sUNIT RESERVATION STATIONS"
+                (   fu |> function
+                    | :? IntegerUnit -> "INT"
+                    | :? TrapUnit -> "TRAP"
+                    | :? BranchUnit -> "BRANCH"
+                    | :? MemoryUnit -> "MEM"
+                    | :? FloatingPointUnit -> "FP"
+                    | _ -> "FU")
+        let s2 = 
+            [for r in fu.RS do
+                if not(r.IsEmpty()) then
+                    yield sprintf "%s\n" (r.ToString())]
+        sprintf "%s\n%s" s1 (if s2.IsEmpty then "" else s2 |> List.reduce (+))
 
     static member ArrayInit (cfg:Config.FU) (init:_ -> FU) =
         Array.init cfg.XUnitCount init
@@ -107,15 +139,15 @@ type FU(cfg:Config.FU) =
 //        |> Array.concat
     
     
-    abstract member Instructions : Map<string, Instruction>
-    abstract member Issue   : int -> RegisterFile -> bool
-    abstract member Execute : ReservationStation -> unit
-    abstract member Write   : CDB -> unit
+    abstract member Instructions        : Map<string, Instruction>
+    abstract member Insert   : int -> bool
+    abstract member Compute  : int -> unit
+    //abstract member Write    : CDB -> unit
     
    
         
 
-and IntegerUnit(gpr:GeneralPurposeRegister) =
+and IntegerUnit() =
     inherit FU(Config.FU.IntegerUnit)
     
 
@@ -131,41 +163,78 @@ and IntegerUnit(gpr:GeneralPurposeRegister) =
             "movfp2i",  Instruction.MOVFP2I
             "movi2fp",  Instruction.MOVI2FP ] |> Map.ofList
 
-    override iu.Issue i regs =         
-        let instruction = instructions.[(Opcode.ofInstructionInt i).Name]
-        let rs = instruction.GetRS i regs
-        iu.FindEmptyStation() |> function
-        | Some r -> false
-        | None -> true
-        
-//        let stall = ref false
-//        iu.RS |> Array.iter (fun r ->
-//            if r.IsEmpty() then
-//                regs.[i.rs].Qi |> function
-//                | Some _ -> r.Qj <- regs.[i.rs].Qi
-//                | None -> r.Vj <- regs.[i.rs].Contents; r.Qj <- None
-//        
-//                regs.[i.rt].Qi |> function
-//                | Some _ -> r.Qk <- regs.[i.rt].Qi
-//                | None -> r.Vk <- regs.[i.rs].Contents; r.Qk <- None
-//        
-//                r.Busy <- true; regs.[i.rd].Qi <- Some(string r)
-//            else
-//                stall := true)
-////                if not(r.Busy) then
-////                    r.Busy <- true
-////                    r.Op <- Some i.Opcode
-////                    r.A <- i.imm
-////                    
-////                    if regs.[i.rs].IsAvailable() 
-////                    then    r.Vj <- regs.[i.rs].Contents
-////                    else    r.Qj <- regs.[i.rs].Qi
-////                else
-////                    stall <- true )            
-//        !stall
-        
+   
+    
+    override iu.Insert i =
+        let gpr = GPR.GetInstance()
+        let fpr = FPR.GetInstance()
+        let RS = iu.RS
+        let opcode = Opcode.ofInstructionInt i
+        let instruction = iu.Instructions.[opcode.Name]
 
-    override iu.Execute r =
+        let rd, rs, rt, imm =
+                instruction.rd,
+                instruction.rs,
+                instruction.rt,
+                instruction.imm
+
+        let regNum startBit = Convert.int2bits2reg i startBit
+      
+        let p x = printfn "%A" x; x
+
+        iu.FindEmptyStation() |> function
+        | Some r -> 
+            RS.[r].Busy <- true
+            RS.[r].Op <- Some opcode
+            printfn "Opcode: %O" opcode
+            (rd, rs, rt, imm) |> function
+                | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.A(a,b) -> 
+                    printfn "case1.0"
+                    let rd, rs, rt = 
+                        regNum rd, 
+                        regNum rs, 
+                        regNum (Convert.int2bits2int i a b)
+                    RS.[r].A <- Some rd
+
+                    printfn "case1.1"
+                    if      gpr.[rs].IsAvailable()
+                    then    RS.[r].Vj <- gpr.[rs].Contents
+                    else    RS.[r].Qj <- gpr.[rs].Qi
+                    
+                    printfn "case1.2"
+                    gpr.[rt].Qi <- RS.[r].Name |> Some
+                    false
+
+                | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.GPR rt, Imm.NONE ->
+                    printfn "case2"
+                    let rd, rs, rt = regNum rd, regNum rs, regNum rt
+                    
+                    if      gpr.[rs].IsAvailable()
+                    then    RS.[r].Vj <- gpr.[rs].Contents
+                    else    RS.[r].Qj <- gpr.[rs].Qi
+
+                    if      gpr.[rt].IsAvailable()
+                    then    RS.[r].Vk <- gpr.[rt].Contents
+                    else    RS.[r].Qk <- gpr.[rt].Qi
+
+                    gpr.[rd].Qi <- RS.[r].Name |> Some
+                    false
+
+                | DstReg.FPR rd, S1Reg.FPR rs, S2Reg.NONE, Imm.NONE ->
+                    false
+
+                | DstReg.GPR rd, S1Reg.FPR rs, S2Reg.NONE, Imm.NONE ->
+                    false
+
+                | DstReg.FPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.NONE ->
+                    false
+                
+                | _ -> failwith "didnt match any int instruction case"
+
+        | None -> true
+
+    override iu.Compute r =
+        let r = iu.RS.[r]
         r.Result <-  r.Op.Value.Name |> function
             | "addi" -> r.Vj + r.A.Value
             | "nop" -> 0
@@ -179,8 +248,7 @@ and IntegerUnit(gpr:GeneralPurposeRegister) =
             | "movi2fp" -> 0
             | _ -> failwith "invalid integer unit instruction"
 
-    override iu.Write(cdb:CDB) = ()
-
+    
 
 
 and TrapUnit() =
@@ -193,12 +261,41 @@ and TrapUnit() =
             "trap2", Instruction.TRAP2
             "trap3", Instruction.TRAP3  ] |> Map.ofList
 
-    override tu.Issue i regs = false
+    override tu.Insert i = 
+        printfn "inserting trap instruction"
+        let gpr = GPR.GetInstance()
+        let fpr = FPR.GetInstance()
+        let RS = tu.RS
+        let opcode = Opcode.ofInstructionInt i
+        let funCode = Convert.int2bits2int i 27 31
+        let reg = Convert.int2bits2reg i 6
+        printfn "trap reg# ==> %A" reg
+        tu.FindEmptyStation() |> function
+        | Some r -> 
+            RS.[r].Busy <- true
+            RS.[r].Op <- Some opcode
+            printfn "Opcode: %O" opcode
+            funCode |> function
+                | 0 -> 
+                    printfn "HALT"
+                    true
+                | 1 ->
+                    printfn "%A" (gpr.[reg])
+                    true
 
-    override tu.Execute r = ()
+                | 2 ->
+                    printfn "%A" (fpr.[reg])
+                    true
+                | 3 ->
+                    printfn "%A" (fpr.[reg])
+                    true
+                | _ -> failwith "didnt match any trap instruction case"
 
-    override tu.Write(cdb:CDB) = ()
+        | None -> true
 
+    override tu.Compute r = ()
+
+    
 and BranchUnit() =
     inherit FU(Config.FU.BranchUnit)
 
@@ -209,12 +306,11 @@ and BranchUnit() =
             "jal",  Instruction.JAL
             "jalr", Instruction.JALR    ] |> Map.ofList
 
-    override bu.Issue i regs = false
+    override bu.Insert i = false
 
-    override bu.Execute i = ()
+    override bu.Compute r = ()
 
-    override bu.Write(cdb:CDB) = ()
-
+   
 and MemoryUnit() =
     inherit FU(Config.FU.MemoryUnit)
 
@@ -232,12 +328,11 @@ and MemoryUnit() =
             "sw",   Instruction.SW
             "sf",   Instruction.SF  ] |> Map.ofList
 
-    override mu.Issue i regs = false
+    override mu.Insert i = false
 
-    override mu.Execute i = ()
+    override mu.Compute r = ()
 
-    override mu.Write(cdb:CDB) = ()
-
+    
 and FloatingPointUnit() =
     inherit FU(Config.FU.FloatingPointUnit)
 
@@ -251,11 +346,10 @@ and FloatingPointUnit() =
             "cvtf2i",   Instruction.CVTF2I
             "cvti2f",   Instruction.CVTI2F  ] |> Map.ofList
 
-    override fpu.Issue i regs = false
-    override fpu.Execute i = ()
+    override fpu.Insert i = false
+    override fpu.Compute r = ()
 
-    override fpu.Write(cdb:CDB) = ()
-
+    
 and FunctionalUnits() =
     let iu, tu =
     //let iu, tu, bu, mu, fpu = 

@@ -6,6 +6,7 @@ open FsDLX.Common
 type Memory private (size:int) =
     static let instance size = Memory(size)
     
+
     let dumpBy (by:int) (mem:int[]) =
         [for i = 0 to mem.Length / (by*4) do 
             let m = mem.[i*by..i*by + by]
@@ -49,7 +50,7 @@ type Memory private (size:int) =
 
         ints |> Array.iteri (fun i b -> M.[i] <- b)
 
-    member val Size = 0 with get, set
+    member val Size = M.Length with get, set
         
 
     member m.Load input = Config.Memory.outputLevel |> function

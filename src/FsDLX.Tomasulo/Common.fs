@@ -93,6 +93,12 @@ type ReservationStation =
 
     member rs.ClearIfResultWritten() = if rs.ResultWritten then rs.Clear()
 
+    member rs.IsReady() =
+        rs.Busy = true          &&
+        rs.Qj.IsNone            &&
+        rs.Qk.IsNone            &&
+        rs.ResultReady = false
+
     member rs.IsEmpty() = 
         rs.Busy = false         &&
         rs.Op.IsNone            &&
@@ -103,12 +109,12 @@ type ReservationStation =
         rs.A.IsNone
 
     override rs.ToString() =
-        sprintf "%s  %A  %O  %d  %d  %O  %O  %O  %A  %A  %d"
+        sprintf "%s  %A  %O  %d  %d  %O  %O  %O  %O  %O  %d"
             rs.Name rs.Busy rs.Op rs.Vj rs.Vk rs.Qj rs.Qk rs.A
             rs.ResultReady rs.ResultWritten rs.Result
 //        sprintf "
 //Name    Busy    Op    Vj    Vk    Qj    Qk    A    ResultReady    ResultWritten    Result
-//%s      %A      %O    %d    %d    %O    %O    %O   %A             %A               %d\n"
+//%s      %A      %O    %d    %d    %O    %O    %O   %O             %O               %d\n"
 //            rs.Name rs.Busy rs.Op rs.Vj rs.Vk rs.Qj rs.Qk rs.A
 //            rs.ResultReady rs.ResultWritten rs.Result
 
@@ -144,4 +150,6 @@ type Clock private () =
     member val Cycles = 0 with get, set
     member c.Tic() = c.Cycles <- c.Cycles + 1
     static member GetInstance = instance
+
+    override c.ToString() = sprintf "Clock cycle: %d" c.Cycles
 

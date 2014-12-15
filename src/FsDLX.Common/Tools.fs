@@ -81,7 +81,7 @@ module Convert =
 
     let bin2int (s:string) = Convert.ToInt32(s, 2)
 
-    let int2bin (x:int) = Convert.ToString(x, 2)
+    let int2bin (i:int) = Convert.ToString(i, 2).PadLeft(32, '0')
 
     let bin2hex (s:string) = 
         s |> function
@@ -109,15 +109,18 @@ module Convert =
 
     let int2nibble (i:int) = (int2hex i).[4..7]
 
+    let int2bits i a b = (int2bin i).[a..b]
+
+    let int2bits2int i a b = bin2int(int2bits i a b)
+
+    let int2bits2reg i startBit = int2bits2int i startBit (startBit + 4)
 
 
 
 
-
-
-    module InputLine =
-        let toInstructionHex line = splitForHex line
-        let toInstructionInt line = line |> splitForHex |> hex2int
+//    module InputLine =
+//        let toInstructionHex line = splitForHex line
+//        let toInstructionInt line = line |> splitForHex |> hex2int
 
 //    module InstructionHex =
 //        let toOpcodeBits hex = (hex2bin hex).[0..Constants.nOpcodeBits - 1]
