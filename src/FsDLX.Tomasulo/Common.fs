@@ -7,13 +7,33 @@ open System.Linq
 
 open FsDLX.Common
 
+type SimulatorOutputLevel =
+    | Regular
+    | Verbose
+    | Debug
+
+module InstructionHex =
+    let toOpcodeBits hex = (Convert.hex2bin hex).[0..Constants.nOpcodeBits - 1]
+
+module InstructionInt =
+    let toOpcodeBits i = InstructionHex.toOpcodeBits (Convert.int2hex i)
 
 module Config =
-    let nOpcodeBits = 6
+    module Memory =
+        let outputLevel = SimulatorOutputLevel.Regular
+        let DefaultMemorySize = 1000
+
+    module FunctionalUnits =
+        let outputLevel = SimulatorOutputLevel.Debug
+
+    module Simulator =
+        let outputLevel = SimulatorOutputLevel.Debug
+
+
     let nCharsInHexInstruction = 8
     let nGPRregisters = 32
     let nFPRregisters = 32
-    let DefaultMemorySize = 1000
+    
 
     type FU =
         {
@@ -25,16 +45,16 @@ module Config =
         }
 
         static member IntegerUnit =
-            { RSPrefix = "Integer"; RSCount = 8; XUnitCount = 3; XCycles = 1;
+            { RSPrefix = "IntUnit"; RSCount = 8; XUnitCount = 3; XCycles = 1;
                 Instructions = [| "addi"; "nop"; "add"; "sub"; "and"; "or"; "xor"; "movf"; "movfp2i"; "movi2fp" |]}
 
         static member TrapUnit =
-            { RSPrefix = "Trap"; RSCount = 4; XUnitCount = 1; XCycles = 1;
+            { RSPrefix = "TrapUnit"; RSCount = 4; XUnitCount = 1; XCycles = 1;
                 Instructions = [| "trap" |]}
 
         static member BranchUnit =
             { RSPrefix = "Branch"; RSCount = 1; XUnitCount = 1; XCycles = 1;
-                Instructions = [| "beqqz"; "j"; "jr"; "jal"; "jalr" |]}
+                Instructions = [| "beqz"; "j"; "jr"; "jal"; "jalr" |]}
 
         static member MemoryUnit =
             { RSPrefix = "Memory"; RSCount = 8; XUnitCount = 1; XCycles = 2;
@@ -83,11 +103,14 @@ type ReservationStation =
         rs.A.IsNone
 
     override rs.ToString() =
-        sprintf "
-Name    Busy    Op    Vj    Vk    Qj    Qk    A    ResultReady    ResultWritten    Result
-%s      %A      %O    %d    %d    %O    %O    %O   %A             %A               %d\n"
+        sprintf "%s  %A  %O  %d  %d  %O  %O  %O  %A  %A  %d"
             rs.Name rs.Busy rs.Op rs.Vj rs.Vk rs.Qj rs.Qk rs.A
             rs.ResultReady rs.ResultWritten rs.Result
+//        sprintf "
+//Name    Busy    Op    Vj    Vk    Qj    Qk    A    ResultReady    ResultWritten    Result
+//%s      %A      %O    %d    %d    %O    %O    %O   %A             %A               %d\n"
+//            rs.Name rs.Busy rs.Op rs.Vj rs.Vk rs.Qj rs.Qk rs.A
+//            rs.ResultReady rs.ResultWritten rs.Result
 
     static member Init name =
         {   Name = name; Busy = false; Op = None; 

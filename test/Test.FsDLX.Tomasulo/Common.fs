@@ -14,7 +14,8 @@ let srcdir =
     else 
         Environment.CurrentDirectory
 
-let inputdir = srcdir @@ "../Inputs"
+let inputdir = 
+    srcdir @@ "../../Project2/Inputs"
 
 
 

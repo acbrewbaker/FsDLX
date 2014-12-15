@@ -54,9 +54,10 @@ open FsDLX.Common
 type FU(cfg:Config.FU) =
     member val RS = ReservationStation.ArrayInit cfg with get, set
     
-    member val Busy             = false with get, set
     member val MaxCycles        = cfg.XCycles
     member val RemainingCycles  = cfg.XCycles with get, set
+    member val Busy             = false with get, set
+    
 
     member fu.FindEmptyStation() =
         fu.RS |> Array.tryFindIndex (fun r -> r.IsEmpty())
@@ -77,8 +78,7 @@ type FU(cfg:Config.FU) =
             if r.Busy && cdb.Src = r.Qk.Value then
                 r.Qk <- None; r.Vk <- cdb.Result.Value)
 
-    
-    
+        
 //    member fu.Write(cdb:CDB) =
 //        //let cdb = CDB()
 //        let r = fu.RS |> Array.findIndex (fun r -> r.ResultReady)
@@ -87,40 +87,43 @@ type FU(cfg:Config.FU) =
 //        cdb.Result  <- fu.RS.[r].Result |> Some
 //        //cdb
 
+    override fu.ToString() =
+        //sprintf "MaxCycles: %d; Remaining Cycles: %d; Busy: %A" fu.MaxCycles fu.RemainingCycles fu.Busy
+        [for r in fu.RS do
+            //if not(r.IsEmpty()) then
+                yield sprintf "%s\n" (r.ToString())]
+        |> List.reduce (+)
+
     static member ArrayInit (cfg:Config.FU) (init:_ -> FU) =
         Array.init cfg.XUnitCount init
 
-    static member InitAll() =
-        let init = FU.ArrayInit 
-        [|  init Config.FU.IntegerUnit          (fun _ -> IntegerUnit()         :> FU)
-            init Config.FU.TrapUnit             (fun _ -> TrapUnit()            :> FU)
-            init Config.FU.BranchUnit           (fun _ -> BranchUnit()          :> FU)
-            init Config.FU.MemoryUnit           (fun _ -> MemoryUnit()          :> FU)
-            init Config.FU.FloatingPointUnit    (fun _ -> FloatingPointUnit()   :> FU) |]
-        |> Array.concat
+//    static member InitAll() =
+//        let init = FU.ArrayInit 
+//        [|  init Config.FU.IntegerUnit          (fun _ -> IntegerUnit()         :> FU)
+//            init Config.FU.TrapUnit             (fun _ -> TrapUnit()            :> FU)
+//            init Config.FU.BranchUnit           (fun _ -> BranchUnit()          :> FU)
+//            init Config.FU.MemoryUnit           (fun _ -> MemoryUnit()          :> FU)
+//            init Config.FU.FloatingPointUnit    (fun _ -> FloatingPointUnit()   :> FU) |]
+//        |> Array.concat
     
-    abstract member Issue   : int -> bool
+    
+
+    abstract member Issue   : int -> RegisterFile -> bool
     abstract member Execute : ReservationStation -> unit
     abstract member Write   : CDB -> unit
     
    
         
 
-and IntegerUnit() =
+and IntegerUnit(gpr:GeneralPurposeRegister) =
     inherit FU(Config.FU.IntegerUnit)
 
     static let instructions = 
-        [| "addi", {    opcode = Opcode.ofName "addi"; funCode = FunCode.NONE; 
-                        rd = DstReg.R(11,15)
-                        rs = S1Reg.R(6,10)
-                        rt = S2Reg.NONE
-                        imm = Imm.A(16,31) }
-                        
-           "add", {     opcode  = Opcode.ofName "add"; funCode = FunCode.NONE;
-                        rd      = DstReg.R(16,20)
-                        rs      = S1Reg.R(6,10)
-                        rt      = S2Reg.R(11,15)
-                        imm     = NONE } 
+        [| "addi",  Instruction("addi", DstReg.GPR 11, S1Reg.GPR 6, Imm.A(16,31))
+           "nop",   Instruction("nop")
+           "add",   Instruction("add", DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11)
+           "sub",   Instruction("sub", DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11)
+           "and",   Instruction("and", DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11)
         |] |> Map.ofArray
 
 //    member iu.ADDI    (r:ReservationStation) = r.Vj + r.A.Value
@@ -134,13 +137,13 @@ and IntegerUnit() =
 //    member iu.MOVFP2I (r:ReservationStation) = ()
 //    member iu.MOVI2FP (r:ReservationStation) = ()
 
-    override iu.Issue i =         
-        let i = instructions.[(Opcode.ofInstructionInt i).Name]
-        let rd, rs, rt = 0,0,0
-            
-//        iu.FindEmptyStation() |> function
-//        | Some r -> regs.[i.rs]
-        false
+    override iu.Issue i regs =         
+        let instruction = instructions.[(Opcode.ofInstructionInt i).Name]
+        let rs = instruction.GetRS i regs
+        iu.FindEmptyStation() |> function
+        | Some r -> false
+        | None -> true
+        
 //        let stall = ref false
 //        iu.RS |> Array.iter (fun r ->
 //            if r.IsEmpty() then
@@ -195,7 +198,7 @@ and TrapUnit() =
     static let trap2 = S1Reg.F(regBits) |> Instruction.InitTrap
     static let trap3 = S1Reg.R(regBits) |> Instruction.InitTrap
     
-    override tu.Issue i = false
+    override tu.Issue i regs = false
 
     override tu.Execute r = ()
 
@@ -204,7 +207,7 @@ and TrapUnit() =
 and BranchUnit() =
     inherit FU(Config.FU.BranchUnit)
 
-    override bu.Issue i = false
+    override bu.Issue i regs = false
 
     override bu.Execute i = ()
 
@@ -219,7 +222,7 @@ and MemoryUnit() =
     member val LoadBuffer   = ReservationStation.ArrayInit Config.FU.MemoryUnit with get, set
     member val StoreBuffer  = ReservationStation.ArrayInit Config.FU.MemoryUnit with get, set
 
-    override mu.Issue i = false
+    override mu.Issue i regs = false
 
     override mu.Execute i = ()
 
@@ -228,20 +231,22 @@ and MemoryUnit() =
 and FloatingPointUnit() =
     inherit FU(Config.FU.FloatingPointUnit)
 
-    override mu.Issue i = false
+    override mu.Issue i regs = false
     override mu.Execute i = ()
 
     override mu.Write(cdb:CDB) = ()
 
 and FunctionalUnits() =
-    let iu, tu, bu, mu, fpu = 
+    let iu, tu =
+    //let iu, tu, bu, mu, fpu = 
         FU.ArrayInit Config.FU.IntegerUnit          (fun _ -> IntegerUnit()         :> FU),
-        FU.ArrayInit Config.FU.TrapUnit             (fun _ -> TrapUnit()            :> FU),
-        FU.ArrayInit Config.FU.BranchUnit           (fun _ -> BranchUnit()          :> FU),
-        FU.ArrayInit Config.FU.MemoryUnit           (fun _ -> MemoryUnit()          :> FU),
-        FU.ArrayInit Config.FU.FloatingPointUnit    (fun _ -> FloatingPointUnit()   :> FU)
+        FU.ArrayInit Config.FU.TrapUnit             (fun _ -> TrapUnit()            :> FU)
+//        FU.ArrayInit Config.FU.BranchUnit           (fun _ -> BranchUnit()          :> FU),
+//        FU.ArrayInit Config.FU.MemoryUnit           (fun _ -> MemoryUnit()          :> FU),
+//        FU.ArrayInit Config.FU.FloatingPointUnit    (fun _ -> FloatingPointUnit()   :> FU)
 
-    let all = [| iu; tu; bu; mu; fpu |] |> Array.concat
+//    let all = [| iu; tu; bu; mu; fpu |] |> Array.concat
+    let all = [| iu; tu |] |> Array.concat
 
     let rsMap = all |> Array.map (fun fu -> 
         fu.RS |> Array.map (fun r -> r.Name ))
@@ -249,17 +254,17 @@ and FunctionalUnits() =
     
     member val IntegerUnits = iu with get
     member val TrapUnits    = tu with get
-    member val BranchUnits  = bu with get
-    member val MemoryUnits  = mu with get
-    member val FPUnits      = fpu with get
+//    member val BranchUnits  = bu with get
+//    member val MemoryUnits  = mu with get
+//    member val FPUnits      = fpu with get
     
     member val All          = all with get
 
     member fu.GetIntegerUnit(i) = fu.IntegerUnits.[i]   :?> IntegerUnit
     member fu.GetTrapUnit()     = fu.TrapUnits.[0]      :?> TrapUnit
-    member fu.GetBranchUnit()   = fu.BranchUnits.[0]    :?> BranchUnit
-    member fu.GetMemoryUnit(i)  = fu.MemoryUnits.[i]    :?> MemoryUnit
-    member fu.GetFPUnit(i)      = fu.FPUnits.[i]        :?> FloatingPointUnit
+//    member fu.GetBranchUnit()   = fu.BranchUnits.[0]    :?> BranchUnit
+//    member fu.GetMemoryUnit(i)  = fu.MemoryUnits.[i]    :?> MemoryUnit
+//    member fu.GetFPUnit(i)      = fu.FPUnits.[i]        :?> FloatingPointUnit
 
     member fu.Issue (i:int) = 
         InstructionKind.ofInt i |> function

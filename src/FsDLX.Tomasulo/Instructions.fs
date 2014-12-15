@@ -13,53 +13,86 @@ type InstructionKind =
 
     static member ofHex hex =
         let opcode = Opcode.ofInstructionHex hex
-        let iOps, tOps, bOps, mOps, fpOps = 
+        let iOps, tOps =
             Config.FU.IntegerUnit.Instructions,
-            Config.FU.TrapUnit.Instructions,
-            Config.FU.BranchUnit.Instructions,
-            Config.FU.MemoryUnit.Instructions,
-            Config.FU.FloatingPointUnit.Instructions
-        let foundOpcodeIn ops = (ops |> Array.tryFind (fun o -> o = opcode.Name)).IsSome
+            Config.FU.TrapUnit.Instructions
+//        let iOps, tOps, bOps, mOps, fpOps = 
+//            Config.FU.IntegerUnit.Instructions,
+//            Config.FU.TrapUnit.Instructions,
+//            Config.FU.BranchUnit.Instructions,
+//            Config.FU.MemoryUnit.Instructions,
+//            Config.FU.FloatingPointUnit.Instructions
+        let foundOpcodeIn ops = 
+            (ops |> Array.tryFind (fun o -> 
+                //printfn "o, opcode.Name ==> %A, %A" o (opcode.Name)
+                o = opcode.Name)).IsSome
+//        printfn "found in %s iOPs: %A" (opcode.Name) (foundOpcodeIn iOps)
+//        printfn "found in %s tOPs: %A" (opcode.Name) (foundOpcodeIn tOps)
         if      foundOpcodeIn iOps  then Integer
         elif    foundOpcodeIn tOps  then Trap
-        elif    foundOpcodeIn bOps  then Branch
-        elif    foundOpcodeIn mOps  then Memory
-        elif    foundOpcodeIn fpOps then FloatingPoint
-        else failwith "opcode not supported" 
+//        elif    foundOpcodeIn bOps  then Branch
+//        elif    foundOpcodeIn mOps  then Memory
+//        elif    foundOpcodeIn fpOps then FloatingPoint
+        else failwith (sprintf "opcode (%s) not supported" (opcode.Name)) 
     
     static member ofInt i = InstructionKind.ofHex (Convert.int2hex i)
 
-type DstReg =
-    | NONE
-    | R of int * int
-    | F of int * int
+//type DstReg =
+//    | NONE
+//    | R of int * int
+//    | F of int * int
 
-//    member rd.GetReg (i:int) (regs:RegisterFile) = 
-//        let rn a b = (Convert.int2bin i).[a..b] |> Convert.bin2int
-//        rd |> function
-//        | GPR (a,b) ->
-//            regs |> function | RegisterFile.GPR gpr -> gpr.[rn a b] | _ -> failwith ""
-//        | FPR (a,b) ->
-//            regs |> function | RegisterFile.FPR fpr -> fpr.[rn a b] | _ -> failwith ""
-//        | _ -> failwith ""
+//    member rd.Get (instruction:int) (regs:RegisterFile) =
+//        let idx a b = (Convert.int2bin instruction).[a..b] |> Convert.bin2int
+//        (rd, regs) |> function
+//        | R(a,b), :? GPR -> idx a b
+//        | F(a,b), :? FPR -> idx a b
+//        | _ -> failwith "invalid rd or register file"
 
-type S1Reg =
-    | NONE
-    | R of int * int
-    | F of int * int
+//type S1Reg =
+//    | NONE
+//    | R of int * int
+//    | F of int * int
 
-type S2Reg =
-    | NONE
-    | R of int * int
-    | F of int * int
+//    member rs.Get (instruction:int) (regs:RegisterFile) =
+//        let idx a b = (Convert.int2bin instruction).[a..b] |> Convert.bin2int
+//        (rs, regs) |> function
+//        | R(a,b), :? GPR -> idx a b
+//        | F(a,b), :? FPR -> idx a b
+//        | _ -> failwith "invalid rs or register file"
 
-type FunCode =
-    | NONE
-    | FC of int * int
 
-type Imm =
-    | NONE
-    | A of int * int
+//type S2Reg =
+//    | NONE
+//    | R of int * int
+//    | F of int * int
+//
+//    member rt.Get (instruction:int) (regs:RegisterFile) =
+//        let idx a b = (Convert.int2bin instruction).[a..b] |> Convert.bin2int
+//        (rt, regs) |> function
+//        | R(a,b), :? GPR -> idx a b
+//        | F(a,b), :? FPR -> idx a b
+//        | _ -> failwith "invalid rt or register file"
+//
+//type FunCode =
+//    | NONE
+//    | FC of int * int
+//
+//    member fc.Get (instruction:int) =
+//        let idx a b = (Convert.int2bin instruction).[a..b] |> Convert.bin2int
+//        fc |> function
+//        | FC(a,b) -> idx a b
+//        | _ -> failwith "invalid func code"
+
+//type Imm =
+//    | NONE
+//    | A of int * int
+//
+//    member imm.Get (instruction:int) =
+//        let idx a b = (Convert.int2bin instruction).[a..b] |> Convert.bin2int
+//        imm |> function
+//        | A(a,b) -> idx a b
+//        | _ -> failwith "invalid immediate"
 
 // In addition, it is helpful to create an Instruction class that contains information 
 // that can be used to issue an instruction to a reservation station and set the Qi field 
@@ -72,25 +105,113 @@ type Imm =
 // instruction. The fields of an instruction object can be accessed to get this information 
 // and used to initialize the reservation station.  In this way, it is possible to write 
 // issuing code that can be placed in the FUContainer class and used to issue any instruction.  For example, the fields of the Instruction class could be:
-type Instruction =
-    {
-        opcode  : Opcode
-        funCode : FunCode
-        rd      : DstReg
-        rs      : S1Reg
-        rt      : S2Reg
-        imm     : Imm
-    }
+type DstReg     = | NONE | GPR of int | FPR of int
+type S1Reg      = | NONE | GPR of int | FPR of int
+type S2Reg      = | NONE | GPR of int | FPR of int
+type Imm        = | NONE | A of int * int
+
+type Instruction(opcode:string, funCode:int, rd:DstReg, rs:S1Reg, rt:S2Reg, imm:Imm) =
+    member val opcode = Opcode.ofName opcode
+    member val funCode = funCode
+    member val rd = rd
+    member val rs = rs
+    member val rt = rt
+    member val imm = imm
     
-//    member ins.GetRS (instruction:int) (regs:RegisterFile) = 
-//        let idx a b = (Convert.int2bin instruction).[a..b] |> Convert.bin2int
+    new(opcode, rd, rs, rt, imm) = Instruction(opcode, 0, rd, rs, rt, imm)
+    new(opcode, rd, rs, imm) = Instruction(opcode, rd, rs, S2Reg.NONE, imm)
+    new(opcode, rd, rs, rt) = Instruction(opcode, rd, rs, rt, Imm.NONE)
+    new(opcode, rd, rs) = Instruction(opcode, rd, rs, S2Reg.NONE)
+    new(opcode, rs, imm) = Instruction(opcode, DstReg.NONE, rs, S2Reg.NONE, imm)
+    new(opcode, imm) = Instruction(opcode, S1Reg.NONE, imm)
+    new(funCode, rs) = Instruction("trap", funCode, DstReg.NONE, rs, S2Reg.NONE, Imm.NONE)
+    
+
+    static member ThreeGpr opcode = Instruction(opcode, DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11)
+    static member ThreeFpr opcode = Instruction(opcode, DstReg.FPR 16, S1Reg.FPR 6, S2Reg.FPR 11)
+
+    static member ADDI = Instruction("addi", DstReg.GPR 11, S1Reg.GPR 6, Imm.A(16,31))
+    static member NOP = Instruction("nop", 0, DstReg.NONE, S1Reg.NONE, S2Reg.NONE, Imm.NONE)
+    static member ADD = Instruction.ThreeGpr "add"
+    static member SUB = Instruction.ThreeGpr "sub"
+    static member AND = Instruction.ThreeGpr "and"
+    static member OR = Instruction.ThreeGpr "or"
+    static member XOR = Instruction.ThreeGpr "xor"
+    static member MOVF = Instruction("movf", DstReg.FPR 16, S1Reg.FPR 6)
+    static member MOVFP2I = Instruction("movfp2i", DstReg.GPR 16, S1Reg.FPR 6)
+    static member MOVI2FP = Instruction("movi2fp", DstReg.FPR 16, S1Reg.GPR 6)
+    
+    static member TRAP0 = Instruction(0, S1Reg.GPR 6)
+    static member TRAP1 = Instruction(1, S1Reg.GPR 6)
+    static member TRAP2 = Instruction(2, S1Reg.FPR 6)
+    static member TRAP3 = Instruction(3, S1Reg.GPR 6)
+
+    static member BEQZ = Instruction("beqz", S1Reg.GPR 6, Imm.A(16, 31))
+    static member J = Instruction("j", Imm.A(6,31))
+    static member JR = Instruction("jr", S1Reg.GPR 6, Imm.NONE)
+    static member JAL = Instruction("jal", Imm.A(6,31))
+    static member JALR = Instruction("jalr", S1Reg.GPR 6, Imm.NONE)
+
+    static member LW = Instruction("lw", DstReg.GPR 11, S1Reg.GPR 6, Imm.A(16,31))
+    static member LF = Instruction("lf", DstReg.FPR 11, S1Reg.GPR 6, Imm.A(16,31))
+    static member SW = Instruction("sw", DstReg.GPR 11, S1Reg.GPR 6, Imm.A(16, 31))
+    static member SF = Instruction("sf", DstReg.FPR 11, S1Reg.GPR 6, Imm.A(16, 31))
+
+    static member ADDF = Instruction.ThreeFpr "addf"
+    static member SUBF = Instruction.ThreeFpr "subf"
+    static member MULTF = Instruction.ThreeFpr "multf"
+    static member DIVF = Instruction.ThreeFpr "divf"
+    static member MULT = Instruction.ThreeFpr "mult"
+    static member DIV = Instruction.ThreeFpr "div"
+    static member CVTF2I = Instruction("cvtf2i", DstReg.FPR 16, S1Reg.FPR 6)
+    static member CVTI2F = Instruction("cvti2f", DstReg.FPR 16, S1Reg.FPR 6)
+
+
+//    member ins.GetRs (instruction:int) (gpr:GeneralPurposeRegister) = 
 //        ins.rs |> function
-//        | S1Reg.GPR (a,b) -> regs.[idx a b]
+//        | S1Reg.GPR b -> let rs = (Convert.int2bin instruction).[b..b+4] in gpr.[Convert.bin2int rs]
+    
 
+module ISA =
+    let addi = Instruction("addi", DstReg.GPR 11, S1Reg.GPR 6, Imm.A(16,31))
+    let add = Instruction("add", DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11)
+    let trap0 = Instruction(0, S1Reg.GPR 6)
+    let trap1 = Instruction(1, S1Reg.GPR 6)
+    let trap2 = Instruction(2, S1Reg.FPR 6)
+    let trap3 = Instruction(3, S1Reg.GPR 6)
+    
 
-    static member InitTrap rs =
-        {   opcode = Opcode.ofName "trap"; funCode = FunCode.FC(27,31)
-            rd = DstReg.NONE; rs = rs; rt = S2Reg.NONE; imm = Imm.NONE }
+//    member ins.ApplyToReservationStation (i:int) (regs:RegisterFile) (r:ReservationStation) =
+//        ins.rs |> function | DstReg.NONE -> r.
+//    
+//    member ins.GetRD (i:int) (regs:RegisterFile) = 
+//        let idx a b = (Convert.int2bin i).[a..b] |> Convert.bin2int
+//        (ins.rd, regs) |> function
+//        | DstReg.R(a,b), :? GPR -> idx a b
+//        | DstReg.F(a,b), :? FPR -> idx a b
+//        | _ -> failwith "invalid rd or register file"
+//
+//    member ins.GetRS (i:int) (regs:RegisterFile) = 
+//        let idx a b = (Convert.int2bin i).[a..b] |> Convert.bin2int
+//        (ins.rs, regs) |> function
+//        | S1Reg.R(a,b), :? GPR -> idx a b
+//        | S1Reg.F(a,b), :? FPR -> idx a b
+//        | _ -> failwith "invalid rs or register file"
+//
+//    member ins.GetRT (i:int) (regs:RegisterFile) = 
+//        let idx a b = (Convert.int2bin i).[a..b] |> Convert.bin2int
+//        (ins.rt, regs) |> function
+//        | S2Reg.R(a,b), :? GPR -> idx a b
+//        | S2Reg.F(a,b), :? FPR -> idx a b
+//        | _ -> failwith "invalid rt or register file"
+
+//    static member RS (i:Instruction) (regs:RegisterFile) =
+//        (i.rs, regs) |> function
+//        | S1Reg.R (a,b), :? GPR as gpr -> 
+
+//    static member InitTrap rs =
+//        {   opcode = Opcode.ofName "trap"; funCode = FunCode.FC(27,31)
+//            rd = DstReg.NONE; rs = rs; rt = S2Reg.NONE; imm = Imm.NONE }
 
 
 //    static member IntegerInstructions =

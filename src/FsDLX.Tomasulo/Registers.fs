@@ -2,23 +2,23 @@
 
 [<AbstractClass>]
 type RegisterFile() =
-    member val Regs = Register.ArrayInit 64
+    let regs = Register.ArrayInit 64
 
     member rf.Item
         with get i = 
             if i > 31 then failwith "invalid index"
             else
                 rf |> function
-                | :? GPR as gpr -> gpr.[i]
-                | :? FPR as fpr -> fpr.[i + 32]
+                | :? GeneralPurposeRegister as gpr -> gpr.[i]
+                | :? FloatingPointRegister as fpr -> fpr.[i + 32]
                 | _ -> failwith "invalid register file type"
         
         and set i value = 
             if i > 31 then failwith "invalid index"
             else
                 rf |> function
-                | :? GPR as gpr -> gpr.[i].Contents <- value
-                | :? FPR as fpr -> fpr.[i + 32].Contents <- value
+                | :? GeneralPurposeRegister as gpr -> gpr.[i].Contents <- value
+                | :? FloatingPointRegister as fpr -> fpr.[i + 32].Contents <- value
                 | _ -> failwith "invalid register file type"
 
 and Register =
@@ -34,28 +34,28 @@ and Register =
 
 and Qi = string option
 
-and GPR() =
+and GeneralPurposeRegister() =
     inherit RegisterFile()
 
     member gpr.Item
         with get i = 
             if i > 31 then failwith "invalid GPR index"
-            else gpr.Regs.[i]
+            else base.[i]
         
         and set i value  =
             if i > 31 then failwith "invalid GPR index"
-            else gpr.Regs.[i].Contents <- value
+            else base.[i].Contents <- value
 
-and FPR() =
+and FloatingPointRegister() =
     inherit RegisterFile()
 
     member gpr.Item
         with get i = 
             if i > 31 then failwith "invalid FPR index"
-            else gpr.Regs.[i + 32]
+            else base.[i + 32]
         
         and set i value =
             if i > 31 then failwith "invalid FPR index"
-            else gpr.Regs.[i + 32].Contents <- value
+            else base.[i + 32].Contents <- value
 
 

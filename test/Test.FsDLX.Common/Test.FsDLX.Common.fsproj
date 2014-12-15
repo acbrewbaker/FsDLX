@@ -5,14 +5,14 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>a82780e0-376c-4a04-8d66-3ec7f8191ff5</ProjectGuid>
+    <ProjectGuid>34ffbec1-b7a7-4cc1-b620-d4ea2220520f</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Test.FsDLX.Tomasulo</RootNamespace>
-    <AssemblyName>Test.FsDLX.Tomasulo</AssemblyName>
+    <RootNamespace>Test.FsDLX.Common</RootNamespace>
+    <AssemblyName>Test.FsDLX.Common</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
-    <Name>Test.FsDLX.Tomasulo</Name>
+    <Name>Test.FsDLX.Common</Name>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
   </PropertyGroup>
@@ -25,7 +25,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Debug\Test.FsDLX.Tomasulo.XML</DocumentationFile>
+    <DocumentationFile>bin\Debug\Test.FsDLX.Common.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -36,7 +36,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Release\Test.FsDLX.Tomasulo.XML</DocumentationFile>
+    <DocumentationFile>bin\Release\Test.FsDLX.Common.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
@@ -63,12 +63,8 @@
     <Error Condition="!Exists('$(SolutionDir)\.nuget\NuGet.targets')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)\.nuget\NuGet.targets'))" />
   </Target>
   <ItemGroup>
-    <Compile Include="Common.fs" />
-    <Compile Include="Registers.fs" />
-    <Compile Include="Instructions.fs" />
-    <Compile Include="FunctionalUnits.fs" />
-    <Compile Include="Memory.fs" />
-    <Compile Include="Interface.fs" />
+    <Compile Include="Convert.fs" />
+    <Compile Include="Opcodes.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <Content Include="packages.config" />
@@ -80,10 +76,6 @@
     </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="NCrunch.Framework">
-      <HintPath>..\..\packages\NCrunch.Framework.2.8.0.34\lib\portable-windows8+net45\NCrunch.Framework.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="nunit.framework">
@@ -98,11 +90,6 @@
     <ProjectReference Include="..\..\src\FsDLX.Common\FsDLX.Common.fsproj">
       <Name>FsDLX.Common</Name>
       <Project>{3548b64c-d96e-4033-88ee-99c87bba4793}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\..\src\FsDLX.Tomasulo\FsDLX.Tomasulo.fsproj">
-      <Name>FsDLX.Tomasulo</Name>
-      <Project>{49572f7c-4ff3-4448-9a23-8067be0e733e}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>

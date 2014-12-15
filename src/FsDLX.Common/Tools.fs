@@ -7,7 +7,6 @@ open System.Text
 open System.Text.RegularExpressions
 
 
-
 [<AutoOpen>]
 module Tools =
     let inline (@@) (a:string) (b:string) = Path.Combine(a, b)
@@ -18,7 +17,9 @@ module Tools =
 
     let concatLines lines = lines |> List.fold (fun s l -> s + l + "\n") ("")
 
-    module Opcode =
+    let splitForHex (s:string) = s.Split([|':'; '#'|]).[1].Trim()
+
+    module Info =
         let parseTypeFile filepath =
             let pattern = @"(?<opcode>[^\s]+)\s+(?<rrid>\d\s+)*\s*(?<encoding>\d+)"
             let regex = new Regex(pattern, RegexOptions.Multiline)
@@ -50,7 +51,6 @@ module Tools =
 
 
 module Convert =
-    
     let bytes2hex (b:byte[]) =
         (b |> Array.rev |> BitConverter.ToString)
             .Replace("-","").ToLower()
@@ -105,4 +105,27 @@ module Convert =
 
     let hex2int hex = Convert.ToInt32(hex, 16)
 
-    let int2hex (hex:int) = hex.ToString("x8")
+    let int2hex (i:int) = i.ToString("x8")
+
+    let int2nibble (i:int) = (int2hex i).[4..7]
+
+
+
+
+
+
+
+    module InputLine =
+        let toInstructionHex line = splitForHex line
+        let toInstructionInt line = line |> splitForHex |> hex2int
+
+//    module InstructionHex =
+//        let toOpcodeBits hex = (hex2bin hex).[0..Constants.nOpcodeBits - 1]
+//        let toOpcodeInt hex = hex |> toOpcodeBits |> bin2int
+//
+//    module InstructionInt =
+//        let toOpcodeBits i = InstructionHex.toOpcodeBits (int2hex i)
+//        let toOpcodeInt i = InstructionHex.toOpcodeInt (int2hex i)
+
+
+

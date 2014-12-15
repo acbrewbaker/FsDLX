@@ -48,9 +48,19 @@ let allOpEncPairs =
     (rtypes |> getOpEncOnly) @
     (jtypes |> getOpEncOnly)
 
-allOpEncPairs
-|> List.map (fun (op, enc) -> sprintf "%d, %A" (int enc) op)
-|> List.iter (printfn "%s")
+let allOpRRXEncPairs =
+    (itypes |> getInfo) @
+    (rtypes |> getInfo) @
+    (jtypes |> getInfo)
+
+//allOpEncPairs
+//|> List.map (fun (op, enc) -> sprintf "%d, %A" (int enc) op)
+//|> List.iter (printfn "%s")
+
+//allOpRRXEncPairs
+//|> List.map (fun (op, rrx, enc) -)
+
+for x in allOpRRXEncPairs do printfn "%A" x
 
 //
 //itypes 

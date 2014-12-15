@@ -16,36 +16,57 @@ namespace FsDLX.Tomasulo
 //
 //    member h.UpdateReservationStations() =
 //        h.FunctionalUnits |> Array.iter (fun fu -> fu.UpdateRS())
-      
+     
 type SimulatorState =
     {
-        mutable ClockCycle      : int
-        mutable CurrentFUnit    : FU
-        mutable Memory          : Memory
-        mutable Executing       : string option
+        ClockCycle          : string
+        PC                  : string
+        Memory              : string
+        GPR                 : string
+        FPR                 : string
+        CurrentFUnit        : string
+        Executing           : string
     }
 
-    member ss.Update (clock:Clock) fu mem =
-        ss.ClockCycle <- clock.Cycles
-        ss.CurrentFUnit <- fu
-        ss.Memory <- mem
+//    member ss.Update (clock:Clock) fu mem =
+//        ss.ClockCycle <- clock.Cycles
+//        ss.CurrentFUnit <- fu
+//        ss.Memory <- mem
 
+    override ss.ToString() =
+        [   sprintf "Clock Cycle: %s; PC: %s\n" (ss.ClockCycle) (ss.PC)
+            sprintf "Memory:\n%s\n" (ss.Memory)
+            sprintf "GPR:\n%s\n" (ss.GPR)
+            sprintf "FPR:\n%s\n" (ss.FPR)
+            sprintf "Current Functional Unit:\n%s" (ss.CurrentFUnit) ]
+        |> List.reduce (+)
 
-type Simulator() =
+    static member TakeSnapShot (clock:Clock) (pc:int) (mem:Memory) (gpr:GPR) (fpr:FPR) (fu:FU) =
+        {   ClockCycle = string clock.Cycles; PC = string pc
+            Memory = mem.ToString()
+            GPR = gpr.ToString(); FPR = fpr.ToString()
+            CurrentFUnit = fu.ToString()
+            Executing = "" }
+
+type Simulator(input:string, verbose:bool) =
     let cdb = CDB()
-    let Clock = Clock.GetInstance
+    let clock = Clock.GetInstance
     let mutable PC = 0
-    let memory = Memory.GetInstance Config.DefaultMemorySize
+    let memory = Memory.GetInstance Config.Memory.DefaultMemorySize
     let gpr = GPR()
     let fpr = FPR()
     let funits = FunctionalUnits() //FU.InitAll()
     
-    let log = List.empty<SimulatorState>
+    let mutable log = List.empty<SimulatorState>
     
     let mutable halt = false
     
 
-    let finished() = funits.Finished()
+    let finished() = 
+        if clock.Cycles = 0 
+        then    false
+        else    funits.Finished()
+        
 
     let updateReservationStations() = funits.UpdateReservationStations(cdb)
     
@@ -94,8 +115,17 @@ type Simulator() =
         
         stall
 
+    
+    let showLog() = for l in log do printfn "%O" l
+    let log() = log <- SimulatorState.TakeSnapShot clock PC memory gpr fpr funits.All.[0] :: log
 
-    member s.Run() =
+    let initialize() =
+        memory.Load(input)
+        log()    
+
+    let runRegular() =
+        initialize()
+
         while not(halt) && not(finished()) do
             // get name of RS writing to CDB and the value to be written
             cdb.Result <- write()
@@ -107,6 +137,53 @@ type Simulator() =
                 if not(halt) && not(stall) then PC <- PC + 4
             // update RSs using name and value
             updateReservationStations()
+            log()
+            
+
+    let runVerbose() =
+        initialize()
+
+        while not(halt) && not(finished()) do
+            // get name of RS writing to CDB and the value to be written
+            cdb.Result <- write()
+            execute()
+            if not(halt) && not(branchInBranchUnit()) then
+                let instruction = memory.[PC]
+                // stall set to true if issue fails
+                let stall = issue(instruction)
+                if not(halt) && not(stall) then PC <- PC + 4
+            // update RSs using name and value
+            updateReservationStations()
+            log()
+            
+
+    let runDebug() =
+        initialize()
+
+        while not(halt) && not(finished()) do
+            // get name of RS writing to CDB and the value to be written
+            cdb.Result <- write()
+            execute()
+            if not(halt) && not(branchInBranchUnit()) then
+                let instruction = memory.[PC]
+                // stall set to true if issue fails
+                let stall = issue(instruction)
+                if not(halt) && not(stall) then PC <- PC + 4
+            // update RSs using name and value
+            updateReservationStations()
+            clock.Tic()
+            log()
+            showLog()
+
+        printfn "Done"
+        printfn "Displaying final log state..."
+        showLog()
+
+    member s.Run() = Config.Simulator.outputLevel |> function
+        | Regular -> runRegular()
+        | Verbose -> runVerbose()
+        | Debug -> runDebug()
+
 
         
 

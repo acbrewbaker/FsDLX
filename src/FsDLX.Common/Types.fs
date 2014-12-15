@@ -9,10 +9,10 @@ type ParsedOpcode =
     }
 
     static member create fp =
-        {   Info            = fp |> Opcode.parseTypeFile
-            Pattern         = (fp |> Opcode.getPattern).Substring(1) // remove extra or bar |
-            LookupByOpcode  = fp |> Opcode.getLookupByOp  
-            LookupByEncoding= fp |> Opcode.getLookupByEnc}
+        {   Info            = fp |> Info.parseTypeFile
+            Pattern         = (fp |> Info.getPattern).Substring(1) // remove extra or bar |
+            LookupByOpcode  = fp |> Info.getLookupByOp  
+            LookupByEncoding= fp |> Info.getLookupByEnc}
 
 type OpcodeInfo(srcdir:string, itypesfile:string, rtypesfile:string, jtypesfile:string) = 
     let itypes = itypesfile |> ParsedOpcode.create
@@ -30,9 +30,9 @@ type OpcodeInfo(srcdir:string, itypesfile:string, rtypesfile:string, jtypesfile:
         |> Map.ofList
 
     let allOpEncPairs = 
-        (itypesfile |> Opcode.getOpEncOnly) @
-        (rtypesfile |> Opcode.getOpEncOnly) @
-        (jtypesfile |> Opcode.getOpEncOnly)
+        (itypesfile |> Info.getOpEncOnly) @
+        (rtypesfile |> Info.getOpEncOnly) @
+        (jtypesfile |> Info.getOpEncOnly)
         
     let lookupByOp = allOpEncPairs |> Map.ofList
     
