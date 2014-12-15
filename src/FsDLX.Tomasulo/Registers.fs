@@ -15,6 +15,19 @@ type RegisterFile() =
         with    get i : Register = regs.[i]
         and     set i (value:int) = regs.[i].Contents <- value
 
+    member rf.Update() =
+        let cdb = CDB.GetInstance
+        rf |> function
+        | :? GPR -> regs.[0..31] |> Array.iter (fun reg ->
+            if reg.Qi.IsSome && reg.Qi.Value = cdb.Src then
+                reg.Contents <- cdb.Result.Value
+                reg.Qi <- None)
+        | :? FPR -> regs.[32..63] |> Array.iter (fun reg ->
+            if reg.Qi.IsSome && reg.Qi.Value = cdb.Src then
+                reg.Contents <- cdb.Result.Value
+                reg.Qi <- None)
+        | _ -> failwith ""
+
 //    member rf.Item
 //        with get i = 
 //            if i > 31 then failwith "invalid index"
@@ -58,7 +71,6 @@ and Register =
     }
 
     member r.IsAvailable() = 
-        printfn "reg available?"
         r.Qi |> function | Some _ -> false | _ -> true
 
     static member Init _ = { Qi = None; Contents = 0 }

@@ -135,10 +135,11 @@ type ReservationStation =
     static member ClearIfResultWritten (r:ReservationStation) = r.ClearIfResultWritten()
 
 
-type CDB() =
+type CDB private () =
+    static let instance = CDB()
     member val Src      = "" with get, set
     member val Result   = Some 0 with get, set
-
+    static member GetInstance = instance
 
 type PC private () =
     static let instance = PC()
@@ -150,6 +151,6 @@ type Clock private () =
     member val Cycles = 0 with get, set
     member c.Tic() = c.Cycles <- c.Cycles + 1
     static member GetInstance = instance
-
+    
     override c.ToString() = sprintf "Clock cycle: %d" c.Cycles
 

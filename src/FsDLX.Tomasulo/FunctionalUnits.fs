@@ -72,14 +72,15 @@ type FU(cfg:Config.FU) =
         | _ ->
             fu.RS |> Array.iter ReservationStation.Clear
         
-    member fu.UpdateRS (cdb:CDB) =
+    member fu.UpdateRS () =
+        let cdb = CDB.GetInstance
         fu.RS |> Array.iter (fun r -> 
             (r.Qj, r.Qk) |> function
             | Some qj, _ -> 
-                if r.Busy && cdb.Src = r.Qj.Value then 
+                if r.Busy && cdb.Src = qj then 
                     r.Qj <- None; r.Vj <- cdb.Result.Value
             | _, Some qk ->
-                if r.Busy && cdb.Src = r.Qk.Value then
+                if r.Busy && cdb.Src = qk then
                     r.Qk <- None; r.Vk <- cdb.Result.Value
             | _ -> ())
 
@@ -101,13 +102,15 @@ type FU(cfg:Config.FU) =
         false
 
 
-    member fu.Write (cdb:CDB) =
+    member fu.Write() =
+        let cdb = CDB.GetInstance
         fu.RS |> Array.tryFindIndex (fun r -> r.ResultReady) |> function
         | Some r ->
             fu.RS.[r].ResultWritten <- true
             cdb.Result <- fu.RS.[r].Result |> Some
             cdb.Src <- fu.RS.[r].Name
-        | None -> ()
+            true
+        | None -> false
 
     override fu.ToString() =
         //sprintf "MaxCycles: %d; Remaining Cycles: %d; Busy: %A" fu.MaxCycles fu.RemainingCycles fu.Busy
@@ -186,27 +189,27 @@ and IntegerUnit() =
         | Some r -> 
             RS.[r].Busy <- true
             RS.[r].Op <- Some opcode
-            printfn "Opcode: %O" opcode
+            //printfn "Opcode: %O" opcode
             (rd, rs, rt, imm) |> function
                 | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.A(a,b) -> 
-                    printfn "case1.0"
+                    //printfn "case1.0"
                     let rd, rs, rt = 
                         regNum rd, 
                         regNum rs, 
                         regNum (Convert.int2bits2int i a b)
                     RS.[r].A <- Some rd
 
-                    printfn "case1.1"
+                    //printfn "case1.1"
                     if      gpr.[rs].IsAvailable()
                     then    RS.[r].Vj <- gpr.[rs].Contents
                     else    RS.[r].Qj <- gpr.[rs].Qi
                     
-                    printfn "case1.2"
+                    //printfn "case1.2"
                     gpr.[rt].Qi <- RS.[r].Name |> Some
                     false
 
                 | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.GPR rt, Imm.NONE ->
-                    printfn "case2"
+                    //printfn "case2"
                     let rd, rs, rt = regNum rd, regNum rs, regNum rt
                     
                     if      gpr.[rs].IsAvailable()
@@ -234,20 +237,24 @@ and IntegerUnit() =
         | None -> true
 
     override iu.Compute r =
-        let r = iu.RS.[r]
-        r.Result <-  r.Op.Value.Name |> function
-            | "addi" -> r.Vj + r.A.Value
+        let vj, vk, a =
+            iu.RS.[r].Vj,
+            iu.RS.[r].Vk,
+            iu.RS.[r].A.Value
+
+        iu.RS.[r].Result <-  iu.RS.[r].Op.Value.Name |> function
+            | "addi" -> vj + a
             | "nop" -> 0
-            | "add" -> r.Vj + r.Vk
-            | "sub" -> r.Vj - r.Vk
-            | "and" -> r.Vj &&& r.Vk
-            | "or" -> r.Vj ||| r.Vk
-            | "xor" -> r.Vj ^^^ r.Vk
+            | "add" -> vj + vk
+            | "sub" -> vj - vk
+            | "and" -> vj &&& vk
+            | "or" -> vj ||| vk
+            | "xor" -> vj ^^^ vk
             | "movf" -> 0
             | "movfp2i" -> 0
             | "movi2fp" -> 0
             | _ -> failwith "invalid integer unit instruction"
-
+        
     
 
 
@@ -262,33 +269,30 @@ and TrapUnit() =
             "trap3", Instruction.TRAP3  ] |> Map.ofList
 
     override tu.Insert i = 
-        printfn "inserting trap instruction"
         let gpr = GPR.GetInstance()
         let fpr = FPR.GetInstance()
         let RS = tu.RS
         let opcode = Opcode.ofInstructionInt i
         let funCode = Convert.int2bits2int i 27 31
         let reg = Convert.int2bits2reg i 6
-        printfn "trap reg# ==> %A" reg
         tu.FindEmptyStation() |> function
         | Some r -> 
             RS.[r].Busy <- true
             RS.[r].Op <- Some opcode
-            printfn "Opcode: %O" opcode
             funCode |> function
                 | 0 -> 
-                    printfn "HALT"
+                    printfn "Trap0: Halt!"
                     true
                 | 1 ->
-                    printfn "%A" (gpr.[reg])
-                    true
+                    printfn "Trap1: %A" (gpr.[reg])
+                    false
 
                 | 2 ->
-                    printfn "%A" (fpr.[reg])
-                    true
+                    printfn "Trap2: %A" (fpr.[reg])
+                    false
                 | 3 ->
-                    printfn "%A" (fpr.[reg])
-                    true
+                    printfn "Trap3: %A" (fpr.[reg])
+                    false
                 | _ -> failwith "didnt match any trap instruction case"
 
         | None -> true
@@ -408,8 +412,8 @@ and FunctionalUnits() =
 
     // The update reservation stations step will use the name and result on the CDB to 
     // update each reservation station and register file.
-    member fu.UpdateReservationStations cdb =
-        all |> Array.iter (fun u -> u.UpdateRS cdb)
+    member fu.UpdateReservationStations() =
+        all |> Array.iter (fun u -> u.UpdateRS()) //CDB.GetInstance)
 
     // The clear reservation stations step will clear each reservation station who has 
     // written in the current clock cycle. (Note there may be more than one since not 
