@@ -130,6 +130,7 @@ type Instruction(opcode:string, funCode:int, rd:DstReg, rs:S1Reg, rt:S2Reg, imm:
     static member ThreeGpr opcode = Instruction(opcode, DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11)
     static member ThreeFpr opcode = Instruction(opcode, DstReg.FPR 16, S1Reg.FPR 6, S2Reg.FPR 11)
 
+    // IntegerUnit instructions
     static member ADDI = Instruction("addi", DstReg.GPR 11, S1Reg.GPR 6, Imm.A(16,31))
     static member NOP = Instruction("nop", 0, DstReg.NONE, S1Reg.NONE, S2Reg.NONE, Imm.NONE)
     static member ADD = Instruction.ThreeGpr "add"
@@ -141,22 +142,27 @@ type Instruction(opcode:string, funCode:int, rd:DstReg, rs:S1Reg, rt:S2Reg, imm:
     static member MOVFP2I = Instruction("movfp2i", DstReg.GPR 16, S1Reg.FPR 6)
     static member MOVI2FP = Instruction("movi2fp", DstReg.FPR 16, S1Reg.GPR 6)
     
+
+    // TrapUnit instructions
     static member TRAP0 = Instruction(0, S1Reg.GPR 6)
     static member TRAP1 = Instruction(1, S1Reg.GPR 6)
     static member TRAP2 = Instruction(2, S1Reg.FPR 6)
     static member TRAP3 = Instruction(3, S1Reg.GPR 6)
 
+    // BranchUnit instructions
     static member BEQZ = Instruction("beqz", S1Reg.GPR 6, Imm.A(16, 31))
     static member J = Instruction("j", Imm.A(6,31))
     static member JR = Instruction("jr", S1Reg.GPR 6, Imm.NONE)
     static member JAL = Instruction("jal", Imm.A(6,31))
     static member JALR = Instruction("jalr", S1Reg.GPR 6, Imm.NONE)
 
+    // MemoryUnit isntructions
     static member LW = Instruction("lw", DstReg.GPR 11, S1Reg.GPR 6, Imm.A(16,31))
     static member LF = Instruction("lf", DstReg.FPR 11, S1Reg.GPR 6, Imm.A(16,31))
     static member SW = Instruction("sw", DstReg.GPR 11, S1Reg.GPR 6, Imm.A(16, 31))
     static member SF = Instruction("sf", DstReg.FPR 11, S1Reg.GPR 6, Imm.A(16, 31))
 
+    // FloatingPointUnit instructions
     static member ADDF = Instruction.ThreeFpr "addf"
     static member SUBF = Instruction.ThreeFpr "subf"
     static member MULTF = Instruction.ThreeFpr "multf"

@@ -107,7 +107,7 @@ type FU(cfg:Config.FU) =
 //        |> Array.concat
     
     
-
+    abstract member Instructions : Map<string, Instruction>
     abstract member Issue   : int -> RegisterFile -> bool
     abstract member Execute : ReservationStation -> unit
     abstract member Write   : CDB -> unit
@@ -117,25 +117,19 @@ type FU(cfg:Config.FU) =
 
 and IntegerUnit(gpr:GeneralPurposeRegister) =
     inherit FU(Config.FU.IntegerUnit)
+    
 
-    static let instructions = 
-        [| "addi",  Instruction("addi", DstReg.GPR 11, S1Reg.GPR 6, Imm.A(16,31))
-           "nop",   Instruction("nop")
-           "add",   Instruction("add", DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11)
-           "sub",   Instruction("sub", DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11)
-           "and",   Instruction("and", DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11)
-        |] |> Map.ofArray
-
-//    member iu.ADDI    (r:ReservationStation) = r.Vj + r.A.Value
-//    member iu.NOP     _ = ()
-//    member iu.ADD     (r:ReservationStation) = r.Vj + r.Vk
-//    member iu.SUB     (r:ReservationStation) = r.Vj - r.
-//    member iu.AND     (r:ReservationStation) = ()
-//    member iu.OR      (r:ReservationStation) = ()
-//    member iu.XOR     (r:ReservationStation) = ()
-//    member iu.MOVF    (r:ReservationStation) = ()
-//    member iu.MOVFP2I (r:ReservationStation) = ()
-//    member iu.MOVI2FP (r:ReservationStation) = ()
+    override iu.Instructions = 
+        [   "addi",     Instruction.ADDI
+            "nop",      Instruction.NOP
+            "add",      Instruction.ADD
+            "sub",      Instruction.SUB
+            "and",      Instruction.AND
+            "or",       Instruction.OR
+            "xor",      Instruction.XOR
+            "movf",     Instruction.MOVF
+            "movfp2i",  Instruction.MOVFP2I
+            "movi2fp",  Instruction.MOVI2FP ] |> Map.ofList
 
     override iu.Issue i regs =         
         let instruction = instructions.[(Opcode.ofInstructionInt i).Name]
@@ -192,12 +186,13 @@ and IntegerUnit(gpr:GeneralPurposeRegister) =
 and TrapUnit() =
     inherit FU(Config.FU.TrapUnit)
 
-    static let regBits = (6,10)
-    static let trap0 = S1Reg.R(regBits) |> Instruction.InitTrap
-    static let trap1 = S1Reg.R(regBits) |> Instruction.InitTrap
-    static let trap2 = S1Reg.F(regBits) |> Instruction.InitTrap
-    static let trap3 = S1Reg.R(regBits) |> Instruction.InitTrap
     
+    override tu.Instructions =
+        [   "trap0", Instruction.TRAP0
+            "trap1", Instruction.TRAP1
+            "trap2", Instruction.TRAP2
+            "trap3", Instruction.TRAP3  ] |> Map.ofList
+
     override tu.Issue i regs = false
 
     override tu.Execute r = ()
@@ -206,6 +201,13 @@ and TrapUnit() =
 
 and BranchUnit() =
     inherit FU(Config.FU.BranchUnit)
+
+    override bu.Instructions =
+        [   "beqz", Instruction.BEQZ
+            "j",    Instruction.J
+            "jr",   Instruction.JR
+            "jal",  Instruction.JAL
+            "jalr", Instruction.JALR    ] |> Map.ofList
 
     override bu.Issue i regs = false
 
@@ -216,11 +218,19 @@ and BranchUnit() =
 and MemoryUnit() =
     inherit FU(Config.FU.MemoryUnit)
 
+    
+
     let mutable xQueue = List.empty<int>
     let mutable wQueue = List.empty<int>
 
     member val LoadBuffer   = ReservationStation.ArrayInit Config.FU.MemoryUnit with get, set
     member val StoreBuffer  = ReservationStation.ArrayInit Config.FU.MemoryUnit with get, set
+
+    override mu.Instructions =
+        [   "lw",   Instruction.LW
+            "lf",   Instruction.LF
+            "sw",   Instruction.SW
+            "sf",   Instruction.SF  ] |> Map.ofList
 
     override mu.Issue i regs = false
 
@@ -231,10 +241,20 @@ and MemoryUnit() =
 and FloatingPointUnit() =
     inherit FU(Config.FU.FloatingPointUnit)
 
-    override mu.Issue i regs = false
-    override mu.Execute i = ()
+    override fpu.Instructions =
+        [   "addf",     Instruction.ADDF
+            "subf",     Instruction.SUBF
+            "multf",    Instruction.MULTF
+            "divf",     Instruction.DIVF
+            "mult",     Instruction.MULT
+            "div",      Instruction.DIV
+            "cvtf2i",   Instruction.CVTF2I
+            "cvti2f",   Instruction.CVTI2F  ] |> Map.ofList
 
-    override mu.Write(cdb:CDB) = ()
+    override fpu.Issue i regs = false
+    override fpu.Execute i = ()
+
+    override fpu.Write(cdb:CDB) = ()
 
 and FunctionalUnits() =
     let iu, tu =
