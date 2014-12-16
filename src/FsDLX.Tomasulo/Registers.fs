@@ -73,8 +73,11 @@ and Register =
     member r.IsAvailable() = 
         r.Qi |> function | Some _ -> false | _ -> true
 
+    override r.ToString() = sprintf "%d" r.Contents
+
     static member Init _ = { Qi = None; Contents = 0 }
     static member ArrayInit n = Array.init n Register.Init
+
 
 and Qi = string option
 
@@ -92,7 +95,15 @@ and GPR private () =
             if i > 31 then failwith "invalid GPR index"
             else base.[i].Contents <- value
 
-    static member GetInstance() = instance
+    override gpr.ToString() =
+        sprintf "R0-R7:    %s\nR8-R15:   %s\nR16-R23:  %s\nR24-R31:  %s"
+            ([for i = 0 to 7 do yield sprintf "%O, " (gpr.[i])] |> List.reduce (+))
+            ([for i = 8 to 15 do yield sprintf "%O, " (gpr.[i])] |> List.reduce (+))
+            ([for i = 16 to 23 do yield sprintf "%O, " (gpr.[i])] |> List.reduce (+))
+            ([for i = 24 to 31 do yield sprintf "%O, " (gpr.[i])] |> List.reduce (+))
+
+
+    static member GetInstance = instance
 
 and FPR private () =
     inherit RegisterFile()
@@ -108,7 +119,14 @@ and FPR private () =
             if i > 31 then failwith "invalid FPR index"
             else base.[i + 32].Contents <- value
 
-    static member GetInstance() = instance
+    override gpr.ToString() =
+        sprintf "F0-F7:    %s\nF8-F15:   %s\nF16-F23:  %s\nF24-F31:  %s"
+            ([for i = 0 to 7 do yield sprintf "%O, " (gpr.[i])] |> List.reduce (+))
+            ([for i = 8 to 15 do yield sprintf "%O, " (gpr.[i])] |> List.reduce (+))
+            ([for i = 16 to 23 do yield sprintf "%O, " (gpr.[i])] |> List.reduce (+))
+            ([for i = 24 to 31 do yield sprintf "%O, " (gpr.[i])] |> List.reduce (+))
+
+    static member GetInstance = instance
 
 //
 //type RegisterInfo() =

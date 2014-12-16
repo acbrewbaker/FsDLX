@@ -255,18 +255,18 @@ module OpcodeUtil =
 type Opcode(op:string, enc:int) =
 
     static let isRType (hex:string) =
-        let bin = (Convert.hex2bin hex).[0..Constants.nOpcodeBits - 1]
-        Convert.bin2int bin |> function
+        Convert.hex2bits2int hex 0 Constants.nOpcodeBits
+        |> function
         | 0 | 1 -> true | _ -> false
 
     static let getOpcodeBits (hex:string) =
         let bin = Convert.hex2bin hex
         if      not(isRType hex)
         then    bin.[0..Constants.nOpcodeBits - 1]
-        else    bin.[27..31]
+        else    bin.[26..31]
 
     
-    member val Name = op
+    member val Name = op with get, set
     member val asInt = enc with get 
     member val asHex = Convert.int2hex enc with get
     member val asBin = Convert.int2bin enc
@@ -275,16 +275,16 @@ type Opcode(op:string, enc:int) =
     override o.ToString() = o.Name
 
     static member ofName name = Opcode(name, OpcodeUtil.Lookup.byName.[name])
-
+    
     static member ofInstructionHex hex = 
         let enc = Convert.bin2int(getOpcodeBits hex)
-        let isI, isR, isJ =
-            OpcodeUtil.Lookup.itypeByEnc.ContainsKey(enc),
-            OpcodeUtil.Lookup.rtypeByEnc.ContainsKey(enc),
-            OpcodeUtil.Lookup.jtypeByEnc.ContainsKey(enc)
-        if      isI then Opcode.ofName(OpcodeUtil.Lookup.itypeByEnc.[enc])
-        elif    isR then Opcode.ofName(OpcodeUtil.Lookup.rtypeByEnc.[enc])
-        elif    isJ then Opcode.ofName(OpcodeUtil.Lookup.jtypeByEnc.[enc])
-        else    failwith "opcode lookup failure"
+        if isRType hex then 
+            Opcode.ofName(OpcodeUtil.Lookup.rtypeByEnc.[enc])
+        elif OpcodeUtil.Lookup.itypeByEnc.ContainsKey(enc) then
+            Opcode.ofName(OpcodeUtil.Lookup.itypeByEnc.[enc])
+        elif OpcodeUtil.Lookup.jtypeByEnc.ContainsKey(enc) then
+            Opcode.ofName(OpcodeUtil.Lookup.jtypeByEnc.[enc])
+        else
+            failwith "opcode lookup failure"
     
     static member ofInstructionInt i = Opcode.ofInstructionHex(Convert.int2hex i)

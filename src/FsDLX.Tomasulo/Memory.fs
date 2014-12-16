@@ -3,9 +3,10 @@
 open System.IO
 open FsDLX.Common
 
-type Memory private (size:int) =
-    static let instance size = Memory(size)
+type Memory private () =
+    static let instance = Memory()
     
+    let size = Config.Memory.DefaultMemorySize
 
     let dumpBy (by:int) (mem:int[]) =
         [for i = 0 to mem.Length / (by*4) do 
@@ -25,7 +26,7 @@ type Memory private (size:int) =
     
     let checkAddr = function
         | a when a % 4 <> 0 -> failwith "Invalid PC"
-        | a -> M.[a / 4] 
+        | a -> a / 4 
 
 
     let loadRegular input = 
@@ -60,8 +61,8 @@ type Memory private (size:int) =
 
 
     member m.Item
-        with get(address)     = M.[address]
-        and set address value = M.[address] <- value
+        with get(address)     = M.[checkAddr address]
+        and set address value = M.[checkAddr address] <- value
 
     member m.Dump(cols) = M |> dumpBy cols |> sprintf "%s"
     member m.Dump()     = m.Dump(8)

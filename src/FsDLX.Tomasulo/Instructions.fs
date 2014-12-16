@@ -13,6 +13,7 @@ type InstructionKind =
 
     static member ofHex hex =
         let opcode = Opcode.ofInstructionHex hex
+        printfn "hex: %A, OPCODE: %A" hex (opcode.Name)
         let iOps, tOps =
             Config.FU.IntegerUnit.Instructions,
             Config.FU.TrapUnit.Instructions
@@ -30,6 +31,7 @@ type InstructionKind =
 //        printfn "found in %s tOPs: %A" (opcode.Name) (foundOpcodeIn tOps)
         if      foundOpcodeIn iOps  then Integer
         elif    foundOpcodeIn tOps  then Trap
+        elif ["halt"; "dumpgpr"; "dumpfpr"; "dumpstr"] |> List.exists (fun op -> op = opcode.Name) then Trap
 //        elif    foundOpcodeIn bOps  then Branch
 //        elif    foundOpcodeIn mOps  then Memory
 //        elif    foundOpcodeIn fpOps then FloatingPoint

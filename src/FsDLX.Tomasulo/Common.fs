@@ -90,6 +90,8 @@ type ReservationStation =
         rs.Vj <- 0; rs.Vk <- 0
         rs.Qj <- None; rs.Qk <- None
         rs.A <- None
+        rs.ResultReady <- false
+        rs.ResultWritten <- false
 
     member rs.ClearIfResultWritten() = if rs.ResultWritten then rs.Clear()
 

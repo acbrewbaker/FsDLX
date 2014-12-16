@@ -11,6 +11,6 @@ let size = 1000
 [<Test>]
 let ``simple load test`` () =
     let file = inputdir @@ "add.hex"
-    let memory = Memory.GetInstance size
+    let memory = Memory.GetInstance
     memory.Load(file)
     memory.Dump()

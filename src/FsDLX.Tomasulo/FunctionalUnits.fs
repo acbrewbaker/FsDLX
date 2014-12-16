@@ -67,26 +67,25 @@ type FU(cfg:Config.FU) =
 
     member fu.Clear() = fu |> function
         | :? MemoryUnit as mu -> 
-            mu.LoadBuffer |> Array.iter ReservationStation.ClearIfResultWritten
-            mu.StoreBuffer|> Array.iter ReservationStation.ClearIfResultWritten
+            mu.LoadBuffer |> Array.iter (fun (r:ReservationStation) -> r.ClearIfResultWritten()) //ReservationStation.ClearIfResultWritten
+            mu.StoreBuffer|> Array.iter (fun (r:ReservationStation) -> r.ClearIfResultWritten()) //ReservationStation.ClearIfResultWritten
         | _ ->
-            fu.RS |> Array.iter ReservationStation.Clear
+            fu.RS |> Array.iter (fun r -> r.Clear()) //ReservationStation.Clear
         
     member fu.UpdateRS () =
         let cdb = CDB.GetInstance
-        fu.RS |> Array.iter (fun r -> 
-            (r.Qj, r.Qk) |> function
-            | Some qj, _ -> 
-                if r.Busy && cdb.Src = qj then 
+        fu.RS |> Array.iter (fun r ->
+            if r.Qj.IsSome then 
+                if r.Busy && cdb.Src = r.Qj.Value then 
                     r.Qj <- None; r.Vj <- cdb.Result.Value
-            | _, Some qk ->
-                if r.Busy && cdb.Src = qk then
-                    r.Qk <- None; r.Vk <- cdb.Result.Value
-            | _ -> ())
+            if r.Qk.IsSome then
+                if r.Busy && cdb.Src = r.Qk.Value then
+                    r.Qk <- None; r.Vk <- cdb.Result.Value )
 
 
     member fu.Execute() =
         fu.CurrentInstruction <- fu.RS |> Array.tryFindIndex (fun r -> r.IsReady())
+        //let mutable halt = false
         if not(fu.Busy) then
             if fu.CurrentInstruction.IsSome then fu.Busy <- true; fu.RemainingCycles <- fu.RemainingCycles - 1
         
@@ -169,8 +168,8 @@ and IntegerUnit() =
    
     
     override iu.Insert i =
-        let gpr = GPR.GetInstance()
-        let fpr = FPR.GetInstance()
+        let gpr = GPR.GetInstance
+        let fpr = FPR.GetInstance
         let RS = iu.RS
         let opcode = Opcode.ofInstructionInt i
         let instruction = iu.Instructions.[opcode.Name]
@@ -206,10 +205,10 @@ and IntegerUnit() =
                     
                     //printfn "case1.2"
                     gpr.[rt].Qi <- RS.[r].Name |> Some
-                    false
+                    //printfn "%A" (gpr.[rt].Qi.ToString())
 
                 | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.GPR rt, Imm.NONE ->
-                    //printfn "case2"
+                    printfn "case2"
                     let rd, rs, rt = regNum rd, regNum rs, regNum rt
                     
                     if      gpr.[rs].IsAvailable()
@@ -221,19 +220,16 @@ and IntegerUnit() =
                     else    RS.[r].Qk <- gpr.[rt].Qi
 
                     gpr.[rd].Qi <- RS.[r].Name |> Some
-                    false
 
-                | DstReg.FPR rd, S1Reg.FPR rs, S2Reg.NONE, Imm.NONE ->
-                    false
+                | DstReg.FPR rd, S1Reg.FPR rs, S2Reg.NONE, Imm.NONE -> ()
 
-                | DstReg.GPR rd, S1Reg.FPR rs, S2Reg.NONE, Imm.NONE ->
-                    false
+                | DstReg.GPR rd, S1Reg.FPR rs, S2Reg.NONE, Imm.NONE -> ()
 
-                | DstReg.FPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.NONE ->
-                    false
+                | DstReg.FPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.NONE -> ()
                 
                 | _ -> failwith "didnt match any int instruction case"
-
+                
+            false
         | None -> true
 
     override iu.Compute r =
@@ -254,6 +250,7 @@ and IntegerUnit() =
             | "movfp2i" -> 0
             | "movi2fp" -> 0
             | _ -> failwith "invalid integer unit instruction"
+//        false
         
     
 
@@ -269,35 +266,69 @@ and TrapUnit() =
             "trap3", Instruction.TRAP3  ] |> Map.ofList
 
     override tu.Insert i = 
-        let gpr = GPR.GetInstance()
-        let fpr = FPR.GetInstance()
+        let gpr = GPR.GetInstance
+        let fpr = FPR.GetInstance
         let RS = tu.RS
         let opcode = Opcode.ofInstructionInt i
         let funCode = Convert.int2bits2int i 27 31
-        let reg = Convert.int2bits2reg i 6
+        let rs = Convert.int2bits2reg i 6
         tu.FindEmptyStation() |> function
         | Some r -> 
             RS.[r].Busy <- true
-            RS.[r].Op <- Some opcode
+            
             funCode |> function
-                | 0 -> 
-                    printfn "Trap0: Halt!"
-                    true
+                | 0 ->
+                    opcode.Name <- "halt"; RS.[r].Op <- Some opcode 
+                    if      gpr.[0].IsAvailable()
+                    then    RS.[r].Vj <- gpr.[rs].Contents
+                    else    RS.[r].Qj <- gpr.[rs].Qi
+                    
+                    //printfn "case1.2"
+                    
+//                    printfn "Trap0: Halt!"
+                    
                 | 1 ->
-                    printfn "Trap1: %A" (gpr.[reg])
-                    false
+                    opcode.Name <- "dumpgpr"; RS.[r].Op <- Some opcode 
+                    if      gpr.[rs].IsAvailable()
+                    then    RS.[r].Vj <- gpr.[rs].Contents
+                    else    RS.[r].Qj <- gpr.[rs].Qi
+                    
+//                    printfn "Trap1: %O" (gpr.[rs])
+                    
 
                 | 2 ->
-                    printfn "Trap2: %A" (fpr.[reg])
-                    false
+                    opcode.Name <- "dumpfpr"; RS.[r].Op <- Some opcode 
+                    if      fpr.[rs].IsAvailable()
+                    then    RS.[r].Vj <- fpr.[rs].Contents
+                    else    RS.[r].Qj <- fpr.[rs].Qi                    
+//                    printfn "Trap2: %O" (fpr.[rs])
+                    
                 | 3 ->
-                    printfn "Trap3: %A" (fpr.[reg])
-                    false
+                    opcode.Name <- "dumpstr"; RS.[r].Op <- Some opcode 
+                    if      gpr.[rs].IsAvailable()
+                    then    RS.[r].Vj <- gpr.[rs].Contents
+                    else    RS.[r].Qj <- gpr.[rs].Qi
+                    
+//                    printfn "Trap3: %O" (fpr.[rs])
+                    
                 | _ -> failwith "didnt match any trap instruction case"
-
+            false
         | None -> true
 
-    override tu.Compute r = ()
+    override tu.Compute r =
+        let vj, vk, a =
+            tu.RS.[r].Vj,
+            tu.RS.[r].Vk,
+            tu.RS.[r].A.Value
+
+        let halt, result = tu.RS.[r].Op.Value.Name |> function
+            | "halt" -> true, 0
+            | "dumpgpr" -> false, vj
+            | "dumpfpr" -> false, vj
+            | "dumpstr" -> false, Memory.GetInstance.[a]
+            | _ -> failwith "invalid trap unit instruction"
+        tu.RS.[r].Result <- result
+//        halt
 
     
 and BranchUnit() =
@@ -384,28 +415,28 @@ and FunctionalUnits() =
 //    member fu.GetMemoryUnit(i)  = fu.MemoryUnits.[i]    :?> MemoryUnit
 //    member fu.GetFPUnit(i)      = fu.FPUnits.[i]        :?> FloatingPointUnit
 
-    member fu.Issue (i:int) = 
-        InstructionKind.ofInt i |> function
-        | Integer -> ()
-        | Trap -> ()
-        | Branch -> ()
-        | Memory -> ()
-        | FloatingPoint -> ()
-        
-        false
-//        let i, kind = 
-//            Instruction.ofInt i,
-//            InstructionKind.ofInt i
-        
-//        kind |> function
+//    member fu.Issue (i:int) = 
+//        InstructionKind.ofInt i |> function
 //        | Integer -> ()
-////            let r = fu.IntegerUnits |> Array.tryPick (fun u -> u.FindEmptyStation())
-////            if r.IsSome then
-////                fu.IntegerUnits.
 //        | Trap -> ()
 //        | Branch -> ()
 //        | Memory -> ()
 //        | FloatingPoint -> ()
+//        
+//        false
+////        let i, kind = 
+////            Instruction.ofInt i,
+////            InstructionKind.ofInt i
+//        
+////        kind |> function
+////        | Integer -> ()
+//////            let r = fu.IntegerUnits |> Array.tryPick (fun u -> u.FindEmptyStation())
+//////            if r.IsSome then
+//////                fu.IntegerUnits.
+////        | Trap -> ()
+////        | Branch -> ()
+////        | Memory -> ()
+////        | FloatingPoint -> ()
 
 
     member fu.Finished() = fu.All |> Array.forall (fun fu -> fu.Finished())
@@ -420,3 +451,12 @@ and FunctionalUnits() =
     // all writes go to the CDB -- for example, stores and branches.)
     member fu.ClearReservationStations() =
         all |> Array.iter (fun u -> u.Clear())
+
+    override fu.ToString() =
+        fu.All |> Array.map (fun u -> 
+            let r = u.RS |> Array.filter (fun r -> r.Busy)
+            if r.Length > 0
+            then r |> Array.map (fun r -> r.ToString() + "\n")
+            else [|""|])
+        |> Array.concat
+        |> Array.reduce (+)

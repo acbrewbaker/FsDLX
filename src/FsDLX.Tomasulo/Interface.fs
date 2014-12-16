@@ -9,7 +9,7 @@ open FsDLX.Common
 
 type SimulatorState =
     {
-        ClockCycle          : int
+        ClockCycles         : int
         PC                  : string
         Memory              : string
         GPR                 : string
@@ -20,42 +20,43 @@ type SimulatorState =
 
 
     override ss.ToString() =
-        [   sprintf "%s\n" (ss.ClockCycle |> string)
-            sprintf "%s" (if ss.ClockCycle = 0 then sprintf "Memory:\n%s" (ss.Memory) else "")
+        [   sprintf "Clock cycles: %d\n" ss.ClockCycles
+            sprintf "%s" (if ss.ClockCycles = 0 then sprintf "Memory:\n%s" (ss.Memory) else "")
             //sprintf "GPR:\n%s\n" (ss.GPR)
             //sprintf "FPR:\n%s\n" (ss.FPR)
             sprintf "EXECUTING:\n%s" (ss.CurrentFUnit) ]
         |> List.reduce (+)
 
-    static member TakeSnapShot (clock:Clock) (pc:int) (mem:string) (gpr:GPR) (fpr:FPR) (fu:FU) =
-        {   ClockCycle = clock.Cycles; PC = string pc
+    static member TakeSnapShot (cc:int) (pc:int) (mem:string) (gpr:GPR) (fpr:FPR) (funits:FunctionalUnits) =
+        {   ClockCycles = cc
+            PC = string pc
             Memory = mem
             GPR = gpr.ToString(); FPR = fpr.ToString()
-            CurrentFUnit = fu.ToString()
+            CurrentFUnit = funits.ToString()
             Executing = "" }
 
 type Simulator(input:string, verbose:bool) =
-    let cdb = CDB.GetInstance
-    let clock = Clock.GetInstance
+//    let cdb = CDB.GetInstance
+//    let clock = Clock.GetInstance
     let mutable PC = 0
-    let memory = Memory.GetInstance Config.Memory.DefaultMemorySize
-    let gpr = GPR.GetInstance()
-    let fpr = FPR.GetInstance()
+    let memory = Memory.GetInstance
+//    let gpr = GPR.GetInstance
+//    let fpr = FPR.GetInstance
     let funits = FunctionalUnits() //FU.InitAll()
     
-    let mutable log = List.empty<SimulatorState>
+    let mutable logEntries = List.empty<SimulatorState>
     
     let mutable halt = false
     
 
     let finished() = 
-        if clock.Cycles = 0 then false else funits.Finished()
+        if Clock.GetInstance.Cycles = 0 then false else funits.Finished()
         
 
     let updateReservationStations() = 
         funits.UpdateReservationStations()
-        gpr.Update()
-        fpr.Update()
+        GPR.GetInstance.Update()
+        FPR.GetInstance.Update()
 
     let clearReservationStations() = funits.ClearReservationStations()
     
@@ -83,7 +84,9 @@ type Simulator(input:string, verbose:bool) =
     //   - compute the result of an executing instruction if the execution count is 0 and set 
     //     the result and result ready fields of the reservation station.
     let execute() =
-        funits.All |> Array.iter (fun u -> u.Execute() |> ignore)
+        funits.All |> Array.tryFind (fun u -> u.Execute()) |> function
+        | Some _ -> halt <- true
+        | None -> ()
 
     // The issue step will examine the opcode of  the instruction and issue the instruction 
     // to the appropriate unit. If each reservation station in the unit is busy, the issue 
@@ -98,6 +101,7 @@ type Simulator(input:string, verbose:bool) =
                 funits.IntegerUnits |> Array.tryFindIndex (fun u -> not(u.Busy)) |> function
                 | Some u -> 
                     funits.IntegerUnits.[u].Insert instruction
+                    //funits.IntegerUnits.[u].RS |> Array.iter (printfn "%O")
 //                    let iu = funits.IntegerUnits.[unitId].Issue instruction 
 //                    
 //
@@ -120,45 +124,19 @@ type Simulator(input:string, verbose:bool) =
         stall
 
     
-    let showLog() = for l in log do printfn "%O" l
-    let log() = log <- log @ [SimulatorState.TakeSnapShot clock PC (memory.Dump()) gpr fpr funits.All.[0]]
+    let showLog() = for l in logEntries do printfn "%O" l
+    let log() = 
+        let entry = SimulatorState.TakeSnapShot Clock.GetInstance.Cycles PC (memory.Dump()) GPR.GetInstance FPR.GetInstance funits
+        printfn "%O" entry
+        logEntries <- logEntries @ [entry]
 
     let initialize() =
         memory.Load(input)
-        log()    
+        //log()
 
-    let runRegular() =
-        initialize()
-
-        while not(halt) && not(finished()) do
-            // get name of RS writing to CDB and the value to be written
-            write()
-            execute()
-            if not(halt) && not(branchInBranchUnit()) then
-                let instruction = memory.[PC]
-                // stall set to true if issue fails
-                let stall = issue(instruction)
-                if not(halt) && not(stall) then PC <- PC + 4
-            // update RSs using name and value
-            updateReservationStations()
-            //log()
+    let runRegular() = ()
             
-
-    let runVerbose() =
-        initialize()
-
-        while not(halt) && not(finished()) do
-            // get name of RS writing to CDB and the value to be written
-            write()
-            execute()
-            if not(halt) && not(branchInBranchUnit()) then
-                let instruction = memory.[PC]
-                // stall set to true if issue fails
-                let stall = issue(instruction)
-                if not(halt) && not(stall) then PC <- PC + 4
-            // update RSs using name and value
-            updateReservationStations()
-            log()
+    let runVerbose() = ()
             
 
     let runDebug() =
@@ -174,19 +152,20 @@ type Simulator(input:string, verbose:bool) =
                 let instruction = memory.[PC]
                 // stall set to true if issue fails
                 let stall = issue(instruction)
+                log()
                 if not(halt) && not(stall) then PC <- PC + 4
                 
             // update RSs using name and value
             updateReservationStations()
             
-            clearReservationStations()
+            //clearReservationStations()
             
-            log()
-            clock.Tic()
+            
+            Clock.GetInstance.Tic()
             
             //showLog()
 
-        showLog()
+        //showLog()
 
     member s.Run() = Config.Simulator.outputLevel |> function
         | Regular -> runRegular()

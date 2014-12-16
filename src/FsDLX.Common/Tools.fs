@@ -105,6 +105,10 @@ module Convert =
 
     let hex2int hex = Convert.ToInt32(hex, 16)
 
+    let hex2bits hex a b = (hex2bin hex).[a..b]
+
+    let hex2bits2int hex a b = bin2int(hex2bits hex a b)
+
     let int2hex (i:int) = i.ToString("x8")
 
     let int2nibble (i:int) = (int2hex i).[4..7]
