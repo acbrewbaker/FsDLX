@@ -13,7 +13,7 @@ type InstructionKind =
 
     static member ofHex hex =
         let opcode = Opcode.ofInstructionHex hex
-        printfn "hex: %A, OPCODE: %A" hex (opcode.Name)
+//        printfn "hex: %A, OPCODE: %A" hex (opcode.Name)
         let iOps, tOps =
             Config.FU.IntegerUnit.Instructions,
             Config.FU.TrapUnit.Instructions
@@ -112,6 +112,17 @@ type S1Reg      = | NONE | GPR of int | FPR of int
 type S2Reg      = | NONE | GPR of int | FPR of int
 type Imm        = | NONE | A of int * int
 
+type Operand =
+    | DstReg of DstReg
+    | S1Reg of S1Reg
+    | S2Reg of S2Reg
+    | Imm of Imm
+
+type Ins =
+    | ADDI of DstReg * S1Reg * Imm
+    | NOP of DstReg * S1Reg * S2Reg
+    | ADD of DstReg * S1Reg * S2Reg
+
 type Instruction(opcode:string, funCode:int, rd:DstReg, rs:S1Reg, rt:S2Reg, imm:Imm) =
     member val opcode = Opcode.ofName opcode
     member val funCode = funCode
@@ -120,6 +131,14 @@ type Instruction(opcode:string, funCode:int, rd:DstReg, rs:S1Reg, rt:S2Reg, imm:
     member val rt = rt
     member val imm = imm
     
+    member ins.Op (i:int) = Opcode.ofInstructionInt i, i
+
+    member ins.F = 
+        ins.Op
+        >> (function
+            | op, i when op.Name = "addi" -> ()
+            | _ -> failwith "")
+
     new(opcode, rd, rs, rt, imm) = Instruction(opcode, 0, rd, rs, rt, imm)
     new(opcode, rd, rs, imm) = Instruction(opcode, rd, rs, S2Reg.NONE, imm)
     new(opcode, rd, rs, rt) = Instruction(opcode, rd, rs, rt, Imm.NONE)

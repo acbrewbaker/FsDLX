@@ -61,7 +61,9 @@ type FU(cfg:Config.FU) =
     member val CurrentInstruction : int option = None with get, set
 
     member fu.FindEmptyStation() =
-        fu.RS |> Array.tryFindIndex (fun r -> r.IsEmpty())
+        fu.RS |> Array.tryFindIndex (fun r -> 
+            //printfn "tryfind:  %O" r
+            r.IsEmpty())
     
     member fu.Finished() = fu.RS |> Array.forall (fun r -> not r.Busy)
 
@@ -170,7 +172,7 @@ and IntegerUnit() =
     override iu.Insert i =
         let gpr = GPR.GetInstance
         let fpr = FPR.GetInstance
-        let RS = iu.RS
+        //let RS = base.RS
         let opcode = Opcode.ofInstructionInt i
         let instruction = iu.Instructions.[opcode.Name]
 
@@ -186,40 +188,47 @@ and IntegerUnit() =
 
         iu.FindEmptyStation() |> function
         | Some r -> 
-            RS.[r].Busy <- true
-            RS.[r].Op <- Some opcode
+//            RS.[r].Busy <- true
+//            RS.[r].Op <- Some opcode
+            
             //printfn "Opcode: %O" opcode
             (rd, rs, rt, imm) |> function
                 | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.A(a,b) -> 
                     //printfn "case1.0"
+                    iu.RS.[r].Busy <- true
+                    iu.RS.[r].Op <- Some opcode
+            
+                    
                     let rd, rs, rt = 
                         regNum rd, 
                         regNum rs, 
-                        regNum (Convert.int2bits2int i a b)
-                    RS.[r].A <- Some rd
+                        (Convert.int2bits2int i a b)
+                    iu.RS.[r].A <- Some rt
 
                     //printfn "case1.1"
                     if      gpr.[rs].IsAvailable()
-                    then    RS.[r].Vj <- gpr.[rs].Contents
-                    else    RS.[r].Qj <- gpr.[rs].Qi
+                    then    iu.RS.[r].Vj <- gpr.[rs].Contents
+                    else    iu.RS.[r].Qj <- gpr.[rs].Qi
                     
                     //printfn "case1.2"
-                    gpr.[rt].Qi <- RS.[r].Name |> Some
+                    printfn "RS.[r].Name %A" (iu.RS.[r].Name)
+                    gpr.[rd].Qi <- iu.RS.[r].Name |> Some
                     //printfn "%A" (gpr.[rt].Qi.ToString())
 
                 | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.GPR rt, Imm.NONE ->
                     printfn "case2"
+                    
                     let rd, rs, rt = regNum rd, regNum rs, regNum rt
                     
                     if      gpr.[rs].IsAvailable()
-                    then    RS.[r].Vj <- gpr.[rs].Contents
-                    else    RS.[r].Qj <- gpr.[rs].Qi
+                    then    iu.RS.[r].Vj <- gpr.[rs].Contents
+                    else    iu.RS.[r].Qj <- gpr.[rs].Qi
 
                     if      gpr.[rt].IsAvailable()
-                    then    RS.[r].Vk <- gpr.[rt].Contents
-                    else    RS.[r].Qk <- gpr.[rt].Qi
+                    then    iu.RS.[r].Vk <- gpr.[rt].Contents
+                    else    iu.RS.[r].Qk <- gpr.[rt].Qi
 
-                    gpr.[rd].Qi <- RS.[r].Name |> Some
+                    gpr.[rd].Qi <- iu.RS.[r].Name |> Some
 
                 | DstReg.FPR rd, S1Reg.FPR rs, S2Reg.NONE, Imm.NONE -> ()
 
@@ -293,7 +302,7 @@ and TrapUnit() =
                     then    RS.[r].Vj <- gpr.[rs].Contents
                     else    RS.[r].Qj <- gpr.[rs].Qi
                     
-//                    printfn "Trap1: %O" (gpr.[rs])
+                    printfn "Trap1: %O" (gpr.[rs])
                     
 
                 | 2 ->
@@ -327,6 +336,7 @@ and TrapUnit() =
             | "dumpfpr" -> false, vj
             | "dumpstr" -> false, Memory.GetInstance.[a]
             | _ -> failwith "invalid trap unit instruction"
+        printfn "trap Result:  %A" result
         tu.RS.[r].Result <- result
 //        halt
 

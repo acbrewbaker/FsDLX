@@ -206,45 +206,48 @@ module OpcodeUtil =
                 47, "sd" ] |> Map.ofList
         
         let rtypeByEnc =
-            [   0, "nop"
-                4, "sll"
-                6, "srl"
-                7, "sra"
-                32, "add"
-                33, "addu"
-                34, "sub"
-                35, "subu"
-                36, "and"
-                37, "or"
-                38, "xor"
-                40, "seq"
-                41, "sne"
-                42, "slt"
-                43, "sgt"
-                44, "sle"
-                45, "sge"
-                50, "movf"
-                51, "movd"
-                52, "movfp2i"
-                53, "movi2fp"
-                0, "addf"
-                1, "subf"
-                2, "multf"
-                3, "divf"
-                4, "addd"
-                5, "subd"
-                6, "multd"
-                7, "divd"
-                8, "cvtf2d"
-                9, "cvtf2i"
-                10, "cvtd2f"
-                11, "cvtd2i"
-                12, "cvti2f"
-                13, "cvti2d"
-                14, "mult"
-                15, "div"
-                22, "multu"
-                23, "divu" ] |> Map.ofList
+            [|
+                [   0, "nop"
+                    4, "sll"
+                    6, "srl"
+                    7, "sra"
+                    32, "add"
+                    33, "addu"
+                    34, "sub"
+                    35, "subu"
+                    36, "and"
+                    37, "or"
+                    38, "xor"
+                    40, "seq"
+                    41, "sne"
+                    42, "slt"
+                    43, "sgt"
+                    44, "sle"
+                    45, "sge"
+                    50, "movf"
+                    51, "movd"
+                    52, "movfp2i"
+                    53, "movi2fp" ]
+                    |> Map.ofList;
+               [    0, "addf"
+                    1, "subf"
+                    2, "multf"
+                    3, "divf"
+                    4, "addd"
+                    5, "subd"
+                    6, "multd"
+                    7, "divd"
+                    8, "cvtf2d"
+                    9, "cvtf2i"
+                    10, "cvtd2f"
+                    11, "cvtd2i"
+                    12, "cvti2f"
+                    13, "cvti2d"
+                    14, "mult"
+                    15, "div"
+                    22, "multu"
+                    23, "divu" ] |> Map.ofList 
+            |]
 
         let jtypeByEnc =
             [   2, "j"
@@ -255,15 +258,17 @@ module OpcodeUtil =
 type Opcode(op:string, enc:int) =
 
     static let isRType (hex:string) =
-        Convert.hex2bits2int hex 0 Constants.nOpcodeBits
-        |> function
-        | 0 | 1 -> true | _ -> false
+        Convert.hex2bits2int hex 0 Constants.nOpcodeBits |> function
+            | rru when rru = 0 -> true, rru
+            | rru when rru = 1 -> true, rru 
+            | _ -> false, 2
 
     static let getOpcodeBits (hex:string) =
         let bin = Convert.hex2bin hex
-        if      not(isRType hex)
-        then    bin.[0..Constants.nOpcodeBits - 1]
-        else    bin.[26..31]
+        let isRType, rru = isRType hex
+        if      not(isRType)
+        then    bin.[0..Constants.nOpcodeBits - 1], rru
+        else    bin.[26..31], rru
 
     
     member val Name = op with get, set
@@ -277,9 +282,10 @@ type Opcode(op:string, enc:int) =
     static member ofName name = Opcode(name, OpcodeUtil.Lookup.byName.[name])
     
     static member ofInstructionHex hex = 
-        let enc = Convert.bin2int(getOpcodeBits hex)
-        if isRType hex then 
-            Opcode.ofName(OpcodeUtil.Lookup.rtypeByEnc.[enc])
+        let bits, rru = getOpcodeBits hex
+        let enc = Convert.bin2int(bits)
+        if rru <> 2 then
+            Opcode.ofName(OpcodeUtil.Lookup.rtypeByEnc.[rru].[enc])
         elif OpcodeUtil.Lookup.itypeByEnc.ContainsKey(enc) then
             Opcode.ofName(OpcodeUtil.Lookup.itypeByEnc.[enc])
         elif OpcodeUtil.Lookup.jtypeByEnc.ContainsKey(enc) then

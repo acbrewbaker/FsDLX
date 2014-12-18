@@ -22,9 +22,8 @@ type SimulatorState =
     override ss.ToString() =
         [   sprintf "Clock cycles: %d\n" ss.ClockCycles
             sprintf "%s" (if ss.ClockCycles = 0 then sprintf "Memory:\n%s" (ss.Memory) else "")
-            //sprintf "GPR:\n%s\n" (ss.GPR)
-            //sprintf "FPR:\n%s\n" (ss.FPR)
-            sprintf "EXECUTING:\n%s" (ss.CurrentFUnit) ]
+            sprintf "EXECUTING:\n%s" (ss.CurrentFUnit)
+            sprintf "%s\n" (ss.GPR.ToString().Trim())  ]
         |> List.reduce (+)
 
     static member TakeSnapShot (cc:int) (pc:int) (mem:string) (gpr:GPR) (fpr:FPR) (funits:FunctionalUnits) =
@@ -143,7 +142,7 @@ type Simulator(input:string, verbose:bool) =
         initialize()
         //printfn "gpr %A" (gpr.[0])
         while not(halt) && not(finished()) do
-            
+//            funits.IntegerUnits |> Array.iter (fun iu -> iu.RS |> Array.iter (printfn "%O"))
             
             // get name of RS writing to CDB and the value to be written
             write()
