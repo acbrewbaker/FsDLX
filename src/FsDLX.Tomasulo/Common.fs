@@ -111,7 +111,7 @@ type ReservationStation =
         rs.A.IsNone
 
     override rs.ToString() =
-        sprintf "%s  %A  %O  %d  %d  %O  %O  %O  %O  %O  %d"
+        sprintf "%s  %O  %O  %d  %d  %O  %O  %O  %O  %O  %d"
             rs.Name rs.Busy rs.Op rs.Vj rs.Vk rs.Qj rs.Qk rs.A
             rs.ResultReady rs.ResultWritten rs.Result
 //        sprintf "
@@ -139,8 +139,8 @@ type ReservationStation =
 
 type CDB private () =
     static let instance = CDB()
-    member val Src      = "" with get, set
-    member val Result   = Some 0 with get, set
+    member val Src : string option = None with get, set
+    member val Result : int option = None with get, set
     static member GetInstance = instance
 
 type PC private () =

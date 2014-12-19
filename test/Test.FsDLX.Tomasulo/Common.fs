@@ -15,7 +15,10 @@ let srcdir =
         Environment.CurrentDirectory
 
 let inputdir = 
-    srcdir @@ "../../Project2/Inputs"
+    if NCrunch.Framework.NCrunchEnvironment.NCrunchIsResident() then
+        srcdir @@ "../../Project2/Inputs"
+    else
+        srcdir @@ "../../../../Project2/Inputs"
 
 
 

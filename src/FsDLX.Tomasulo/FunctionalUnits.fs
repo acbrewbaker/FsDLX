@@ -60,10 +60,10 @@ type FU(cfg:Config.FU) =
        
     member val CurrentInstruction : int option = None with get, set
 
-    member fu.FindEmptyStation() =
-        fu.RS |> Array.tryFindIndex (fun r -> 
-            //printfn "tryfind:  %O" r
-            r.IsEmpty())
+//    member fu.FindEmptyStation() =
+//        fu.RS |> Array.tryFindIndex (fun r -> 
+//            //printfn "tryfind:  %O" r
+//            r.IsEmpty())
     
     member fu.Finished() = fu.RS |> Array.forall (fun r -> not r.Busy)
 
@@ -78,10 +78,10 @@ type FU(cfg:Config.FU) =
         let cdb = CDB.GetInstance
         fu.RS |> Array.iter (fun r ->
             if r.Qj.IsSome then 
-                if r.Busy && cdb.Src = r.Qj.Value then 
+                if r.Busy && cdb.Src = r.Qj then 
                     r.Qj <- None; r.Vj <- cdb.Result.Value
             if r.Qk.IsSome then
-                if r.Busy && cdb.Src = r.Qk.Value then
+                if r.Busy && cdb.Src = r.Qk then
                     r.Qk <- None; r.Vk <- cdb.Result.Value )
 
 
@@ -109,7 +109,7 @@ type FU(cfg:Config.FU) =
         | Some r ->
             fu.RS.[r].ResultWritten <- true
             cdb.Result <- fu.RS.[r].Result |> Some
-            cdb.Src <- fu.RS.[r].Name
+            cdb.Src <- Some fu.RS.[r].Name
             true
         | None -> false
 
@@ -186,10 +186,10 @@ and IntegerUnit() =
       
         let p x = printfn "%A" x; x
 
-        iu.FindEmptyStation() |> function
+        iu.RS |> Array.tryFindIndex (fun r -> not(r.Busy)) |> function
         | Some r -> 
-//            RS.[r].Busy <- true
-//            RS.[r].Op <- Some opcode
+            iu.RS.[r].Busy <- true
+            iu.RS.[r].Op <- Some opcode
             
             //printfn "Opcode: %O" opcode
             (rd, rs, rt, imm) |> function
@@ -205,14 +205,26 @@ and IntegerUnit() =
                         (Convert.int2bits2int i a b)
                     iu.RS.[r].A <- Some rt
 
-                    //printfn "case1.1"
-                    if      gpr.[rs].IsAvailable()
+                    if      gpr.[rs].Qi.IsSome
                     then    iu.RS.[r].Vj <- gpr.[rs].Contents
                     else    iu.RS.[r].Qj <- gpr.[rs].Qi
-                    
+
+//                    if      gpr.[rt].Qi.IsSome
+//                    then    iu.RS.[r].Qk <- gpr.[rt].Qi
+//                    else    iu.RS.[r].Vk <- gpr.[rt].Contents; iu.RS.[r].Qk <- None
+
+                    //printfn "case1.1"
+//                    if      gpr.[rs].Qi.IsSome
+//                    then    iu.RS.[r].Qj <- gpr.[rs].Qi
+//                    else    iu.RS.[r].Vj <- gpr.[rs].Contents; iu.RS.[r].Qj <- None
+//
+//                    if      gpr.[rt].Qi.IsSome
+//                    then    iu.RS.[r].Qk <- gpr.[rt].Qi
+//                    else    iu.RS.[r].Vk <- gpr.[rt].Contents; iu.RS.[r].Qk <- None
+//                    
                     //printfn "case1.2"
                     printfn "RS.[r].Name %A" (iu.RS.[r].Name)
-                    gpr.[rd].Qi <- iu.RS.[r].Name |> Some
+                    gpr.[rt].Qi <- Some("IntUnit" + string r)
                     //printfn "%A" (gpr.[rt].Qi.ToString())
 
                 | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.GPR rt, Imm.NONE ->
@@ -220,15 +232,13 @@ and IntegerUnit() =
                     
                     let rd, rs, rt = regNum rd, regNum rs, regNum rt
                     
-                    if      gpr.[rs].IsAvailable()
-                    then    iu.RS.[r].Vj <- gpr.[rs].Contents
-                    else    iu.RS.[r].Qj <- gpr.[rs].Qi
+                    if      gpr.[rs].Qi.IsSome
+                    then    iu.RS.[r].Qj <- gpr.[rs].Qi
+                    else    iu.RS.[r].Vj <- gpr.[rs].Contents; iu.RS.[r].Qj <- None
 
-                    if      gpr.[rt].IsAvailable()
-                    then    iu.RS.[r].Vk <- gpr.[rt].Contents
-                    else    iu.RS.[r].Qk <- gpr.[rt].Qi
-
-                    gpr.[rd].Qi <- iu.RS.[r].Name |> Some
+                    if      gpr.[rt].Qi.IsSome
+                    then    iu.RS.[r].Qk <- gpr.[rt].Qi
+                    else    iu.RS.[r].Vk <- gpr.[rt].Contents; iu.RS.[r].Qk <- None
 
                 | DstReg.FPR rd, S1Reg.FPR rs, S2Reg.NONE, Imm.NONE -> ()
 
@@ -281,14 +291,14 @@ and TrapUnit() =
         let opcode = Opcode.ofInstructionInt i
         let funCode = Convert.int2bits2int i 27 31
         let rs = Convert.int2bits2reg i 6
-        tu.FindEmptyStation() |> function
+        tu.RS |> Array.tryFindIndex (fun r -> not(r.Busy)) |> function
         | Some r -> 
             RS.[r].Busy <- true
             
             funCode |> function
                 | 0 ->
                     opcode.Name <- "halt"; RS.[r].Op <- Some opcode 
-                    if      gpr.[0].IsAvailable()
+                    if      gpr.[0].Qi.IsSome
                     then    RS.[r].Vj <- gpr.[rs].Contents
                     else    RS.[r].Qj <- gpr.[rs].Qi
                     
@@ -298,7 +308,7 @@ and TrapUnit() =
                     
                 | 1 ->
                     opcode.Name <- "dumpgpr"; RS.[r].Op <- Some opcode 
-                    if      gpr.[rs].IsAvailable()
+                    if      gpr.[rs].Qi.IsSome
                     then    RS.[r].Vj <- gpr.[rs].Contents
                     else    RS.[r].Qj <- gpr.[rs].Qi
                     
@@ -307,14 +317,14 @@ and TrapUnit() =
 
                 | 2 ->
                     opcode.Name <- "dumpfpr"; RS.[r].Op <- Some opcode 
-                    if      fpr.[rs].IsAvailable()
+                    if      fpr.[rs].Qi.IsSome
                     then    RS.[r].Vj <- fpr.[rs].Contents
                     else    RS.[r].Qj <- fpr.[rs].Qi                    
 //                    printfn "Trap2: %O" (fpr.[rs])
                     
                 | 3 ->
                     opcode.Name <- "dumpstr"; RS.[r].Op <- Some opcode 
-                    if      gpr.[rs].IsAvailable()
+                    if      gpr.[rs].Qi.IsSome
                     then    RS.[r].Vj <- gpr.[rs].Contents
                     else    RS.[r].Qj <- gpr.[rs].Qi
                     
@@ -464,9 +474,8 @@ and FunctionalUnits() =
 
     override fu.ToString() =
         fu.All |> Array.map (fun u -> 
-            let r = u.RS |> Array.filter (fun r -> r.Busy)
-            if r.Length > 0
-            then r |> Array.map (fun r -> r.ToString() + "\n")
-            else [|""|])
-        |> Array.concat
-        |> Array.reduce (+)
+            u.RS |> Array.fold (fun s r -> if r.Busy then Array.append s [| r.ToString() + "\n" |] else s) Array.empty<string> )
+            |> Array.concat
+            |> Array.reduce (+)
+
+        

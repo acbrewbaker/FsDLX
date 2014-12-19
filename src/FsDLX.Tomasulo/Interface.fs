@@ -151,12 +151,12 @@ type Simulator(input:string, verbose:bool) =
                 let instruction = memory.[PC]
                 // stall set to true if issue fails
                 let stall = issue(instruction)
-                log()
+                
                 if not(halt) && not(stall) then PC <- PC + 4
                 
             // update RSs using name and value
             updateReservationStations()
-            
+            log()
             //clearReservationStations()
             
             
