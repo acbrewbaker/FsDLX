@@ -8,7 +8,7 @@ type RegisterFile() =
     let regs = Array.init 64 Register.Init //Register.ArrayInit 64
 
 
-    abstract Update : unit -> unit
+    abstract Update : (CDB option -> unit)
     
 
     member rf.Item
@@ -26,8 +26,8 @@ and Register =
         mutable Contents    : int
     }
 
-//    member r.IsAvailable() = 
-//        r.Qi |> function | Some _ -> false | _ -> true
+    member r.IsAvailable() = 
+        r.Qi |> function | Some _ -> false | _ -> true
 
     override r.ToString() = sprintf "%d" r.Contents
 
@@ -56,16 +56,17 @@ and GPR private () =
     member gpr.R16toR23() = RegisterSet("R16-R23", [| for i = 16 to 23 do yield gpr.[i] |])
     member gpr.R24toR31() = RegisterSet("R24-R31", [| for i = 24 to 31 do yield gpr.[i] |])
 
-    override gpr.Update() =
-        let cdb = CDB.GetInstance
-        for i = 0 to 31 do 
-            (gpr.[i].Qi, cdb.Src, cdb.Result) |> function
-            | Some Qi, Some cdbSrc, Some value ->
-                if i = 0 then ()
-                elif Qi = cdbSrc then
-                    gpr.[i].Contents <- value
-                    gpr.[i].Qi <- None
-            | _ -> ()
+    override gpr.Update = function
+        | Some cdb ->        
+            for i = 0 to 31 do 
+                gpr.[i].Qi |> function
+                | Some Qi ->
+                    if i = 0 then ()
+                    elif Qi = cdb.Src then
+                        gpr.[i].Contents <- cdb.Result
+                        gpr.[i].Qi <- None
+                | None -> ()
+        | None -> ()
 
     override gpr.ToString() =
         sprintf "%O\n%O\n%O\n%O" (gpr.R0toR7()) (gpr.R8toR15()) (gpr.R16toR23()) (gpr.R24toR31())
@@ -94,20 +95,27 @@ and FPR private () =
             if i > 31 then failwith "invalid FPR index"
             else base.[i + 32].Contents <- value
 
-    override fpr.Update() =
-        let cdb = CDB.GetInstance
-        for i = 0 to 31 do
-            if fpr.[i].Qi.IsSome && fpr.[i].Qi.Value = cdb.Src.Value then
-                fpr.[i].Contents <- cdb.Result.Value
-                fpr.[i].Qi <- None
+    override fpr.Update = function
+        | Some cdb ->
+            for i = 0 to 31 do
+                if fpr.[i].Qi.IsSome && fpr.[i].Qi.Value = cdb.Src then
+                    fpr.[i].Contents <- cdb.Result
+                    fpr.[i].Qi <- None
+        | None -> ()
         
+    member gpr.F0toF7() = RegisterSet("F0-F7", [| for i = 0 to 7 do yield gpr.[i] |])
+    member gpr.F8toF15() = RegisterSet("F8-F15", [| for i = 8 to 15 do yield gpr.[i] |])
+    member gpr.F16toF23() = RegisterSet("F16-F23", [| for i = 16 to 23 do yield gpr.[i] |])
+    member gpr.F24toF31() = RegisterSet("F24-F31", [| for i = 24 to 31 do yield gpr.[i] |])
+    override gpr.ToString() =
+        sprintf "%O\n%O\n%O\n%O" (gpr.F0toF7()) (gpr.F8toF15()) (gpr.F16toF23()) (gpr.F24toF31())
 
-    override fpr.ToString() =
-        sprintf "F0-F7:    %s\nF8-F15:   %s\nF16-F23:  %s\nF24-F31:  %s"
-            ([for i = 0 to 7 do yield sprintf "%O, " (fpr.[i])] |> List.reduce (+))
-            ([for i = 8 to 15 do yield sprintf "%O, " (fpr.[i])] |> List.reduce (+))
-            ([for i = 16 to 23 do yield sprintf "%O, " (fpr.[i])] |> List.reduce (+))
-            ([for i = 24 to 31 do yield sprintf "%O, " (fpr.[i])] |> List.reduce (+))
+//    override fpr.ToString() =
+//        sprintf "F0-F7:    %s\nF8-F15:   %s\nF16-F23:  %s\nF24-F31:  %s"
+//            ([for i = 0 to 7 do yield sprintf "%O, " (fpr.[i])] |> List.reduce (+))
+//            ([for i = 8 to 15 do yield sprintf "%O, " (fpr.[i])] |> List.reduce (+))
+//            ([for i = 16 to 23 do yield sprintf "%O, " (fpr.[i])] |> List.reduce (+))
+//            ([for i = 24 to 31 do yield sprintf "%O, " (fpr.[i])] |> List.reduce (+))
 
     static member GetInstance = instance
 

@@ -74,16 +74,17 @@ type FU(cfg:Config.FU) =
         | _ ->
             fu.RS |> Array.iter (fun r -> r.Clear()) //ReservationStation.Clear
         
-    member fu.UpdateRS () =
-        let cdb = CDB.GetInstance
-        fu.RS |> Array.iter (fun r ->
-            if r.Qj.IsSome then 
-                if r.Busy && cdb.Src = r.Qj then 
-                    r.Qj <- None; r.Vj <- cdb.Result.Value
-            if r.Qk.IsSome then
-                if r.Busy && cdb.Src = r.Qk then
-                    r.Qk <- None; r.Vk <- cdb.Result.Value )
-
+    member fu.UpdateRS(cdb:CDB option) = cdb |> function
+        | Some cdb ->
+//        let cdb = CDB.GetInstance
+            fu.RS |> Array.iter (fun r ->
+                if r.Qj.IsSome then 
+                    if r.Busy && cdb.Src = r.Qj.Value then 
+                        r.Qj <- None; r.Vj <- cdb.Result
+                if r.Qk.IsSome then
+                    if r.Busy && cdb.Src = r.Qk.Value then
+                        r.Qk <- None; r.Vk <- cdb.Result )
+        | None -> ()
 
     member fu.Execute() =
         fu.CurrentInstruction <- fu.RS |> Array.tryFindIndex (fun r -> r.IsReady())
@@ -104,14 +105,14 @@ type FU(cfg:Config.FU) =
 
 
     member fu.Write() =
-        let cdb = CDB.GetInstance
+        let cdb = CDB()
         fu.RS |> Array.tryFindIndex (fun r -> r.ResultReady) |> function
         | Some r ->
             fu.RS.[r].ResultWritten <- true
-            cdb.Result <- fu.RS.[r].Result |> Some
-            cdb.Src <- Some fu.RS.[r].Name
-            true
-        | None -> false
+            cdb.Result <- fu.RS.[r].Result
+            cdb.Src <- fu.RS.[r].Name
+            Some(cdb)
+        | None -> None
 
     override fu.ToString() =
         //sprintf "MaxCycles: %d; Remaining Cycles: %d; Busy: %A" fu.MaxCycles fu.RemainingCycles fu.Busy
@@ -255,20 +256,22 @@ and IntegerUnit() =
         let vj, vk, a =
             iu.RS.[r].Vj,
             iu.RS.[r].Vk,
-            iu.RS.[r].A.Value
+            iu.RS.[r].A
 
-        iu.RS.[r].Result <-  iu.RS.[r].Op.Value.Name |> function
-            | "addi" -> vj + a
-            | "nop" -> 0
-            | "add" -> vj + vk
-            | "sub" -> vj - vk
-            | "and" -> vj &&& vk
-            | "or" -> vj ||| vk
-            | "xor" -> vj ^^^ vk
-            | "movf" -> 0
-            | "movfp2i" -> 0
-            | "movi2fp" -> 0
-            | _ -> failwith "invalid integer unit instruction"
+        iu.RS.[r].Result <-  iu.RS.[r].Op |> function
+            | Some op -> op.Name |> function
+                | "addi" -> if a.IsSome then vj + a.Value else vj
+                | "nop" -> 0
+                | "add" -> vj + vk
+                | "sub" -> vj - vk
+                | "and" -> vj &&& vk
+                | "or" -> vj ||| vk
+                | "xor" -> vj ^^^ vk
+                | "movf" -> 0
+                | "movfp2i" -> 0
+                | "movi2fp" -> 0
+                | _ -> failwith "invalid integer unit instruction"
+            | None -> failwith "tried to compute with no opcode"
 //        false
         
     
@@ -338,14 +341,16 @@ and TrapUnit() =
         let vj, vk, a =
             tu.RS.[r].Vj,
             tu.RS.[r].Vk,
-            tu.RS.[r].A.Value
+            tu.RS.[r].A
 
-        let halt, result = tu.RS.[r].Op.Value.Name |> function
-            | "halt" -> true, 0
-            | "dumpgpr" -> false, vj
-            | "dumpfpr" -> false, vj
-            | "dumpstr" -> false, Memory.GetInstance.[a]
-            | _ -> failwith "invalid trap unit instruction"
+        let halt, result = tu.RS.[r].Op |> function
+            | Some op -> op.Name |> function
+                | "halt" -> true, 0
+                | "dumpgpr" -> false, vj
+                | "dumpfpr" -> false, vj
+                | "dumpstr" -> false, if a.IsSome then Memory.GetInstance.[a.Value] else 0
+                | _ -> failwith "invalid trap unit instruction"
+            | None -> false, 0
         printfn "trap Result:  %A" result
         tu.RS.[r].Result <- result
 //        halt
@@ -463,8 +468,8 @@ and FunctionalUnits() =
 
     // The update reservation stations step will use the name and result on the CDB to 
     // update each reservation station and register file.
-    member fu.UpdateReservationStations() =
-        all |> Array.iter (fun u -> u.UpdateRS()) //CDB.GetInstance)
+    member fu.UpdateReservationStations(cdb) =
+        all |> Array.iter (fun u -> u.UpdateRS(cdb)) //CDB.GetInstance)
 
     // The clear reservation stations step will clear each reservation station who has 
     // written in the current clock cycle. (Note there may be more than one since not 

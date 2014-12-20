@@ -137,11 +137,15 @@ type ReservationStation =
     static member ClearIfResultWritten (r:ReservationStation) = r.ClearIfResultWritten()
 
 
-type CDB private () =
-    static let instance = CDB()
-    member val Src : string option = None with get, set
-    member val Result : int option = None with get, set
-    static member GetInstance = instance
+type CDB() =
+    let mutable src, result = "", 0
+    member cdb.Src
+        with get() = src
+        and set(v) = src <- v
+
+    member cdb.Result
+        with get() = result
+        and set(v) = result <- v
 
 type PC private () =
     static let instance = PC()
@@ -155,4 +159,61 @@ type Clock private () =
     static member GetInstance = instance
     
     override c.ToString() = sprintf "Clock cycle: %d" c.Cycles
+//
+//type Register2 = int * string option
+//type RegisterFile2 =
+//    | GPR of Register[]
+//    | FPR of Register[]
+//
+//type MaxCycles = int
+//type RemainingCycles = int
+//type Busy = bool
+//type RS = ReservationStation[]
+//type FUnit = MaxCycles * RemainingCycles * Busy * RS ref
+//type Memory = int[]
+//
+//type InstructionState = 
+//    | Issue
+//    | Execute
+//    | Write
+//
+//type FunctionalUnit =
+//    | IU of FUnit[]
+//    | TU of FUnit[]
+////    | BU of FUnit
+////    | MU of FUnit
+////    | FPU of FUnit
+//
+//    member fu.Issue istate = fu |> function
+//        | IU iu -> iu |> Array.tryFindIndex (fun (_,_,busy,_) -> not busy) |> function
+//            | Some u ->
+//                let intUnit = iu.[u]
+//                let maxCC, remCC, busy, RS = intUnit
+//                if not busy then
+//                    (!RS) |> Array.tryFindIndex (fun r -> not(r.Busy)) |> function
+//                    | Some r -> (!RS).[r].Qj <- Some "derp"
+//                    | None -> ()
+//            | None -> ()
+//        | TU tu -> ()
+//
+//
+//
+//type SimulatorState = Clock * PC * CDB * FunctionalUnit[] * InstructionState
+//type Log = SimulatorState list
+//
+//type Simulator = 
+//    | Halt
+//    | Stall
+//    | Trap
+//    | Dispatch
+//    | Log
+
+//and RS =
+//    | IU of ReservationStation[]
+//    | TU of ReservationStation[]
+//    | BU of ReservationStation[]
+//    | MU of ReservationStation[]
+//    | FPU of ReservationStation[]
+
+
 

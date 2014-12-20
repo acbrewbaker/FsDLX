@@ -35,7 +35,7 @@ type SimulatorState =
             Executing = "" }
 
 type Simulator(input:string, verbose:bool) =
-//    let cdb = CDB.GetInstance
+    let mutable cdb : CDB option = None
 //    let clock = Clock.GetInstance
     let mutable PC = 0
     let memory = Memory.GetInstance
@@ -52,10 +52,10 @@ type Simulator(input:string, verbose:bool) =
         if Clock.GetInstance.Cycles = 0 then false else funits.Finished()
         
 
-    let updateReservationStations() = 
-        funits.UpdateReservationStations()
-        GPR.GetInstance.Update()
-        FPR.GetInstance.Update()
+    let updateReservationStations(cdb) = 
+        funits.UpdateReservationStations(cdb)
+        GPR.GetInstance.Update(cdb)
+        FPR.GetInstance.Update(cdb)
 
     let clearReservationStations() = funits.ClearReservationStations()
     
@@ -71,7 +71,7 @@ type Simulator(input:string, verbose:bool) =
     // after the issue. This is in order to properly simulate the time in which these steps 
     // would occur.
     let write() = 
-        funits.All |> Array.tryFind (fun u -> u.Write()) |> ignore
+        funits.All |> Array.tryPick (fun u -> u.Write())
 
 
     // The execute step examines each group of reservation stations. When applied to a group 
@@ -98,15 +98,7 @@ type Simulator(input:string, verbose:bool) =
             InstructionKind.ofInt instruction |> function
             | Integer ->
                 funits.IntegerUnits |> Array.tryFindIndex (fun u -> not(u.Busy)) |> function
-                | Some u -> 
-                    funits.IntegerUnits.[u].Insert instruction
-                    //funits.IntegerUnits.[u].RS |> Array.iter (printfn "%O")
-//                    let iu = funits.IntegerUnits.[unitId].Issue instruction 
-//                    
-//
-//                    instruction.rs |> function 
-//                    | S1Reg.GPR rs ->
-//                        if gpr.[rs].Qi.IsSome then
+                | Some u -> funits.IntegerUnits.[u].Insert instruction
                 | _ -> false
             | Trap -> 
                 funits.TrapUnits |> Array.tryFindIndex (fun u -> not(u.Busy)) |> function
@@ -131,7 +123,7 @@ type Simulator(input:string, verbose:bool) =
 
     let initialize() =
         memory.Load(input)
-        //log()
+        cdb <- Some(CDB())
 
     let runRegular() = ()
             
@@ -145,7 +137,7 @@ type Simulator(input:string, verbose:bool) =
 //            funits.IntegerUnits |> Array.iter (fun iu -> iu.RS |> Array.iter (printfn "%O"))
             
             // get name of RS writing to CDB and the value to be written
-            write()
+            cdb <- write()
             execute()
             if not(halt) && not(branchInBranchUnit()) then
                 let instruction = memory.[PC]
@@ -155,7 +147,7 @@ type Simulator(input:string, verbose:bool) =
                 if not(halt) && not(stall) then PC <- PC + 4
                 
             // update RSs using name and value
-            updateReservationStations()
+            updateReservationStations(cdb)
             log()
             //clearReservationStations()
             
