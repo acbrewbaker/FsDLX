@@ -1,23 +1,9 @@
-﻿module FsDLX.Tomasulo2.FunctionalUnits
+﻿namespace FsDLX.Tomasulo
 
-type FunctionalUnit =
-    | IntegerUnit of FU * RS
-    | TrapUnit of FU * RS
-
-    static member ApplyFunction (f:FU * RS -> 'T) = function
-        | IntegerUnit(fu,rs) -> f(fu,rs)
-        | TrapUnit(fu, rs) -> f(fu,rs)
+open FsDLX.Common
 
 
-
-and FU(maxCycles:int) =
-    member val MaxCycles = maxCycles with get
-    member val RemainingCycles = maxCycles with get, set
-    member val Busy = false with get, set
-    member val Station : ReservationStation ref option = None with get, set
-
-
-and RSGroup = ReservationStation[]
+type RSGroup = ReservationStation[]
 and RSGroupRef = RSGroup ref
 
 and RS =
@@ -43,8 +29,12 @@ and RS =
     member rs.Length = rs.Contents.Length
 
     member rs.Update() =
-        let cdb : CDB = CDB.GetInstance
+        let cdb = CDB.GetInstance
+        //printfn "Update Reservation Stations"
+        //printfn "RS contents length: %d" (rs.Contents.Length)
         rs.Contents |> Array.iteri (fun i r ->
+//        let update (rsGroupRef:RSGroupRef) = !rsGroupRef |> Array.iter (fun r ->
+            //printfn "RS(%d):%O  r.Qj.IsSome?  %O" i r (r.Qj)
             (r.Qj, r.Qk) |> function
             | Some Qj, _ ->
                 if r.Busy && cdb.Src = Qj then 
@@ -53,16 +43,34 @@ and RS =
                 if r.Busy && cdb.Src = Qk then
                     r.Qk <- None; r.Vk <- cdb.Result
             | None, None -> () )
+//            if r.Qj.IsSome then 
+//                //printfn "Qj.IsSome\nUpdate RS(%d), cdb:\n%O" i cdb
+//                if r.Busy && cdb.Src = r.Qj.Value then 
+//                    r.Qj <- None; r.Vj <- cdb.Result
+//            if r.Qk.IsSome then
+//                //printfn "Qk.IsSome\nUpdate RS(%d), cdb:\n%O" i cdb
+//                if r.Busy && cdb.Src = r.Qk.Value then
+//                    r.Qk <- None; r.Vk <- cdb.Result )
+        //RS.ApplyFunction rs update
+
 
     member rs.TryFindReady() = rs.Contents |> Array.tryFindIndex (fun r -> r.IsReady())
+//        let tryFindReady (rsGroupRef:RSGroupRef) = !rsGroupRef |> Array.tryFindIndex (fun r -> r.IsReady())
+//        RS.ApplyFunction rs tryFindReady
 
+//        rs |> function
+//        | IntegerUnit rs -> update rs
+//        | TrapUnit rs -> update rs
+//        | BranchUnit rs -> update rs
+//        | MemoryUnit rs -> update rs
+//        | FloatingPointUnit rs -> update rs
     member rs.TryFindNotBusy() = rs.Contents |> Array.tryFindIndex (fun r -> not(r.Busy))
 
     member rs.Filter(f:ReservationStation -> bool) = rs.Contents |> Array.filter f
 
-//    member rs.Dump() =
-//        rs.Contents |> Array.fold (fun s r -> s + "\n" + (r.Dump()))
-//            ("Name  Busy  Opcode   Vj  Vk  Qj  Qk  A  ResultReady  ResultWritten  Result")
+    member rs.Dump() =
+        rs.Contents |> Array.fold (fun s r -> s + "\n" + (r.Dump()))
+            ("Name  Busy  Opcode   Vj  Vk  Qj  Qk  A  ResultReady  ResultWritten  Result")
 
 
     override rs.ToString() =
@@ -120,23 +128,41 @@ and ReservationStation =
         rs.Qk   = None          &&
         rs.A.IsNone
 
-//    member rs.Dump() =
-//        sprintf "%s  %O  %O  %s  %s  %O  %O  %O  %O  %O  %s"
-//            rs.Name rs.Busy rs.Op
+    member rs.Dump() =
+        sprintf "%s  %O  %O  %s  %s  %O  %O  %O  %O  %O  %s"
+            rs.Name rs.Busy rs.Op
+            (Convert.int2hex rs.Vj)
+            (Convert.int2hex rs.Vk) 
+            rs.Qj rs.Qk
+            rs.A
+            rs.ResultReady rs.ResultWritten
+            (Convert.int2hex rs.Result)
+
+    override rs.ToString() =
+        sprintf "%s  %O  %O  %s  %s  %O  %O  %O"
+            rs.Name rs.Busy rs.Op 
+            (Convert.int2hex rs.Vj)
+            (Convert.int2hex rs.Vk) 
+            rs.Qj rs.Qk 
+            rs.A
+
+//    override rs.ToString() =
+//        sprintf "%s  %O  %O  %s  %s  %O  %O  %s"
+//            rs.Name rs.Busy rs.Op 
 //            (Convert.int2hex rs.Vj)
 //            (Convert.int2hex rs.Vk) 
-//            rs.Qj rs.Qk
-//            rs.A
-//            rs.ResultReady rs.ResultWritten
+//            rs.Qj rs.Qk 
 //            (Convert.int2hex rs.Result)
-//
+
 //    override rs.ToString() =
-//        sprintf "%s  %O  %O  %s  %s  %O  %O  %O"
+//        sprintf "%s  %O  %O  %s  %s  %O  %O  %O  %O  %O  %s"
 //            rs.Name rs.Busy rs.Op 
 //            (Convert.int2hex rs.Vj)
 //            (Convert.int2hex rs.Vk) 
 //            rs.Qj rs.Qk 
 //            rs.A
+//            rs.ResultReady rs.ResultWritten 
+//            (Convert.int2hex rs.Result)
 
     static member Init name =
         {   Name = name; Busy = false; Op = None; 
@@ -148,14 +174,11 @@ and ReservationStation =
     static member ArrayInit(n, namePrefix) =
         Array.init n (fun i -> ReservationStation.Init (namePrefix + string i))
 
+    static member ArrayInit(cfg:Config.FunctionalUnit) =
+        Array.init cfg.rsCount (fun i -> ReservationStation.Init (cfg.rsPrefix + string i))
+
 
     static member Clear (r:ReservationStation) = r.Clear()
     static member ClearIfResultWritten (r:ReservationStation) = r.ClearIfResultWritten()
 
-and CDB private () =
-    static let instance = CDB()
-    member val Src = "" with get, set
-    member val Result = 0 with get, set
-
-    static member GetInstance = instance
 

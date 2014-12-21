@@ -18,10 +18,11 @@ type Memory private () =
                 (Convert.int2nibble pc)
                 (vals |> Array.fold (fun s v -> s + (Convert.int2hex v) + " ") ("")))
         |> List.fold (fun s l -> s + l + "\n") ("")
+        |> sprintf "MEMORY\n%s"
             
 
     let mutable M = Array.zeroCreate<int> size
-    let mutable M' = Array.init<Instruction> size
+//    let mutable M' = Array.init<Instruction> size
 
     
     let checkAddr = function
@@ -67,7 +68,7 @@ type Memory private () =
     member m.Dump(cols) = M |> dumpBy cols |> sprintf "%s"
     member m.Dump()     = m.Dump(8)
 
-    override m.ToString() = m.Dump()
+    override m.ToString() = m.Dump().Trim()
 //        M
 //        |> Array.map Convert.int2hex
 //        |> Array.fold (fun s h -> s + h + "\n") ("")

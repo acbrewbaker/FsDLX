@@ -12,6 +12,42 @@ type SimulatorOutputLevel =
     | Verbose
     | Debug
 
+
+type CDB private () =
+    static let instance = CDB()
+
+    let mutable src, result = "", 0
+    member cdb.Src
+        with get() = src
+        and set(v) = src <- v
+
+    member cdb.Result
+        with get() = result
+        and set(v) = result <- v
+
+    override cdb.ToString() =
+        sprintf "CDB: result: %s station: %s"
+            (Convert.int2hex cdb.Result)
+            cdb.Src
+
+    static member GetInstance = instance
+
+
+type PC private () =
+    static let instance = PC()
+    member val Value = 0 with get, set
+    static member GetInstance = instance
+
+
+type Clock private () =
+    static let instance = Clock()
+    member val Cycles = 0 with get, set
+    member c.Tic() = c.Cycles <- c.Cycles + 1
+    static member GetInstance = instance
+    
+    override c.ToString() = sprintf "Clock cycle: %d" c.Cycles
+
+
 module InstructionHex =
     let toOpcodeBits hex = (Convert.hex2bin hex).[0..Constants.nOpcodeBits - 1]
 
@@ -34,186 +70,100 @@ module Config =
     let nGPRregisters = 32
     let nFPRregisters = 32
     
+//    module IntegerUnit =
+//        let rsPrefix = "Int" 
+//        let rsCount = 8
+//        let unitCount = 3
+//        let maxCycles = 1
+//        let instructions = [| "addi"; "nop"; "add"; "sub"; "and"; "or"; "xor"; "movf"; "movfp2i"; "movi2fp" |]
+//    
+//    module TrapUnit =
+//        let rsPrefix = "Trap" 
+//        let rsCount = 4
+//        let unitCount = 1
+//        let maxCycles = 1
+//        let instructions = [| "trap" |]
+//
+//    module BranchUnit =
+//        let rsPrefix = "Branch" 
+//        let rsCount = 1
+//        let unitCount = 1
+//        let maxCycles = 1
+//        let instructions = [| "beqz"; "j"; "jr"; "jal"; "jalr" |]
+//
+//    module MemoryUnit =
+//        let rsPrefix = "Memory" 
+//        let rsCount = 8
+//        let unitCount = 1
+//        let maxCycles = 1
+//        let instructions = [| "lw"; "lf"; "sw"; "sf" |]
+//
+//    module FloatingPointUnit =
+//        let rsPrefix = "FP" 
+//        let rsCount = 8
+//        let unitCount = 2
+//        let maxCycles = 4
+//        let instructions = [| "addf"; "subf"; "multf"; "divf"; "mult"; "div"; "cvtf2i"; "cvti2f" |]
 
-    type FU =
+    type FunctionalUnit =
         {
-            RSPrefix    : string
-            RSCount     : int
-            XUnitCount  : int
-            XCycles     : int
-            Instructions: string[]
+            rsPrefix    : string
+            rsCount     : int
+            unitCount  : int
+            maxCycles     : int
+            instructions: string[]
         }
 
         static member IntegerUnit =
-            { RSPrefix = "IntUnit"; RSCount = 8; XUnitCount = 3; XCycles = 1;
-                Instructions = [| "addi"; "nop"; "add"; "sub"; "and"; "or"; "xor"; "movf"; "movfp2i"; "movi2fp" |]}
+            { 
+                rsPrefix = "IntUnit"
+                rsCount = 8
+                unitCount = 3
+                maxCycles = 1
+                instructions = [| "addi"; "nop"; "add"; "sub"; "and"; "or"; "xor"; "movf"; "movfp2i"; "movi2fp" |]
+            }
 
         static member TrapUnit =
-            { RSPrefix = "TrapUnit"; RSCount = 4; XUnitCount = 1; XCycles = 1;
-                Instructions = [| "trap" |]}
+            {
+                rsPrefix = "TrapUnit"
+                rsCount = 4
+                unitCount = 1
+                maxCycles = 1
+                instructions = [| "trap" |]
+            }
 
         static member BranchUnit =
-            { RSPrefix = "Branch"; RSCount = 1; XUnitCount = 1; XCycles = 1;
-                Instructions = [| "beqz"; "j"; "jr"; "jal"; "jalr" |]}
+            {
+                rsPrefix = "Branch"
+                rsCount = 1
+                unitCount = 1
+                maxCycles = 1
+                instructions = [| "beqz"; "j"; "jr"; "jal"; "jalr" |]
+            }
 
         static member MemoryUnit =
-            { RSPrefix = "Memory"; RSCount = 8; XUnitCount = 1; XCycles = 2;
-                Instructions = [| "lw"; "lf"; "sw"; "sf" |]}
+            {
+                rsPrefix = "Memory"
+                rsCount = 8
+                unitCount = 1
+                maxCycles = 2
+                instructions = [| "lw"; "lf"; "sw"; "sf" |]
+            }
 
         static member FloatingPointUnit =
-            { RSPrefix = "FloatingPoint"; RSCount = 8; XUnitCount = 2; XCycles = 4;
-                Instructions = [| "addf"; "subf"; "multf"; "divf"; "mult"; "div"; "cvtf2i"; "cvti2f" |]}
-      
+            {
+                rsPrefix = "FloatingPoint"
+                rsCount = 8
+                unitCount = 2
+                maxCycles = 4
+                instructions = [| "addf"; "subf"; "multf"; "divf"; "mult"; "div"; "cvtf2i"; "cvti2f" |]
+            }
 
 
-// The ReservationStation class contains the fields of an individual reservation station: 
-// name, busy, opcode, Vj, Vk, Qj, Qk, A, result, resultReady, resultWritten.  It also 
-// contains methods to access or modify an individual reservation station.
-type ReservationStation =
-    {
-        Name                    : string
-        mutable Busy            : bool
-        mutable Op              : Opcode option
-        mutable Vj              : int
-        mutable Vk              : int
-        mutable Qj              : string option
-        mutable Qk              : string option
-        mutable A               : int option
-        mutable ResultReady     : bool
-        mutable ResultWritten   : bool
-        mutable Result          : int
-    }
-
-    member rs.Clear() =
-        rs.Busy <- false
-        rs.Op <- None
-        rs.Vj <- 0; rs.Vk <- 0
-        rs.Qj <- None; rs.Qk <- None
-        rs.A <- None
-        rs.ResultReady <- false
-        rs.ResultWritten <- false
-
-    member rs.ClearIfResultWritten() = if rs.ResultWritten then rs.Clear()
-
-    member rs.IsReady() =
-        rs.Busy = true          &&
-        rs.Qj.IsNone            &&
-        rs.Qk.IsNone            &&
-        rs.ResultReady = false
-
-    member rs.IsEmpty() = 
-        rs.Busy = false         &&
-        rs.Op.IsNone            &&
-        rs.Vj   = 0             &&
-        rs.Vk   = 0             &&
-        rs.Qj   = None          &&
-        rs.Qk   = None          &&
-        rs.A.IsNone
-
-    override rs.ToString() =
-        sprintf "%s  %O  %O  %d  %d  %O  %O  %O  %O  %O  %d"
-            rs.Name rs.Busy rs.Op rs.Vj rs.Vk rs.Qj rs.Qk rs.A
-            rs.ResultReady rs.ResultWritten rs.Result
-//        sprintf "
-//Name    Busy    Op    Vj    Vk    Qj    Qk    A    ResultReady    ResultWritten    Result
-//%s      %A      %O    %d    %d    %O    %O    %O   %O             %O               %d\n"
-//            rs.Name rs.Busy rs.Op rs.Vj rs.Vk rs.Qj rs.Qk rs.A
-//            rs.ResultReady rs.ResultWritten rs.Result
-
-    static member Init name =
-        {   Name = name; Busy = false; Op = None; 
-            Vj = 0; Vk = 0; Qj = None; Qk = None; A = None
-            ResultReady = false;
-            ResultWritten = false;
-            Result = 0 }
-
-    static member ArrayInit(n, namePrefix) =
-        Array.init n (fun i -> ReservationStation.Init (namePrefix + string i))
-
-    static member ArrayInit(cfg:Config.FU) =
-        ReservationStation.ArrayInit(cfg.RSCount, cfg.RSPrefix)
-
-    static member Clear (r:ReservationStation) = r.Clear()
-    static member ClearIfResultWritten (r:ReservationStation) = r.ClearIfResultWritten()
 
 
-type CDB() =
-    let mutable src, result = "", 0
-    member cdb.Src
-        with get() = src
-        and set(v) = src <- v
 
-    member cdb.Result
-        with get() = result
-        and set(v) = result <- v
 
-type PC private () =
-    static let instance = PC()
-    member val Value = 0 with get, set
-    static member GetInstance = instance
-
-type Clock private () =
-    static let instance = Clock()
-    member val Cycles = 0 with get, set
-    member c.Tic() = c.Cycles <- c.Cycles + 1
-    static member GetInstance = instance
     
-    override c.ToString() = sprintf "Clock cycle: %d" c.Cycles
-//
-//type Register2 = int * string option
-//type RegisterFile2 =
-//    | GPR of Register[]
-//    | FPR of Register[]
-//
-//type MaxCycles = int
-//type RemainingCycles = int
-//type Busy = bool
-//type RS = ReservationStation[]
-//type FUnit = MaxCycles * RemainingCycles * Busy * RS ref
-//type Memory = int[]
-//
-//type InstructionState = 
-//    | Issue
-//    | Execute
-//    | Write
-//
-//type FunctionalUnit =
-//    | IU of FUnit[]
-//    | TU of FUnit[]
-////    | BU of FUnit
-////    | MU of FUnit
-////    | FPU of FUnit
-//
-//    member fu.Issue istate = fu |> function
-//        | IU iu -> iu |> Array.tryFindIndex (fun (_,_,busy,_) -> not busy) |> function
-//            | Some u ->
-//                let intUnit = iu.[u]
-//                let maxCC, remCC, busy, RS = intUnit
-//                if not busy then
-//                    (!RS) |> Array.tryFindIndex (fun r -> not(r.Busy)) |> function
-//                    | Some r -> (!RS).[r].Qj <- Some "derp"
-//                    | None -> ()
-//            | None -> ()
-//        | TU tu -> ()
-//
-//
-//
-//type SimulatorState = Clock * PC * CDB * FunctionalUnit[] * InstructionState
-//type Log = SimulatorState list
-//
-//type Simulator = 
-//    | Halt
-//    | Stall
-//    | Trap
-//    | Dispatch
-//    | Log
-
-//and RS =
-//    | IU of ReservationStation[]
-//    | TU of ReservationStation[]
-//    | BU of ReservationStation[]
-//    | MU of ReservationStation[]
-//    | FPU of ReservationStation[]
-
 
 

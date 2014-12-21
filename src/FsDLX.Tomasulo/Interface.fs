@@ -31,7 +31,7 @@ type SimulatorState =
             PC = string pc
             Memory = mem
             GPR = gpr.ToString(); FPR = fpr.ToString()
-            CurrentFUnit = funits.ToString()
+            CurrentFUnit = if cc <> 0 then funits.ToString() else ""
             Executing = "" }
 
 type Simulator(input:string, verbose:bool) =
@@ -49,13 +49,15 @@ type Simulator(input:string, verbose:bool) =
     
 
     let finished() = 
-        if Clock.GetInstance.Cycles = 0 then false else funits.Finished()
+        if Clock.GetInstance.Cycles = 0 then false else funits.AllFinished()
         
 
-    let updateReservationStations(cdb) = 
-        funits.UpdateReservationStations(cdb)
-        GPR.GetInstance.Update(cdb)
-        FPR.GetInstance.Update(cdb)
+    let updateReservationStations() = cdb |> function
+        | Some _ ->
+            funits.UpdateReservationStations()
+            GPR.GetInstance.Update()
+            FPR.GetInstance.Update()
+        | None -> ()
 
     let clearReservationStations() = funits.ClearReservationStations()
     
@@ -71,6 +73,7 @@ type Simulator(input:string, verbose:bool) =
     // after the issue. This is in order to properly simulate the time in which these steps 
     // would occur.
     let write() = 
+        
         funits.All |> Array.tryPick (fun u -> u.Write())
 
 
@@ -82,10 +85,10 @@ type Simulator(input:string, verbose:bool) =
     //     the corresponding functional unit
     //   - compute the result of an executing instruction if the execution count is 0 and set 
     //     the result and result ready fields of the reservation station.
-    let execute() =
-        funits.All |> Array.tryFind (fun u -> u.Execute()) |> function
-        | Some _ -> halt <- true
-        | None -> ()
+    let execute() = funits.All |> Array.iter (fun u -> u.Execute())
+//        funits.All |> Array.tryFind (fun u -> u.Execute()) |> function
+//        | Some _ -> halt <- true
+//        | None -> ()
 
     // The issue step will examine the opcode of  the instruction and issue the instruction 
     // to the appropriate unit. If each reservation station in the unit is busy, the issue 
@@ -93,21 +96,27 @@ type Simulator(input:string, verbose:bool) =
     let issue (instruction:int) = 
         let k = InstructionKind.ofInt instruction
         let opcode = (Opcode.ofInstructionInt instruction).Name
-        
+//        printfn "Issuing: %O" opcode
         let stall = 
             InstructionKind.ofInt instruction |> function
             | Integer ->
-                funits.IntegerUnits |> Array.tryFindIndex (fun u -> not(u.Busy)) |> function
-                | Some u -> funits.IntegerUnits.[u].Insert instruction
-                | _ -> false
+                printfn "Issuing: %O" opcode
+                funits.IntegerUnit |> Array.iter (fun u -> printfn "%s" (u.Dump()))
+                funits.IntegerUnit |> Array.tryFindIndex (fun u -> not(u.Busy)) |> function
+                | Some u -> 
+                    printfn "unit id: %d" u
+                    funits.IntegerUnit.[u].Insert instruction
+                | _ -> 
+                    printfn "stall in int issue"
+                    true
             | Trap -> 
-                funits.TrapUnits |> Array.tryFindIndex (fun u -> not(u.Busy)) |> function
+                funits.TrapUnit |> Array.tryFindIndex (fun u -> not(u.Busy)) |> function
                 | Some u -> 
                     
                     //true
-                    halt <- funits.TrapUnits.[u].Insert instruction
+                    funits.TrapUnit.[u].Insert instruction |> ignore
                     false
-                | _ -> false
+                | _ -> true
             | Branch -> false
             | Memory -> false
             | FloatingPoint -> false
@@ -119,23 +128,60 @@ type Simulator(input:string, verbose:bool) =
     let log() = 
         let entry = SimulatorState.TakeSnapShot Clock.GetInstance.Cycles PC (memory.Dump()) GPR.GetInstance FPR.GetInstance funits
         printfn "%O" entry
-        logEntries <- logEntries @ [entry]
+        //logEntries <- logEntries @ [entry]
 
     let initialize() =
         memory.Load(input)
-        cdb <- Some(CDB())
 
     let runRegular() = ()
             
     let runVerbose() = ()
-            
+    
+
+    let display() =
+        printfn "%s" (funits.GetStationIssued())
+        Clock.GetInstance.Cycles |> function
+        | 0 ->
+                
+            printfn "%s" (funits.IntegerUnitReservationStations.[0].ToString())
+            printfn "%O" memory
+        | 1 ->
+            printfn "%s" (funits.IntegerUnitReservationStations.[0].ToString())
+            printfn "%s" (funits.IntegerUnitReservationStations.[1].ToString())
+            printfn "%s" (funits.GetExecuting())
+        | 2 ->
+            printfn "%s" (funits.IntegerUnitReservationStations.[0].ToString())
+            printfn "%s" (funits.IntegerUnitReservationStations.[1].ToString())
+            printfn "%s" (funits.GetExecuting())
+            printfn "%O" CDB.GetInstance
+            printfn "%s" (GPR.GetInstance.Dump())
+        | 3 ->
+            printfn "%s" (funits.TrapUnitReservationStations.[0].ToString())
+            printf "%O" CDB.GetInstance
+            printfn "%s" (GPR.GetInstance.Dump())
+        | 4 ->
+            printfn "%s" (funits.TrapUnitReservationStations.[0].ToString())
+            printfn "%s" (funits.TrapUnitReservationStations.[1].ToString())
+            printfn "%s" (funits.GetExecuting())
+        | 5 ->
+            printfn "%O" CDB.GetInstance
+            printfn "%s" (GPR.GetInstance.Dump())
+        | 6 ->
+            printfn "%s" (funits.GetExecuting())
+        | 7 ->
+            printfn "%s" (funits.GetExecuting())
+        | 8 ->
+            printfn "should be done"
+        | _ -> failwith "not enough clock cycles"
+        printfn ""
 
     let runDebug() =
         initialize()
         //printfn "gpr %A" (gpr.[0])
         while not(halt) && not(finished()) do
-//            funits.IntegerUnits |> Array.iter (fun iu -> iu.RS |> Array.iter (printfn "%O"))
             
+//            funits.IntegerUnits |> Array.iter (fun iu -> iu.RS |> Array.iter (printfn "%O"))
+            printfn "%O" Clock.GetInstance
             // get name of RS writing to CDB and the value to be written
             cdb <- write()
             execute()
@@ -147,16 +193,21 @@ type Simulator(input:string, verbose:bool) =
                 if not(halt) && not(stall) then PC <- PC + 4
                 
             // update RSs using name and value
-            updateReservationStations(cdb)
-            log()
+            updateReservationStations()
+            //printfn "%s" (funits.IntegerUnit.[0].RS.Dump())
+            //printfn "%s" (GPR.GetInstance.Dump())
+            
+            //log()
             //clearReservationStations()
             
-            
+            display()
             Clock.GetInstance.Tic()
+            
+            
             
             //showLog()
 
-        //showLog()
+        
 
     member s.Run() = Config.Simulator.outputLevel |> function
         | Regular -> runRegular()

@@ -43,6 +43,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Common.fs" />
+    <Compile Include="ReservationStations.fs" />
     <Compile Include="Instructions.fs" />
     <Compile Include="Registers.fs" />
     <Compile Include="Memory.fs" />
