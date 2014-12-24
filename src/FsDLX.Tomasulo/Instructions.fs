@@ -112,16 +112,33 @@ type S1Reg      = | NONE | GPR of int | FPR of int
 type S2Reg      = | NONE | GPR of int | FPR of int
 type Imm        = | NONE | A of int * int
 
-type Operand =
-    | DstReg of DstReg
-    | S1Reg of S1Reg
-    | S2Reg of S2Reg
-    | Imm of Imm
+//type Operand =
+//    | DstReg of DstReg
+//    | S1Reg of S1Reg
+//    | S2Reg of S2Reg
+//    | Imm of Imm
 
 type Ins =
     | ADDI of DstReg * S1Reg * Imm
     | NOP of DstReg * S1Reg * S2Reg
     | ADD of DstReg * S1Reg * S2Reg
+
+type Instruction2 =
+    | Integer of DstReg * S1Reg * S2Reg * Imm
+    | Trap of DstReg
+//    | Branch
+//    | Memory
+//    | FloatingPoint
+
+    static member ApplyFunction (f:'T -> 'U) = function
+        | Integer(rd,rs,rt,imm) -> ()
+        | Trap rd -> ()
+//        | Branch ->
+//        | Memory ->
+//        | FloatingPoint ->
+
+
+        
 
 type Instruction(opcode:string, funCode:int, rd:DstReg, rs:S1Reg, rt:S2Reg, imm:Imm) =
     member val opcode = Opcode.ofName opcode
@@ -166,10 +183,10 @@ type Instruction(opcode:string, funCode:int, rd:DstReg, rs:S1Reg, rt:S2Reg, imm:
     
 
     // TrapUnit instructions
-    static member TRAP0 = Instruction(0, S1Reg.GPR 6)
-    static member TRAP1 = Instruction(1, S1Reg.GPR 6)
-    static member TRAP2 = Instruction(2, S1Reg.FPR 6)
-    static member TRAP3 = Instruction(3, S1Reg.GPR 6)
+    static member HALT = Instruction(0, S1Reg.GPR 6)
+    static member DUMPGPR = Instruction(1, S1Reg.GPR 6)
+    static member DUMPFPR = Instruction(2, S1Reg.FPR 6)
+    static member DUMPSTR = Instruction(3, S1Reg.GPR 6)
 
     // BranchUnit instructions
     static member BEQZ = Instruction("beqz", S1Reg.GPR 6, Imm.A(16, 31))
@@ -193,6 +210,49 @@ type Instruction(opcode:string, funCode:int, rd:DstReg, rs:S1Reg, rt:S2Reg, imm:
     static member DIV = Instruction.ThreeFpr "div"
     static member CVTF2I = Instruction("cvtf2i", DstReg.FPR 16, S1Reg.FPR 6)
     static member CVTI2F = Instruction("cvti2f", DstReg.FPR 16, S1Reg.FPR 6)
+
+module Patterns = 
+    type FunctionalUnitInstructionSet = Map<string, Instruction>
+    
+    let m = [ "addi", Instruction.ADDI ] |> Map.ofList
+
+    let (|Integer1|Trap1|) (opcode:Opcode) = 
+        let iOps, tOps =
+            Config.FunctionalUnit.IntegerUnit.instructions,
+            Config.FunctionalUnit.TrapUnit.instructions
+
+        let instruction = m.[opcode.Name]
+        let ret = 
+            let i = m.[opcode.Name]
+            i.rd, i.rs, i.rt, i.imm
+
+        let foundOpcodeIn ops = 
+            (ops |> Array.tryFind (fun o -> o = opcode.Name)).IsSome
+        if      foundOpcodeIn iOps  
+        then    Integer1 ret
+        
+        elif    foundOpcodeIn tOps  
+        then    Trap1 ret
+        
+        //elif ["halt"; "dumpgpr"; "dumpfpr"; "dumpstr"] |> List.exists (fun op -> op = opcode.Name) then Trap
+        else failwith (sprintf "opcode (%s) not supported" (opcode.Name)) 
+        
+    
+    let (|Integer2|_|) = function
+        | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.A(a,b) -> Some(rd,rs,-1,(a,b))
+        | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.GPR rt, Imm.NONE -> Some(rd,rs,rt,(-1,-1))
+        | DstReg.FPR rd, S1Reg.FPR rs, S2Reg.NONE, Imm.NONE -> Some(rd,rs,-1,(-1,-1))
+        | DstReg.GPR rd, S1Reg.FPR rs, S2Reg.NONE, Imm.NONE -> Some(rd,rs,-1,(-1,-1))
+        | DstReg.FPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.NONE -> Some(rd,rs,-1,(-1,-1))
+        | _ -> None
+
+    let (|Trap2|_|) = function
+        | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.A(a,b) -> Some(rd,rs,-1,(a,b))
+        | _ -> None
+
+    let (|Derp|_|) = function
+        | Integer1 instruction -> match instruction with | Integer2 i -> Some(i) | _ -> None
+        | Trap1 instruction -> match instruction with | Trap2 i -> Some(i) | _ -> None
 
 ////module ISA =
 ////    let lookup = 
