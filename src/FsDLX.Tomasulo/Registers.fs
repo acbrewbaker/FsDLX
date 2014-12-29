@@ -10,6 +10,11 @@ type RegisterFile() =
     member rf.Item
         with get i = regs.[i]
 
+//    member rf.Item
+//        with get(i, idx) =
+//            let r = (Convert.int2bin i).[idx..idx+5] |> Convert.bin2int
+//            regs.[r]
+
     abstract Update : unit -> unit
 
 

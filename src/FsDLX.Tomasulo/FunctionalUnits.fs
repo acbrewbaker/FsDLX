@@ -163,8 +163,8 @@ type FunctionalUnit (maxCycles:int, rsRef:RSGroupRef) as fu =
 //            init Config.FunctionalUnit.FloatingPointUnit    (fun _ -> FloatingPointUnit()   :> FunctionalUnit) |]
 //        |> Array.concat
     
-    abstract member Instructions        : Map<string, Instruction>
-    abstract member Insert   : int -> bool
+//    abstract member Instructions        : Map<string, Instruction>
+    abstract member Insert   : Instruction -> bool
     abstract member Compute  : int -> unit
     //abstract member Write    : CDB -> unit
 
@@ -194,37 +194,28 @@ and IntegerUnit private (maxCycles, rsRef) =
     static let instance rsRef =
         Array.init cfg.unitCount (fun _ -> IntegerUnit(cfg.maxCycles, rsRef))
 
-    override iu.Instructions = 
-        [   "addi",     Instruction.ADDI
-            "nop",      Instruction.NOP
-            "add",      Instruction.ADD
-            "sub",      Instruction.SUB
-            "and",      Instruction.AND
-            "or",       Instruction.OR
-            "xor",      Instruction.XOR
-            "movf",     Instruction.MOVF
-            "movfp2i",  Instruction.MOVFP2I
-            "movi2fp",  Instruction.MOVI2FP ] |> Map.ofList
+//    override iu.Instructions = 
+//        [   "addi",     Instruction.ADDI
+//            "nop",      Instruction.NOP
+//            "add",      Instruction.ADD
+//            "sub",      Instruction.SUB
+//            "and",      Instruction.AND
+//            "or",       Instruction.OR
+//            "xor",      Instruction.XOR
+//            "movf",     Instruction.MOVF
+//            "movfp2i",  Instruction.MOVFP2I
+//            "movi2fp",  Instruction.MOVI2FP ] |> Map.ofList
 
    
     
     override iu.Insert i =
-//        let RegisterStat i = GPR.GetInstance.[i].Qi
-//        let Regs i = GPR.GetInstance.[i].Contents
-//        let fpr = FPR.GetInstance
         let RS = iu.RS
-        let opcode = Opcode.ofInstructionInt i
-        //printfn "Inserting: %O" opcode
-        let instruction = iu.Instructions.[opcode.Name]
-
-        let rd, rs, rt, imm =
-                instruction.rd,
-                instruction.rs,
-                instruction.rt,
-                instruction.imm
+        let opcode = i.Info.opcode
+        let rd, rs, rt, imm = i.rd, i.rs, i.rt, i.imm
         
-        let regNum startBit = Convert.int2bits2reg i startBit
-      
+        let regId startBit = Convert.int2bits2reg i.Int startBit
+        let immVal a b = Convert.int2bits2int i.Int a b
+
         let p x = printfn "%A" x; x
 
         RS.TryFindNotBusy() |> function
@@ -243,10 +234,7 @@ and IntegerUnit private (maxCycles, rsRef) =
                     let Regs(i)= GPR.GetInstance.[i].Contents
                     let RegisterStat(i) = GPR.GetInstance.[i]
                     
-                    let rd, rs, rt = 
-                        regNum rd, 
-                        regNum rs, 
-                        (Convert.int2bits2int i a b)
+                    let rd, rs, rt = regId rd, regId rs, immVal a b
 
                     //printfn "rd, rs, rt, imm ==> %A, %A, %A, %A" rd rs rt imm
                     RS.[r].A <- Some rt
@@ -290,7 +278,7 @@ and IntegerUnit private (maxCycles, rsRef) =
                     //printfn "case2"
                     let gpr = GPR.GetInstance
 
-                    let rd, rs, rt = regNum rd, regNum rs, regNum rt
+                    let rd, rs, rt = regId rd, regId rs, regId rt
                     
                     if      gpr.[rs].Qi.IsSome
                     then    RS.[r].Qj <- gpr.[rs].Qi
@@ -348,19 +336,19 @@ and TrapUnit private (maxCycles, rsRef) =
     static let instance rsRef = 
         Array.init cfg.unitCount (fun _ -> TrapUnit(cfg.maxCycles, rsRef))
 
-    override tu.Instructions =
-        [   "trap0", Instruction.TRAP0
-            "trap1", Instruction.TRAP1
-            "trap2", Instruction.TRAP2
-            "trap3", Instruction.TRAP3  ] |> Map.ofList
+//    override tu.Instructions =
+//        [   "trap0", Instruction.TRAP0
+//            "trap1", Instruction.TRAP1
+//            "trap2", Instruction.TRAP2
+//            "trap3", Instruction.TRAP3  ] |> Map.ofList
 
     override tu.Insert i = 
         let gpr = GPR.GetInstance
         let fpr = FPR.GetInstance
         let RS = tu.RS.Contents
-        let opcode = Opcode.ofInstructionInt i
-        let funCode = Convert.int2bits2int i 27 31
-        let rs = Convert.int2bits2reg i 6
+        let opcode = i.Info.opcode
+        let funCode = Convert.int2bits2int i.Int 27 31
+        let rs = Convert.int2bits2reg i.Int 6
         RS |> Array.tryFindIndex (fun r -> not(r.Busy)) |> function
         | Some r -> 
             RS.[r].Busy <- true
@@ -432,12 +420,12 @@ and BranchUnit private (maxCycles, rsRef) =
     static let instance rsRef = 
         Array.init cfg.unitCount (fun _ -> BranchUnit(cfg.maxCycles, rsRef))
 
-    override bu.Instructions =
-        [   "beqz", Instruction.BEQZ
-            "j",    Instruction.J
-            "jr",   Instruction.JR
-            "jal",  Instruction.JAL
-            "jalr", Instruction.JALR    ] |> Map.ofList
+//    override bu.Instructions =
+//        [   "beqz", Instruction.BEQZ
+//            "j",    Instruction.J
+//            "jr",   Instruction.JR
+//            "jal",  Instruction.JAL
+//            "jalr", Instruction.JALR    ] |> Map.ofList
 
     override bu.Insert i = false
 
@@ -458,11 +446,11 @@ and MemoryUnit private (maxCycles, rsRef) =
 //    member val LoadBuffer   = ReservationStation.ArrayInit Config.FunctionalUnit.MemoryUnit with get, set
 //    member val StoreBuffer  = ReservationStation.ArrayInit Config.FunctionalUnit.MemoryUnit with get, set
 //
-    override mu.Instructions =
-        [   "lw",   Instruction.LW
-            "lf",   Instruction.LF
-            "sw",   Instruction.SW
-            "sf",   Instruction.SF  ] |> Map.ofList
+//    override mu.Instructions =
+//        [   "lw",   Instruction.LW
+//            "lf",   Instruction.LF
+//            "sw",   Instruction.SW
+//            "sf",   Instruction.SF  ] |> Map.ofList
 
     override mu.Insert i = false
 
@@ -477,15 +465,15 @@ and FloatingPointUnit private (maxCycles, rsRef) =
     static let instance rsRef = 
         Array.init cfg.unitCount (fun _ -> FloatingPointUnit(cfg.maxCycles, rsRef))
 
-    override fpu.Instructions =
-        [   "addf",     Instruction.ADDF
-            "subf",     Instruction.SUBF
-            "multf",    Instruction.MULTF
-            "divf",     Instruction.DIVF
-            "mult",     Instruction.MULT
-            "div",      Instruction.DIV
-            "cvtf2i",   Instruction.CVTF2I
-            "cvti2f",   Instruction.CVTI2F  ] |> Map.ofList
+//    override fpu.Instructions =
+//        [   "addf",     Instruction.ADDF
+//            "subf",     Instruction.SUBF
+//            "multf",    Instruction.MULTF
+//            "divf",     Instruction.DIVF
+//            "mult",     Instruction.MULT
+//            "div",      Instruction.DIV
+//            "cvtf2i",   Instruction.CVTF2I
+//            "cvti2f",   Instruction.CVTI2F  ] |> Map.ofList
 
     override fpu.Insert i = false
     override fpu.Compute r = ()

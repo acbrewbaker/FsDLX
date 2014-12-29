@@ -4,40 +4,155 @@ namespace FsDLX.Tomasulo
 open System.Collections
 open FsDLX.Common
 
-type InstructionKind =
-    | Integer
-    | Trap
-    | Branch
-    | Memory
-    | FloatingPoint
+// In addition, it is helpful to create an Instruction class that contains information 
+// that can be used to issue an instruction to a reservation station and set the Qi field 
+// of a register in the register file.  The Vj (Qj) and Vk (Qk) fields are initialized via 
+// source registers in the instruction.  An instruction may not have a source register.  
+// If it does have a source register then it might refer to a general purpose register 
+// (r0-r31) or a floating point register (f0-f31).   Similarly the A field is initialized 
+// by the immediate value in an instruction.  An instruction may have an immediate value 
+// or may not, and the size and starting bit of the immediate value vary depending upon the 
+// instruction. The fields of an instruction object can be accessed to get this information 
+// and used to initialize the reservation station.  In this way, it is possible to write 
+// issuing code that can be placed in the FUContainer class and used to issue any instruction.  For example, the fields of the Instruction class could be:
+type Instruction(i:int) =
+    let info : InstructionInfo = InstructionInfo.ofInt i
+    member val Int = i with get
+    member val Info = info with get
+    member val rd = info.rd with get
+    member val rs = info.rs with get
+    member val rt = info.rt with get
+    member val imm = info.imm with get
 
-    static member ofHex hex =
-        let opcode = Opcode.ofInstructionHex hex
-//        printfn "hex: %A, OPCODE: %A" hex (opcode.Name)
-        let iOps, tOps =
-            Config.FunctionalUnit.IntegerUnit.instructions,
-            Config.FunctionalUnit.TrapUnit.instructions
-//        let iOps, tOps, bOps, mOps, fpOps = 
-//            Config.FU.IntegerUnit.Instructions,
-//            Config.FU.TrapUnit.Instructions,
-//            Config.FU.BranchUnit.Instructions,
-//            Config.FU.MemoryUnit.Instructions,
-//            Config.FU.FloatingPointUnit.Instructions
-        let foundOpcodeIn ops = 
-            (ops |> Array.tryFind (fun o -> 
-                //printfn "o, opcode.Name ==> %A, %A" o (opcode.Name)
-                o = opcode.Name)).IsSome
-//        printfn "found in %s iOPs: %A" (opcode.Name) (foundOpcodeIn iOps)
-//        printfn "found in %s tOPs: %A" (opcode.Name) (foundOpcodeIn tOps)
-        if      foundOpcodeIn iOps  then Integer
-        elif    foundOpcodeIn tOps  then Trap
-        elif ["halt"; "dumpgpr"; "dumpfpr"; "dumpstr"] |> List.exists (fun op -> op = opcode.Name) then Trap
-//        elif    foundOpcodeIn bOps  then Branch
-//        elif    foundOpcodeIn mOps  then Memory
-//        elif    foundOpcodeIn fpOps then FloatingPoint
-        else failwith (sprintf "opcode (%s) not supported" (opcode.Name)) 
+
+and InstructionInfo(kind:InstructionKind, opcode:string, funCode:int, rd:DstReg, rs:S1Reg, rt:S2Reg, imm:Imm) =
+
+    static let threeGpr kind opcode = InstructionInfo(kind, opcode, 0, DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11, Imm.NONE)
+    static let threeFpr kind opcode = InstructionInfo(kind, opcode, 0, DstReg.FPR 16, S1Reg.FPR 6, S2Reg.FPR 11, Imm.NONE)
+
+    // IntegerUnit instructions
+    static let ADDI = InstructionInfo(Integer, "addi", 0, DstReg.GPR 11, S1Reg.GPR 6, S2Reg.NONE, Imm.A(16,31))
+    static let NOP = InstructionInfo(Integer, "nop", 0, DstReg.NONE, S1Reg.NONE, S2Reg.NONE, Imm.NONE)
+    static let ADD = threeGpr Integer "add"
+    static let SUB = threeGpr Integer "sub"
+    static let AND = threeGpr Integer "and"
+    static let OR = threeGpr Integer "or"
+    static let XOR = threeGpr Integer "xor"
+    static let MOVF = InstructionInfo(Integer, "movf", 0, DstReg.FPR 16, S1Reg.FPR 6, S2Reg.NONE, Imm.NONE)
+    static let MOVFP2I = InstructionInfo(Integer, "movfp2i", 0, DstReg.GPR 16, S1Reg.FPR 6, S2Reg.NONE, Imm.NONE)
+    static let MOVI2FP = InstructionInfo(Integer, "movi2fp", 0, DstReg.FPR 16, S1Reg.GPR 6, S2Reg.NONE, Imm.NONE)
     
-    static member ofInt i = InstructionKind.ofHex (Convert.int2hex i)
+    // TrapUnit instructions
+    static let HALT = InstructionInfo(Trap, "halt", 0, DstReg.NONE, S1Reg.GPR 6, S2Reg.NONE, Imm.NONE)
+    static let DUMPGPR = InstructionInfo(Trap, "dumpgpr", 1, DstReg.NONE, S1Reg.GPR 6, S2Reg.NONE, Imm.NONE)
+    static let DUMPFPR = InstructionInfo(Trap, "dumpfpr", 2, DstReg.NONE, S1Reg.FPR 6, S2Reg.NONE, Imm.NONE)
+    static let DUMPSTR = InstructionInfo(Trap, "dumpstr", 3, DstReg.NONE, S1Reg.GPR 6, S2Reg.NONE, Imm.NONE)
+
+    // BranchUnit instructions
+    static let BEQZ = InstructionInfo(Branch, "beqz", 0, DstReg.NONE, S1Reg.GPR 6, S2Reg.NONE, Imm.A(16, 31))
+    static let J = InstructionInfo(Branch, "j", 0, DstReg.NONE, S1Reg.NONE, S2Reg.NONE, Imm.A(6,31))
+    static let JR = InstructionInfo(Branch, "jr", 0, DstReg.NONE, S1Reg.GPR 6, S2Reg.NONE, Imm.NONE)
+    static let JAL = InstructionInfo(Branch, "jal", 0, DstReg.NONE, S1Reg.NONE, S2Reg.NONE, Imm.A(6,31))
+    static let JALR = InstructionInfo(Branch, "jalr", 0, DstReg.NONE, S1Reg.GPR 6, S2Reg.NONE, Imm.NONE)
+
+    // MemoryUnit isntructions
+    static let LW = InstructionInfo(Memory, "lw", 0, DstReg.GPR 11, S1Reg.GPR 6, S2Reg.NONE, Imm.A(16,31))
+    static let LF = InstructionInfo(Memory, "lf", 0, DstReg.FPR 11, S1Reg.GPR 6, S2Reg.NONE, Imm.A(16,31))
+    static let SW = InstructionInfo(Memory, "sw", 0, DstReg.GPR 11, S1Reg.GPR 6, S2Reg.NONE, Imm.A(16,31))
+    static let SF = InstructionInfo(Memory, "sf", 0, DstReg.FPR 11, S1Reg.GPR 6, S2Reg.NONE, Imm.A(16,31))
+
+    // FloatingPointUnit instructions
+    static let ADDF = threeFpr FloatingPoint "addf"
+    static let SUBF = threeFpr FloatingPoint "subf"
+    static let MULTF = threeFpr FloatingPoint "multf"
+    static let DIVF = threeFpr FloatingPoint "divf"
+    static let MULT = threeFpr FloatingPoint "mult"
+    static let DIV = threeFpr FloatingPoint "div"
+    static let CVTF2I = InstructionInfo(FloatingPoint, "cvtf2i", 0, DstReg.FPR 16, S1Reg.FPR 6, S2Reg.NONE, Imm.NONE)
+    static let CVTI2F = InstructionInfo(FloatingPoint, "cvti2f", 0, DstReg.FPR 16, S1Reg.FPR 6, S2Reg.NONE, Imm.NONE)
+
+    member val kind = kind with get
+    member val opcode = Opcode.ofName opcode with get
+    member val funCode = funCode with get
+    member val rd : DstReg = rd 
+    member val rs = rs with get
+    member val rt = rt with get
+    member val imm = imm with get
+    
+    static member ofInt = Opcode.ofInstructionInt >> InstructionInfo.ofOpcode
+
+    static member ofOpcode(opcode:Opcode) = opcode.Name |> function
+        | "addi" -> ADDI
+        | "nop" -> NOP
+        | "add" -> ADD
+        | "sub" -> SUB
+        | "and" -> AND
+        | "or" -> OR
+        | "xor" -> XOR
+        | "movf" -> MOVF
+        | "movfp2i" -> MOVFP2I
+        | "movi2fp" -> MOVI2FP
+
+        | "halt" -> HALT
+        | "dumpgpr" -> DUMPGPR
+        | "dumpfpr" -> DUMPFPR
+        | "dumpstr" -> DUMPSTR
+        
+        | "beqz" -> BEQZ
+        | "j" -> J
+        | "jr" -> JR
+        | "jal" -> JAL
+        | "jalr" -> JALR
+        
+        | "lw" -> LW
+        | "lf" -> LF
+        | "sw" -> SW
+        | "sf" -> SF
+        
+        | "addf" -> ADDF
+        | "subf" -> SUBF
+        | "multf" -> MULTF
+        | "divf" -> DIVF
+        | "mult" -> MULT
+        | "div" -> DIV
+        | "cvtf2i" -> CVTF2I
+        | "cvti2f" -> CVTI2F
+        
+        | _ -> failwith "opcode not supported"
+
+and InstructionKind = | Integer | Trap | Branch | Memory | FloatingPoint
+and DstReg  = | NONE | GPR of int | FPR of int
+and S1Reg   = | NONE | GPR of int | FPR of int
+and S2Reg   = | NONE | GPR of int | FPR of int
+and Imm     = | NONE | A of int * int
+
+//    static let ofHex hex =
+//        let opcode = Opcode.ofInstructionHex hex
+////        printfn "hex: %A, OPCODE: %A" hex (opcode.Name)
+//        let iOps, tOps =
+//            Config.FunctionalUnit.IntegerUnit.instructions,
+//            Config.FunctionalUnit.TrapUnit.instructions
+////        let iOps, tOps, bOps, mOps, fpOps = 
+////            Config.FU.IntegerUnit.Instructions,
+////            Config.FU.TrapUnit.Instructions,
+////            Config.FU.BranchUnit.Instructions,
+////            Config.FU.MemoryUnit.Instructions,
+////            Config.FU.FloatingPointUnit.Instructions
+//        let foundOpcodeIn ops = 
+//            (ops |> Array.tryFind (fun o -> 
+//                //printfn "o, opcode.Name ==> %A, %A" o (opcode.Name)
+//                o = opcode.Name)).IsSome
+////        printfn "found in %s iOPs: %A" (opcode.Name) (foundOpcodeIn iOps)
+////        printfn "found in %s tOPs: %A" (opcode.Name) (foundOpcodeIn tOps)
+//        if      foundOpcodeIn iOps  then Integer
+//        elif    foundOpcodeIn tOps  then Trap
+//        elif ["halt"; "dumpgpr"; "dumpfpr"; "dumpstr"] |> List.exists (fun op -> op = opcode.Name) then Trap
+////        elif    foundOpcodeIn bOps  then Branch
+////        elif    foundOpcodeIn mOps  then Memory
+////        elif    foundOpcodeIn fpOps then FloatingPoint
+//        else failwith (sprintf "opcode (%s) not supported" (opcode.Name)) 
+//    
+//    static let ofInt i = InstructionKind.ofHex (Convert.int2hex i)
 
 //type DstReg =
 //    | NONE
@@ -95,164 +210,50 @@ type InstructionKind =
 //        imm |> function
 //        | A(a,b) -> idx a b
 //        | _ -> failwith "invalid immediate"
-
-// In addition, it is helpful to create an Instruction class that contains information 
-// that can be used to issue an instruction to a reservation station and set the Qi field 
-// of a register in the register file.  The Vj (Qj) and Vk (Qk) fields are initialized via 
-// source registers in the instruction.  An instruction may not have a source register.  
-// If it does have a source register then it might refer to a general purpose register 
-// (r0-r31) or a floating point register (f0-f31).   Similarly the A field is initialized 
-// by the immediate value in an instruction.  An instruction may have an immediate value 
-// or may not, and the size and starting bit of the immediate value vary depending upon the 
-// instruction. The fields of an instruction object can be accessed to get this information 
-// and used to initialize the reservation station.  In this way, it is possible to write 
-// issuing code that can be placed in the FUContainer class and used to issue any instruction.  For example, the fields of the Instruction class could be:
-type DstReg     = | NONE | GPR of int | FPR of int
-type S1Reg      = | NONE | GPR of int | FPR of int
-type S2Reg      = | NONE | GPR of int | FPR of int
-type Imm        = | NONE | A of int * int
-
-//type Operand =
-//    | DstReg of DstReg
-//    | S1Reg of S1Reg
-//    | S2Reg of S2Reg
-//    | Imm of Imm
-
-type Ins =
-    | ADDI of DstReg * S1Reg * Imm
-    | NOP of DstReg * S1Reg * S2Reg
-    | ADD of DstReg * S1Reg * S2Reg
-
-type Instruction2 =
-    | Integer of DstReg * S1Reg * S2Reg * Imm
-    | Trap of DstReg
-//    | Branch
-//    | Memory
-//    | FloatingPoint
-
-    static member ApplyFunction (f:'T -> 'U) = function
-        | Integer(rd,rs,rt,imm) -> ()
-        | Trap rd -> ()
-//        | Branch ->
-//        | Memory ->
-//        | FloatingPoint ->
-
-
-        
-
-type Instruction(opcode:string, funCode:int, rd:DstReg, rs:S1Reg, rt:S2Reg, imm:Imm) =
-    member val opcode = Opcode.ofName opcode
-    member val funCode = funCode
-    member val rd = rd
-    member val rs = rs
-    member val rt = rt
-    member val imm = imm
-    
-    member ins.Op (i:int) = Opcode.ofInstructionInt i, i
-
-    member ins.F = 
-        ins.Op
-        >> (function
-            | op, i when op.Name = "addi" -> ()
-            | _ -> failwith "")
-
-    new(opcode, rd, rs, rt, imm) = Instruction(opcode, 0, rd, rs, rt, imm)
-    new(opcode, rd, rs, imm) = Instruction(opcode, rd, rs, S2Reg.NONE, imm)
-    new(opcode, rd, rs, rt) = Instruction(opcode, rd, rs, rt, Imm.NONE)
-    new(opcode, rd, rs) = Instruction(opcode, rd, rs, S2Reg.NONE)
-    new(opcode, rs, imm) = Instruction(opcode, DstReg.NONE, rs, S2Reg.NONE, imm)
-    new(opcode, imm) = Instruction(opcode, S1Reg.NONE, imm)
-    new(funCode, rs) = Instruction("trap", funCode, DstReg.NONE, rs, S2Reg.NONE, Imm.NONE)
-    
-
-
-    static member ThreeGpr opcode = Instruction(opcode, DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11)
-    static member ThreeFpr opcode = Instruction(opcode, DstReg.FPR 16, S1Reg.FPR 6, S2Reg.FPR 11)
-
-    // IntegerUnit instructions
-    static member ADDI = Instruction("addi", DstReg.GPR 11, S1Reg.GPR 6, Imm.A(16,31))
-    static member NOP = Instruction("nop", 0, DstReg.NONE, S1Reg.NONE, S2Reg.NONE, Imm.NONE)
-    static member ADD = Instruction.ThreeGpr "add"
-    static member SUB = Instruction.ThreeGpr "sub"
-    static member AND = Instruction.ThreeGpr "and"
-    static member OR = Instruction.ThreeGpr "or"
-    static member XOR = Instruction.ThreeGpr "xor"
-    static member MOVF = Instruction("movf", DstReg.FPR 16, S1Reg.FPR 6)
-    static member MOVFP2I = Instruction("movfp2i", DstReg.GPR 16, S1Reg.FPR 6)
-    static member MOVI2FP = Instruction("movi2fp", DstReg.FPR 16, S1Reg.GPR 6)
-    
-
-    // TrapUnit instructions
-    static member HALT = Instruction(0, S1Reg.GPR 6)
-    static member DUMPGPR = Instruction(1, S1Reg.GPR 6)
-    static member DUMPFPR = Instruction(2, S1Reg.FPR 6)
-    static member DUMPSTR = Instruction(3, S1Reg.GPR 6)
-
-    // BranchUnit instructions
-    static member BEQZ = Instruction("beqz", S1Reg.GPR 6, Imm.A(16, 31))
-    static member J = Instruction("j", Imm.A(6,31))
-    static member JR = Instruction("jr", S1Reg.GPR 6, Imm.NONE)
-    static member JAL = Instruction("jal", Imm.A(6,31))
-    static member JALR = Instruction("jalr", S1Reg.GPR 6, Imm.NONE)
-
-    // MemoryUnit isntructions
-    static member LW = Instruction("lw", DstReg.GPR 11, S1Reg.GPR 6, Imm.A(16,31))
-    static member LF = Instruction("lf", DstReg.FPR 11, S1Reg.GPR 6, Imm.A(16,31))
-    static member SW = Instruction("sw", DstReg.GPR 11, S1Reg.GPR 6, Imm.A(16, 31))
-    static member SF = Instruction("sf", DstReg.FPR 11, S1Reg.GPR 6, Imm.A(16, 31))
-
-    // FloatingPointUnit instructions
-    static member ADDF = Instruction.ThreeFpr "addf"
-    static member SUBF = Instruction.ThreeFpr "subf"
-    static member MULTF = Instruction.ThreeFpr "multf"
-    static member DIVF = Instruction.ThreeFpr "divf"
-    static member MULT = Instruction.ThreeFpr "mult"
-    static member DIV = Instruction.ThreeFpr "div"
-    static member CVTF2I = Instruction("cvtf2i", DstReg.FPR 16, S1Reg.FPR 6)
-    static member CVTI2F = Instruction("cvti2f", DstReg.FPR 16, S1Reg.FPR 6)
-
-module Patterns = 
-    type FunctionalUnitInstructionSet = Map<string, Instruction>
-    
-    let m = [ "addi", Instruction.ADDI ] |> Map.ofList
-
-    let (|Integer1|Trap1|) (opcode:Opcode) = 
-        let iOps, tOps =
-            Config.FunctionalUnit.IntegerUnit.instructions,
-            Config.FunctionalUnit.TrapUnit.instructions
-
-        let instruction = m.[opcode.Name]
-        let ret = 
-            let i = m.[opcode.Name]
-            i.rd, i.rs, i.rt, i.imm
-
-        let foundOpcodeIn ops = 
-            (ops |> Array.tryFind (fun o -> o = opcode.Name)).IsSome
-        if      foundOpcodeIn iOps  
-        then    Integer1 ret
-        
-        elif    foundOpcodeIn tOps  
-        then    Trap1 ret
-        
-        //elif ["halt"; "dumpgpr"; "dumpfpr"; "dumpstr"] |> List.exists (fun op -> op = opcode.Name) then Trap
-        else failwith (sprintf "opcode (%s) not supported" (opcode.Name)) 
-        
-    
-    let (|Integer2|_|) = function
-        | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.A(a,b) -> Some(rd,rs,-1,(a,b))
-        | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.GPR rt, Imm.NONE -> Some(rd,rs,rt,(-1,-1))
-        | DstReg.FPR rd, S1Reg.FPR rs, S2Reg.NONE, Imm.NONE -> Some(rd,rs,-1,(-1,-1))
-        | DstReg.GPR rd, S1Reg.FPR rs, S2Reg.NONE, Imm.NONE -> Some(rd,rs,-1,(-1,-1))
-        | DstReg.FPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.NONE -> Some(rd,rs,-1,(-1,-1))
-        | _ -> None
-
-    let (|Trap2|_|) = function
-        | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.A(a,b) -> Some(rd,rs,-1,(a,b))
-        | _ -> None
-
-    let (|Derp|_|) = function
-        | Integer1 instruction -> match instruction with | Integer2 i -> Some(i) | _ -> None
-        | Trap1 instruction -> match instruction with | Trap2 i -> Some(i) | _ -> None
+//module Patterns = 
+//    type FunctionalUnitInstructionSet = Map<string, Instruction>
+//    
+//    let m = [ "addi", Instruction.ADDI ] |> Map.ofList
+//
+//    let (|Integer1|Trap1|) (opcode:Opcode) = 
+//        let iOps, tOps =
+//            Config.FunctionalUnit.IntegerUnit.instructions,
+//            Config.FunctionalUnit.TrapUnit.instructions
+//
+//        let instruction = m.[opcode.Name]
+//        let ret = 
+//            let i = m.[opcode.Name]
+//            i.rd, i.rs, i.rt, i.imm
+//
+//        let foundOpcodeIn ops = 
+//            (ops |> Array.tryFind (fun o -> o = opcode.Name)).IsSome
+//        if      foundOpcodeIn iOps  
+//        then    Integer1 ret
+//        
+//        elif    foundOpcodeIn tOps  
+//        then    Trap1 ret
+//        
+//        //elif ["halt"; "dumpgpr"; "dumpfpr"; "dumpstr"] |> List.exists (fun op -> op = opcode.Name) then Trap
+//        else failwith (sprintf "opcode (%s) not supported" (opcode.Name)) 
+//        
+//    
+////    let (|A|B|) (opcode:Opcode) =
+//
+//    let (|Integer2|_|) = function
+//        | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.A(a,b) -> Some(rd,rs,-1,(a,b))
+//        | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.GPR rt, Imm.NONE -> Some(rd,rs,rt,(-1,-1))
+//        | DstReg.FPR rd, S1Reg.FPR rs, S2Reg.NONE, Imm.NONE -> Some(rd,rs,-1,(-1,-1))
+//        | DstReg.GPR rd, S1Reg.FPR rs, S2Reg.NONE, Imm.NONE -> Some(rd,rs,-1,(-1,-1))
+//        | DstReg.FPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.NONE -> Some(rd,rs,-1,(-1,-1))
+//        | _ -> None
+//
+//    let (|Trap2|_|) = function
+//        | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.A(a,b) -> Some(rd,rs,-1,(a,b))
+//        | _ -> None
+//
+//    let (|Derp|_|) = function
+//        | Integer1 instruction -> match instruction with | Integer2 i -> Some(i) | _ -> None
+//        | Trap1 instruction -> match instruction with | Trap2 i -> Some(i) | _ -> None
 
 ////module ISA =
 ////    let lookup = 
@@ -300,12 +301,12 @@ module Patterns =
 ////    
 ////
 ////module ISA =
-////    let addi = Instruction("addi", DstReg.GPR 11, S1Reg.GPR 6, Imm.A(16,31))
-////    let add = Instruction("add", DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11)
-////    let trap0 = Instruction(0, S1Reg.GPR 6)
-////    let trap1 = Instruction(1, S1Reg.GPR 6)
-////    let trap2 = Instruction(2, S1Reg.FPR 6)
-////    let trap3 = Instruction(3, S1Reg.GPR 6)
+////    let addi = InstructionInfo("addi", DstReg.GPR 11, S1Reg.GPR 6, Imm.A(16,31))
+////    let add = InstructionInfo("add", DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11)
+////    let trap0 = InstructionInfo(0, S1Reg.GPR 6)
+////    let trap1 = InstructionInfo(1, S1Reg.GPR 6)
+////    let trap2 = InstructionInfo(2, S1Reg.FPR 6)
+////    let trap3 = InstructionInfo(3, S1Reg.GPR 6)
 ////    
 ////
 ////    member ins.ApplyToReservationStation (i:int) (regs:RegisterFile) (r:ReservationStation) =
@@ -332,16 +333,16 @@ module Patterns =
 ////        | S2Reg.F(a,b), :? FPR -> idx a b
 ////        | _ -> failwith "invalid rt or register file"
 ////
-////    static member RS (i:Instruction) (regs:RegisterFile) =
+////    static let RS (i:Instruction) (regs:RegisterFile) =
 ////        (i.rs, regs) |> function
 ////        | S1Reg.R (a,b), :? GPR as gpr -> 
 ////
-////    static member InitTrap rs =
+////    static let InitTrap rs =
 ////        {   opcode = Opcode.ofName "trap"; funCode = FunCode.FC(27,31)
 ////            rd = DstReg.NONE; rs = rs; rt = S2Reg.NONE; imm = Imm.NONE }
 ////
 ////
-////    static member IntegerInstructions =
+////    static let IntegerInstructions =
 ////        { opcode = Opcode.ofName "addi"; funCode = 0; rd = DstReg.GPR}
 ////
 ////
@@ -376,14 +377,14 @@ module Patterns =
 ////        immedFieldEBit: int
 ////    }
 ////
-////    static member Trap hex =
+////    static let Trap hex =
 ////        let bin = Convert.hex2bin hex
 ////        let op = Opcode.ofBin (bin.[0..Constants.nOpcodeBits - 1])
 ////        let reg = Convert.bin2int bin.[6..10]
 ////        let f = Convert.bin2int bin.[27..31]
 ////        { Opcode = op; FunCode = Some f; RegName = Some reg; rd = 0; rs = 0; rt = 0; imm = None }
 ////
-////    static member IType hex =
+////    static let IType hex =
 ////        let bin = Convert.hex2bin hex
 ////        let op  = Opcode.ofBin (bin.[0..Constants.nOpcodeBits - 1])
 ////        let rd  = Convert.bin2int bin.[11..15]
@@ -391,7 +392,7 @@ module Patterns =
 ////        let imm = Convert.bin2int bin.[16..31]
 ////        { Opcode = op; FunCode = None; RegName = None; rd = rd; rs = rs; rt = 0; imm = Some imm }
 ////
-////    static member RType hex =
+////    static let RType hex =
 ////        let bin = Convert.hex2bin hex
 ////        let op  = Opcode.ofBin (bin.[26..31])
 ////        let rd = Convert.bin2int bin.[16..20]
@@ -399,32 +400,32 @@ module Patterns =
 ////        let rt = Convert.bin2int bin.[11..15]
 ////        { Opcode = op; FunCode = None; RegName = None; rd = rd; rs = rs; rt = rt; imm = None }
 ////    
-////    static member IsIntegerType hex =
+////    static let IsIntegerType hex =
 ////        let opcode = Opcode.ofInstructionHex hex
 ////        let intOps = Config.FU.IntegerUnit.Instructions
 ////        (intOps |> Array.filter (fun o -> o = opcode.Name)).Length <> 0
 ////
-////    static member IsTrapType hex =
+////    static let IsTrapType hex =
 ////        let opcode = Opcode.ofInstructionHex hex
 ////        let intOps = Config.FU.TrapUnit.Instructions
 ////        (intOps |> Array.filter (fun o -> o = opcode.Name)).Length <> 0
 ////
-////    static member IsBranchType hex =
+////    static let IsBranchType hex =
 ////        let opcode = Opcode.ofInstructionHex hex
 ////        let intOps = Config.FU.BranchUnit.Instructions
 ////        (intOps |> Array.filter (fun o -> o = opcode.Name)).Length <> 0
 ////
-////    static member IsMemoryType hex =
+////    static let IsMemoryType hex =
 ////        let opcode = Opcode.ofInstructionHex hex
 ////        let intOps = Config.FU.MemoryUnit.Instructions
 ////        (intOps |> Array.filter (fun o -> o = opcode.Name)).Length <> 0
 ////
-////    static member IsFloatingPointType hex =
+////    static let IsFloatingPointType hex =
 ////        let opcode = Opcode.ofInstructionHex hex
 ////        let intOps = Config.FU.FloatingPointUnit.Instructions
 ////        (intOps |> Array.filter (fun o -> o = opcode.Name)).Length <> 0
 ////
-////    static member ofInt i =
+////    static let ofInt i =
 ////        let hex = Convert.int2hex i
 ////        let opcode = Opcode.ofInstructionHex hex
 ////        if opcode.Name = "trap"
@@ -435,7 +436,7 @@ module Patterns =
 ////
 ////
 ////
-////type IRInstruction(hex:string) =
+////type IRInstructionInfo(hex:string) =
 ////    let bin = Convert.hex2bin hex
 ////    let opcodeBits = bin.[0..Constants.nOpcodeBits - 1] 
 ////    let opcode = Opcode.ofBin opcodeBits
@@ -457,7 +458,7 @@ module Patterns =
 ////    | MOVI2FP   // RType
 ////
 ////    
-////    static member ofHex hex =
+////    static let ofHex hex =
 //////        let bin = Convert.hex2bin hex
 //////        let opcodeBits = bin.[0..Constants.nOpcodeBits - 1]
 //////        let opcode = Opcode.ofBin opcodeBits
@@ -476,7 +477,7 @@ module Patterns =
 ////            | "addi" -> Instruction.IType hex //ADDI(IInstruction.IType hex)
 ////            | _ -> failwith ""
 ////
-////    static member addi hex = ()
+////    static let addi hex = ()
 ////        
 ////
 ////    
@@ -495,8 +496,8 @@ module Patterns =
 //////    | MOVFP2I  of IRInstruction  // RType
 //////    | MOVI2FP  of IRInstruction  // RType
 //////
-//////    static member ofHex hex =
-//////        let irInstruction = IRInstruction(hex)
+//////    static let ofHex hex =
+//////        let irInstruction = IRInstructionInfo(hex)
 //////        irInstruction.Opcode.Name |> function
 //////        | "addi" -> Some(ADDI irInstruction)
 //////        | "nop" -> Some(NOP irInstruction)
@@ -513,7 +514,7 @@ module Patterns =
 ////type TrapInstruction =
 ////    | Trap of Instruction
 ////
-////    static member ofHex hex =
+////    static let ofHex hex =
 ////        let bin = Convert.hex2bin hex
 ////        let opcode = Opcode.ofBin (bin.[0..Constants.nOpcodeBits - 1])
 ////        opcode.Name |> function
@@ -523,8 +524,8 @@ module Patterns =
 //////type TrapInstruction =
 //////    | Trap of IRInstruction
 //////
-//////    static member ofHex hex =
-//////        let irInstruction = IRInstruction(hex)
+//////    static let ofHex hex =
+//////        let irInstruction = IRInstructionInfo(hex)
 //////        irInstruction.Opcode.Name |> function
 //////        | "trap" -> Some(Trap irInstruction)
 //////        | _ -> None
@@ -536,8 +537,8 @@ module Patterns =
 ////    | JAL of IRInstruction
 ////    | JALR of IRInstruction
 ////
-////    static member ofHex hex =
-////        let irInstruction = IRInstruction(hex)
+////    static let ofHex hex =
+////        let irInstruction = IRInstructionInfo(hex)
 ////        irInstruction.Opcode.Name |> function
 ////        | "beqz" -> Some(BEQZ irInstruction)
 ////        | "j" -> Some(J irInstruction)
@@ -552,8 +553,8 @@ module Patterns =
 ////    | SW of IRInstruction
 ////    | SF of IRInstruction
 ////
-////    static member ofHex hex =
-////        let irInstruction = IRInstruction(hex)
+////    static let ofHex hex =
+////        let irInstruction = IRInstructionInfo(hex)
 ////        irInstruction.Opcode.Name |> function
 ////        | "lw" -> Some(LW irInstruction)
 ////        | "lf" -> Some(LF irInstruction)
@@ -571,8 +572,8 @@ module Patterns =
 ////    | CVTF2I of IRInstruction
 ////    | CVTI2F of IRInstruction
 ////
-////    static member ofHex hex =
-////        let irInstruction = IRInstruction(hex)
+////    static let ofHex hex =
+////        let irInstruction = IRInstructionInfo(hex)
 ////        irInstruction.Opcode.Name |> function
 ////        | "addf" -> Some(ADDF irInstruction)
 ////        | "subf" -> Some(SUBF irInstruction)
@@ -592,7 +593,7 @@ module Patterns =
 //////    | MemoryInstruction of MemoryInstruction
 //////    | FloatingPointInstruction of FloatingPointInstruction
 ////
-////    static member ofInt instruction =
+////    static let ofInt instruction =
 ////        let hex = Convert.int2hex instruction
 ////
 ////        let isKind (cfg:Config.FU) (i:int) = 
@@ -630,27 +631,27 @@ module Patterns =
 ////
 ////
 ////        
-////        | "trap" -> TrapInstruction(Trap irInstruction)
+////        | "trap" -> TrapInstructionInfo(Trap irInstruction)
 ////        
-////        | "beqz" -> BranchInstruction(BEQZ irInstruction)
-////        | "j" -> BranchInstruction(J irInstruction)
-////        | "jr" -> BranchInstruction(JR irInstruction)
-////        | "jal" -> BranchInstruction(JAL irInstruction)
-////        | "jalr" -> BranchInstruction(JALR irInstruction)
+////        | "beqz" -> BranchInstructionInfo(BEQZ irInstruction)
+////        | "j" -> BranchInstructionInfo(J irInstruction)
+////        | "jr" -> BranchInstructionInfo(JR irInstruction)
+////        | "jal" -> BranchInstructionInfo(JAL irInstruction)
+////        | "jalr" -> BranchInstructionInfo(JALR irInstruction)
 ////        
-////        | "lw" -> MemoryInstruction(LW irInstruction)
-////        | "lf" -> MemoryInstruction(LF irInstruction)
-////        | "sw" -> MemoryInstruction(SW irInstruction)
-////        | "sf" -> MemoryInstruction(SF irInstruction)
+////        | "lw" -> MemoryInstructionInfo(LW irInstruction)
+////        | "lf" -> MemoryInstructionInfo(LF irInstruction)
+////        | "sw" -> MemoryInstructionInfo(SW irInstruction)
+////        | "sf" -> MemoryInstructionInfo(SF irInstruction)
 ////        
-////        | "addf" -> FloatingPointInstruction(ADDF irInstruction)
-////        | "subf" -> FloatingPointInstruction(SUBF irInstruction)
-////        | "multf" -> FloatingPointInstruction(MULTF irInstruction)
-////        | "divf" -> FloatingPointInstruction(DIVF irInstruction)
-////        | "mult" -> FloatingPointInstruction(MULT irInstruction)
-////        | "div" -> FloatingPointInstruction(DIV irInstruction)
-////        | "cvtf2i" -> FloatingPointInstruction(CVTF2I irInstruction)
-////        | "cvti2f" -> FloatingPointInstruction(CVTI2F irInstruction)
+////        | "addf" -> FloatingPointInstructionInfo(ADDF irInstruction)
+////        | "subf" -> FloatingPointInstructionInfo(SUBF irInstruction)
+////        | "multf" -> FloatingPointInstructionInfo(MULTF irInstruction)
+////        | "divf" -> FloatingPointInstructionInfo(DIVF irInstruction)
+////        | "mult" -> FloatingPointInstructionInfo(MULT irInstruction)
+////        | "div" -> FloatingPointInstructionInfo(DIV irInstruction)
+////        | "cvtf2i" -> FloatingPointInstructionInfo(CVTF2I irInstruction)
+////        | "cvti2f" -> FloatingPointInstructionInfo(CVTI2F irInstruction)
 ////        
 ////        | _ -> failwith "failed to create instruction"
 ////
@@ -661,41 +662,41 @@ module Patterns =
 ////    | MemoryInstruction of MemoryInstruction
 ////    | FloatingPointInstruction of FloatingPointInstruction
 ////
-////    static member ofHex hex =
-////        let irInstruction = IRInstruction(hex)
+////    static let ofHex hex =
+////        let irInstruction = IRInstructionInfo(hex)
 ////        irInstruction.Opcode.Name |> function
-////        | "addi" -> IntegerInstruction(ADDI irInstruction)
-////        | "nop" -> IntegerInstruction(NOP irInstruction)
-////        | "add" -> IntegerInstruction(ADD irInstruction)
-////        | "sub" -> IntegerInstruction(SUB irInstruction)
-////        | "and" -> IntegerInstruction(AND irInstruction)
-////        | "or" -> IntegerInstruction(OR irInstruction)
-////        | "xor" -> IntegerInstruction(XOR irInstruction)
-////        | "movf" -> IntegerInstruction(MOVF irInstruction)
-////        | "movfp2i" -> IntegerInstruction(MOVFP2I irInstruction)
-////        | "movi2fp" -> IntegerInstruction(MOVI2FP irInstruction)
+////        | "addi" -> IntegerInstructionInfo(ADDI irInstruction)
+////        | "nop" -> IntegerInstructionInfo(NOP irInstruction)
+////        | "add" -> IntegerInstructionInfo(ADD irInstruction)
+////        | "sub" -> IntegerInstructionInfo(SUB irInstruction)
+////        | "and" -> IntegerInstructionInfo(AND irInstruction)
+////        | "or" -> IntegerInstructionInfo(OR irInstruction)
+////        | "xor" -> IntegerInstructionInfo(XOR irInstruction)
+////        | "movf" -> IntegerInstructionInfo(MOVF irInstruction)
+////        | "movfp2i" -> IntegerInstructionInfo(MOVFP2I irInstruction)
+////        | "movi2fp" -> IntegerInstructionInfo(MOVI2FP irInstruction)
 ////        
-////        | "trap" -> TrapInstruction(Trap irInstruction)
+////        | "trap" -> TrapInstructionInfo(Trap irInstruction)
 ////        
-////        | "beqz" -> BranchInstruction(BEQZ irInstruction)
-////        | "j" -> BranchInstruction(J irInstruction)
-////        | "jr" -> BranchInstruction(JR irInstruction)
-////        | "jal" -> BranchInstruction(JAL irInstruction)
-////        | "jalr" -> BranchInstruction(JALR irInstruction)
+////        | "beqz" -> BranchInstructionInfo(BEQZ irInstruction)
+////        | "j" -> BranchInstructionInfo(J irInstruction)
+////        | "jr" -> BranchInstructionInfo(JR irInstruction)
+////        | "jal" -> BranchInstructionInfo(JAL irInstruction)
+////        | "jalr" -> BranchInstructionInfo(JALR irInstruction)
 ////        
-////        | "lw" -> MemoryInstruction(LW irInstruction)
-////        | "lf" -> MemoryInstruction(LF irInstruction)
-////        | "sw" -> MemoryInstruction(SW irInstruction)
-////        | "sf" -> MemoryInstruction(SF irInstruction)
+////        | "lw" -> MemoryInstructionInfo(LW irInstruction)
+////        | "lf" -> MemoryInstructionInfo(LF irInstruction)
+////        | "sw" -> MemoryInstructionInfo(SW irInstruction)
+////        | "sf" -> MemoryInstructionInfo(SF irInstruction)
 ////        
-////        | "addf" -> FloatingPointInstruction(ADDF irInstruction)
-////        | "subf" -> FloatingPointInstruction(SUBF irInstruction)
-////        | "multf" -> FloatingPointInstruction(MULTF irInstruction)
-////        | "divf" -> FloatingPointInstruction(DIVF irInstruction)
-////        | "mult" -> FloatingPointInstruction(MULT irInstruction)
-////        | "div" -> FloatingPointInstruction(DIV irInstruction)
-////        | "cvtf2i" -> FloatingPointInstruction(CVTF2I irInstruction)
-////        | "cvti2f" -> FloatingPointInstruction(CVTI2F irInstruction)
+////        | "addf" -> FloatingPointInstructionInfo(ADDF irInstruction)
+////        | "subf" -> FloatingPointInstructionInfo(SUBF irInstruction)
+////        | "multf" -> FloatingPointInstructionInfo(MULTF irInstruction)
+////        | "divf" -> FloatingPointInstructionInfo(DIVF irInstruction)
+////        | "mult" -> FloatingPointInstructionInfo(MULT irInstruction)
+////        | "div" -> FloatingPointInstructionInfo(DIV irInstruction)
+////        | "cvtf2i" -> FloatingPointInstructionInfo(CVTF2I irInstruction)
+////        | "cvti2f" -> FloatingPointInstructionInfo(CVTI2F irInstruction)
 ////        
 ////        | _ -> failwith "failed to create instruction"
 ////

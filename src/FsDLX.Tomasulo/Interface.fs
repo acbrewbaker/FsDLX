@@ -94,18 +94,18 @@ type Simulator(input:string, verbose:bool) =
     // to the appropriate unit. If each reservation station in the unit is busy, the issue 
     // fails and is reattempted in the next clock cycle.
     let issue (instruction:int) = 
-        let k = InstructionKind.ofInt instruction
-        let opcode = (Opcode.ofInstructionInt instruction).Name
+        let i = Instruction(instruction)
+        let opcode = i.Info.opcode
 //        printfn "Issuing: %O" opcode
         let stall = 
-            InstructionKind.ofInt instruction |> function
+            i.Info.kind |> function
             | Integer ->
                 printfn "Issuing: %O" opcode
                 funits.IntegerUnit |> Array.iter (fun u -> printfn "%s" (u.Dump()))
                 funits.IntegerUnit |> Array.tryFindIndex (fun u -> not(u.Busy)) |> function
                 | Some u -> 
                     printfn "unit id: %d" u
-                    funits.IntegerUnit.[u].Insert instruction
+                    funits.IntegerUnit.[u].Insert i
                 | _ -> 
                     printfn "stall in int issue"
                     true
@@ -114,7 +114,7 @@ type Simulator(input:string, verbose:bool) =
                 | Some u -> 
                     
                     //true
-                    funits.TrapUnit.[u].Insert instruction |> ignore
+                    funits.TrapUnit.[u].Insert i |> ignore
                     false
                 | _ -> true
             | Branch -> false
