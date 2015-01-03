@@ -263,6 +263,7 @@ type Opcode(op:string, enc:int) =
             | rru when rru = 1 -> true, rru 
             | _ -> false, 2
 
+    
     static let getOpcodeBits (hex:string) =
         let bin = Convert.hex2bin hex
         let isRType, rru = isRType hex
@@ -270,7 +271,14 @@ type Opcode(op:string, enc:int) =
         then    bin.[0..Constants.nOpcodeBits - 1], rru
         else    bin.[26..31], rru
 
-    
+//    static let getTrapFunc (hex:string) =
+//        Convert.hex2bits2int hex  27 31 |> function
+//        | 0 -> "halt"
+//        | 1 -> "dumpgpr"
+//        | 2 -> "dumpfpr"
+//        | 3 -> "dumpstr"
+//        | _ -> failwith "invalid trap function"
+
     member val Name = op with get, set
     member val asInt = enc with get 
     member val asHex = Convert.int2hex enc with get

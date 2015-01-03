@@ -48,39 +48,85 @@ open FsDLX.Common
 //    static member ArrayInit (cfg:Config.FunctionalUnit) = 
 //        Array.init cfg.XUnitCount (fun _ -> FunctionalUnitnit(cfg))
 
+type CurrentInstruction =
+    {
+        mutable Op : Opcode option
+        mutable RSId : int option
+    }
 
+    member ci.Update(rs:RS) =
+        ci.RSId <- rs.TryFindReady()
+        ci.Op <- if ci.RSId.IsSome then rs.[ci.RSId.Value].Op else None       
+
+    override ci.ToString() =
+        sprintf "%O in RS %O" ci.Op ci.RSId 
+
+    static member Init() = { Op = None; RSId = None }
+
+
+type XUnit(maxCycles:int) =
+    member val MaxCycles = maxCycles with get
+    member val RemainingCycles = maxCycles with get, set
+    member val Busy = false with get, set
+    member val CurrentInstruction : int option = None with get, set
+
+    member xu.Cycle() = xu.RemainingCycles <- xu.RemainingCycles - 1
+
+    member xu.Update(rs:RS) = 
+        let doCompute = ref false
+        xu.CurrentInstruction <- rs.TryFindReady()
+        (xu.Busy, xu.CurrentInstruction) |> function
+        | true, Some i ->
+            if xu.RemainingCycles > 0 then xu.Cycle()
+            if  xu.RemainingCycles = 0 &&
+                not(rs.[i].ResultReady)
+            then
+                doCompute := true
+                rs.[i].ResultReady <- true
+                xu.Busy <- false
+        | _, None ->
+            xu.CurrentInstruction <- rs.TryFindReady()
+            xu.Busy <- true
+            if      xu.RemainingCycles = 0
+            then    xu.RemainingCycles  <- xu.MaxCycles - 1
+            else    xu.Cycle()
+        
+        | busy, ins -> failwith (sprintf "busy: %O, ins: %O" busy ins)
+        !doCompute
+            
+    override xu.ToString() =
+        sprintf "Busy? %O, RemainingCycles? %O, CurrentInstruction? %O"
+            xu.Busy
+            xu.RemainingCycles
+            xu.CurrentInstruction 
+
+    static member TryFindNotBusy (xunits:XUnit[]) =
+        xunits |> Array.tryFindIndex (fun xu -> not(xu.Busy))
 
 [<AbstractClass>]
-type FunctionalUnit (maxCycles:int, rsRef:RSGroupRef) as fu =
-//    let reservationStations = (fu, rsRef) |> function
-//        | :? IntegerUnit, IntegerUnit rs -> rs
-//        | :? TrapUnit, TrapUnit rs -> rs
-//        | :? BranchUnit, BranchUnit rs -> rs
-//        | :? MemoryUnit, MemoryUnit rs -> rs
-//        | :? FloatingPointUnit, FloatingPointUnit rs -> rs
-//        | _ -> failwith "invalid reservation station group"
+type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
+    let xunits = Array.init cfg.unitCount (fun _ -> XUnit(cfg.maxCycles))
 
     let reservationStations = fu |> function
         | :? IntegerUnit -> RS.IntegerUnit rsRef
         | :? TrapUnit -> RS.TrapUnit rsRef
-        | :? BranchUnit -> RS.BranchUnit rsRef
-        | :? MemoryUnit -> RS.MemoryUnit rsRef
-        | :? FloatingPointUnit -> RS.FloatingPointUnit rsRef
+//        | :? BranchUnit -> RS.BranchUnit rsRef
+//        | :? MemoryUnit -> RS.MemoryUnit rsRef
+//        | :? FloatingPointUnit -> RS.FloatingPointUnit rsRef
         | _ -> failwith "invalid reservation station group"
 
+
     member val RS = reservationStations with get
+    member val XUnits = xunits with get
     
-    member val MaxCycles        = maxCycles with get
-    member val RemainingCycles  = maxCycles with get, set
-    member val Busy             = false with get, set
-       
-    member val CurrentInstruction : int option = None with get, set
 
 //    member fu.FindEmptyStation() =
 //        !fu.RS |> Array.tryFindIndex (fun r -> 
 //            //printfn "tryfind:  %O" r
 //            r.IsEmpty())
     
+    member fu.IsBusy() = fu.XUnits |> Array.forall (fun xunit -> xunit.Busy)
+
     member fu.Finished() = fu.RS.Contents |> Array.forall (fun r -> not r.Busy)
 //        let finished (rs:RSGroupRef) = !rs |> Array.forall (fun r -> not r.Busy)
 //        RS.ApplyFunction fu.RS finished
@@ -92,30 +138,13 @@ type FunctionalUnit (maxCycles:int, rsRef:RSGroupRef) as fu =
         | _ ->
             fu.RS.Contents |> Array.iter (fun r -> r.Clear()) //ReservationStation.Clear
         
+    
 
-
-    member fu.Execute() =
+    member fu.Execute() = fu.XUnits |> Array.iter (fun xunit -> 
+        if      xunit.Update(fu.RS) 
+        then    fu.Compute xunit.CurrentInstruction.Value)
+            
         
-        //let mutable halt = false
-        if not(fu.Busy) then
-            fu.RS.TryFindReady() |> function
-            | Some r ->
-                fu.Busy <- true
-                fu.RemainingCycles <- fu.RemainingCycles - 1
-            | _ -> ()
-        
-        else
-            if fu.RemainingCycles > 0 
-            then fu.RemainingCycles <- fu.RemainingCycles - 1
-            (fu.RemainingCycles, fu.RS.TryFindReady()) |> function
-            | 0, Some r ->
-                if not(fu.RS.[r].ResultReady) then
-                    fu.Compute r
-                    fu.RS.[r].ResultReady <- true
-                    fu.Busy <- false
-            | _ -> ()
-        
-        //false
 
 
     member fu.Write() =
@@ -128,11 +157,7 @@ type FunctionalUnit (maxCycles:int, rsRef:RSGroupRef) as fu =
             Some(cdb)
         | None -> None
 
-    member fu.Dump() =
-        sprintf "Busy? %O, RemainingCycles? %O, CurrentInstruction? %O"
-            fu.Busy
-            fu.RemainingCycles
-            fu.CurrentInstruction 
+    member fu.Dump() = fu.XUnits |> Array.map (sprintf "%O\n") |> Array.reduce (+) 
 
     override fu.ToString() =
         //sprintf "MaxCycles: %d; Remaining Cycles: %d; Busy: %A" fu.MaxCycles fu.RemainingCycles fu.Busy
@@ -141,9 +166,9 @@ type FunctionalUnit (maxCycles:int, rsRef:RSGroupRef) as fu =
                 (   fu |> function
                     | :? IntegerUnit -> "INT"
                     | :? TrapUnit -> "TRAP"
-                    | :? BranchUnit -> "BRANCH"
-                    | :? MemoryUnit -> "MEM"
-                    | :? FloatingPointUnit -> "FP"
+//                    | :? BranchUnit -> "BRANCH"
+//                    | :? MemoryUnit -> "MEM"
+//                    | :? FloatingPointUnit -> "FP"
                     | _ -> "FunctionalUnit")
 //        let s2 = 
 //            [for r in fu.RS.Contents do
@@ -187,12 +212,11 @@ type FunctionalUnit (maxCycles:int, rsRef:RSGroupRef) as fu =
 ////                Array.empty<string>
         
 
-and IntegerUnit private (maxCycles, rsRef) =
-    inherit FunctionalUnit(maxCycles, rsRef)
+and IntegerUnit private (cfg, rsRef) =
+    inherit FunctionalUnit(cfg, rsRef)
     
     static let cfg = Config.FunctionalUnit.IntegerUnit
-    static let instance rsRef =
-        Array.init cfg.unitCount (fun _ -> IntegerUnit(cfg.maxCycles, rsRef))
+    static let instance rsRef = IntegerUnit(cfg, rsRef)
 
 //    override iu.Instructions = 
 //        [   "addi",     Instruction.ADDI
@@ -220,17 +244,14 @@ and IntegerUnit private (maxCycles, rsRef) =
 
         RS.TryFindNotBusy() |> function
         | Some r -> 
-            //RS.[r].Busy <- true
-            
-            
+                        
             //printfn "Opcode: %O" opcode
             (rd, rs, rt, imm) |> function
                 | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.A(a,b) -> 
                     //printfn "case1.0"
-                    printfn "Opcode: %O" opcode
+                    //printfn "Opcode: %O" opcode
+                    RS.[r].Busy <- true
                     RS.[r].Op <- Some opcode
-//                    RS.[r].Busy <- true
-//                    RS.[r].Op <- Some opcode
                     let Regs(i)= GPR.GetInstance.[i].Contents
                     let RegisterStat(i) = GPR.GetInstance.[i]
                     
@@ -247,32 +268,8 @@ and IntegerUnit private (maxCycles, rsRef) =
                     then RS.[r].Qk <- RegisterStat(rt).Qi
                     else RS.[r].Vk <- Regs(rt); RS.[r].Qk <- None
 
-                    RS.[r].Busy <- true
+                    //RS.[r].Busy <- true
                     RegisterStat(rd).Qi <- Some(RS.[r].Name)
-
-                    //printfn "Insert to RS(%d)\n%O" r (RS.[r])
-//                    printfn "has content? %A" (RegisterFile.HasContent (gpr.Regs()))
-//                    printfn "content: %O" (gpr)
-//                    if      gpr.[rs].Qi.IsSome
-//                    then    RS.[r].Vj <- gpr.[rs].Contents
-//                    else    RS.[r].Qj <- gpr.[rs].Qi
-
-//                    if      gpr.[rt].Qi.IsSome
-//                    then    RS.[r].Qk <- gpr.[rt].Qi
-//                    else    RS.[r].Vk <- gpr.[rt].Contents; RS.[r].Qk <- None
-
-                    //printfn "case1.1"
-//                    if      gpr.[rs].Qi.IsSome
-//                    then    RS.[r].Qj <- gpr.[rs].Qi
-//                    else    RS.[r].Vj <- gpr.[rs].Contents; RS.[r].Qj <- None
-//
-//                    if      gpr.[rt].Qi.IsSome
-//                    then    RS.[r].Qk <- gpr.[rt].Qi
-//                    else    RS.[r].Vk <- gpr.[rt].Contents; RS.[r].Qk <- None
-//                    
-                    //printfn "case1.2"
-                    //gpr.[rt].Qi <- Some("IntUnit" + string r)
-                    //printfn "%A" (gpr.[rt].Qi.ToString())
 
                 | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.GPR rt, Imm.NONE ->
                     //printfn "case2"
@@ -300,7 +297,7 @@ and IntegerUnit private (maxCycles, rsRef) =
         | None -> true
 
     override iu.Compute r =
-        printfn "int unit compute"
+        //printfn "int unit compute"
         let RS = iu.RS
         let vj, vk, a =
             RS.[r].Vj,
@@ -322,19 +319,18 @@ and IntegerUnit private (maxCycles, rsRef) =
                 | _ -> failwith "invalid integer unit instruction"
             | None -> failwith "tried to compute with no opcode"
         //printfn "RStation in int.compute:\n%s" (RS.[r].Dump())
-        printfn "RStation in int.compute:\n%O" (RS.[r])
+        //printfn "RStation in int.compute:\n%O" (RS.[r])
 //        false
 
     static member GetInstance = instance
 
 
 
-and TrapUnit private (maxCycles, rsRef) =
-    inherit FunctionalUnit(maxCycles, rsRef)
+and TrapUnit private (cfg, rsRef) =
+    inherit FunctionalUnit(cfg, rsRef)
 
     static let cfg = Config.FunctionalUnit.TrapUnit
-    static let instance rsRef = 
-        Array.init cfg.unitCount (fun _ -> TrapUnit(cfg.maxCycles, rsRef))
+    static let instance rsRef = TrapUnit(cfg, rsRef) 
 
 //    override tu.Instructions =
 //        [   "trap0", Instruction.TRAP0
@@ -413,81 +409,81 @@ and TrapUnit private (maxCycles, rsRef) =
 
     static member GetInstance = instance
     
-and BranchUnit private (maxCycles, rsRef) =
-    inherit FunctionalUnit(maxCycles, rsRef)
-
-    static let cfg = Config.FunctionalUnit.BranchUnit
-    static let instance rsRef = 
-        Array.init cfg.unitCount (fun _ -> BranchUnit(cfg.maxCycles, rsRef))
-
-//    override bu.Instructions =
-//        [   "beqz", Instruction.BEQZ
-//            "j",    Instruction.J
-//            "jr",   Instruction.JR
-//            "jal",  Instruction.JAL
-//            "jalr", Instruction.JALR    ] |> Map.ofList
-
-    override bu.Insert i = false
-
-    override bu.Compute r = ()
-
-    static member GetInstance rsRef = instance rsRef
-
-and MemoryUnit private (maxCycles, rsRef) =
-    inherit FunctionalUnit(maxCycles, rsRef)
-
-    static let cfg = Config.FunctionalUnit.MemoryUnit
-    static let instance rsRef = 
-        Array.init cfg.unitCount (fun _ -> MemoryUnit(cfg.maxCycles, rsRef))
-
-    let mutable xQueue = List.empty<int>
-    let mutable wQueue = List.empty<int>
-
-//    member val LoadBuffer   = ReservationStation.ArrayInit Config.FunctionalUnit.MemoryUnit with get, set
-//    member val StoreBuffer  = ReservationStation.ArrayInit Config.FunctionalUnit.MemoryUnit with get, set
+//and BranchUnit private (maxCycles, rsRef) =
+//    inherit FunctionalUnit(maxCycles, rsRef)
 //
-//    override mu.Instructions =
-//        [   "lw",   Instruction.LW
-//            "lf",   Instruction.LF
-//            "sw",   Instruction.SW
-//            "sf",   Instruction.SF  ] |> Map.ofList
-
-    override mu.Insert i = false
-
-    override mu.Compute r = ()
-
-    static member GetInstance = instance
-    
-and FloatingPointUnit private (maxCycles, rsRef) =
-    inherit FunctionalUnit(maxCycles, rsRef)
-
-    static let cfg = Config.FunctionalUnit.FloatingPointUnit
-    static let instance rsRef = 
-        Array.init cfg.unitCount (fun _ -> FloatingPointUnit(cfg.maxCycles, rsRef))
-
-//    override fpu.Instructions =
-//        [   "addf",     Instruction.ADDF
-//            "subf",     Instruction.SUBF
-//            "multf",    Instruction.MULTF
-//            "divf",     Instruction.DIVF
-//            "mult",     Instruction.MULT
-//            "div",      Instruction.DIV
-//            "cvtf2i",   Instruction.CVTF2I
-//            "cvti2f",   Instruction.CVTI2F  ] |> Map.ofList
-
-    override fpu.Insert i = false
-    override fpu.Compute r = ()
-
-    static member GetInstance = instance
+//    static let cfg = Config.FunctionalUnit.BranchUnit
+//    static let instance rsRef = 
+//        Array.init cfg.unitCount (fun _ -> BranchUnit(cfg.maxCycles, rsRef))
+//
+////    override bu.Instructions =
+////        [   "beqz", Instruction.BEQZ
+////            "j",    Instruction.J
+////            "jr",   Instruction.JR
+////            "jal",  Instruction.JAL
+////            "jalr", Instruction.JALR    ] |> Map.ofList
+//
+//    override bu.Insert i = false
+//
+//    override bu.Compute r = ()
+//
+//    static member GetInstance rsRef = instance rsRef
+//
+//and MemoryUnit private (maxCycles, rsRef) =
+//    inherit FunctionalUnit(maxCycles, rsRef)
+//
+//    static let cfg = Config.FunctionalUnit.MemoryUnit
+//    static let instance rsRef = 
+//        Array.init cfg.unitCount (fun _ -> MemoryUnit(cfg.maxCycles, rsRef))
+//
+//    let mutable xQueue = List.empty<int>
+//    let mutable wQueue = List.empty<int>
+//
+////    member val LoadBuffer   = ReservationStation.ArrayInit Config.FunctionalUnit.MemoryUnit with get, set
+////    member val StoreBuffer  = ReservationStation.ArrayInit Config.FunctionalUnit.MemoryUnit with get, set
+////
+////    override mu.Instructions =
+////        [   "lw",   Instruction.LW
+////            "lf",   Instruction.LF
+////            "sw",   Instruction.SW
+////            "sf",   Instruction.SF  ] |> Map.ofList
+//
+//    override mu.Insert i = false
+//
+//    override mu.Compute r = ()
+//
+//    static member GetInstance = instance
+//    
+//and FloatingPointUnit private (maxCycles, rsRef) =
+//    inherit FunctionalUnit(maxCycles, rsRef)
+//
+//    static let cfg = Config.FunctionalUnit.FloatingPointUnit
+//    static let instance rsRef = 
+//        Array.init cfg.unitCount (fun _ -> FloatingPointUnit(cfg.maxCycles, rsRef))
+//
+////    override fpu.Instructions =
+////        [   "addf",     Instruction.ADDF
+////            "subf",     Instruction.SUBF
+////            "multf",    Instruction.MULTF
+////            "divf",     Instruction.DIVF
+////            "mult",     Instruction.MULT
+////            "div",      Instruction.DIV
+////            "cvtf2i",   Instruction.CVTF2I
+////            "cvti2f",   Instruction.CVTI2F  ] |> Map.ofList
+//
+//    override fpu.Insert i = false
+//    override fpu.Compute r = ()
+//
+//    static member GetInstance = instance
 
     
 and FunctionalUnits() =
-    let iuCfg, tuCfg, buCfg, muCfg, fpuCfg = 
+    let iuCfg, tuCfg = //, buCfg, muCfg, fpuCfg = 
         Config.FunctionalUnit.IntegerUnit,
-        Config.FunctionalUnit.TrapUnit,
-        Config.FunctionalUnit.BranchUnit,
-        Config.FunctionalUnit.MemoryUnit,
-        Config.FunctionalUnit.FloatingPointUnit
+        Config.FunctionalUnit.TrapUnit
+//        Config.FunctionalUnit.BranchUnit,
+//        Config.FunctionalUnit.MemoryUnit,
+//        Config.FunctionalUnit.FloatingPointUnit
     
 //    let iuRS, tuRS, buRS, muRS, fpuRS =
 //        RS.IntegerUnit(ReservationStation.ArrayInit iuCfg |> ref),
@@ -498,34 +494,27 @@ and FunctionalUnits() =
 
     let p x = printfn "%O" x; x
 
-    let iuRS, tuRS, buRS, muRS, fpuRS =
+    let iuRS, tuRS = //, buRS, muRS, fpuRS =
         ReservationStation.ArrayInit iuCfg |> ref,
-        ReservationStation.ArrayInit tuCfg |> ref,
-        ReservationStation.ArrayInit buCfg |> ref,
-        ReservationStation.ArrayInit muCfg |> ref,
-        ReservationStation.ArrayInit fpuCfg |> ref
+        ReservationStation.ArrayInit tuCfg |> ref
+//        ReservationStation.ArrayInit buCfg |> ref,
+//        ReservationStation.ArrayInit muCfg |> ref,
+//        ReservationStation.ArrayInit fpuCfg |> ref
 
-    let iu, tu, bu, mu, fpu =
+    let iu, tu = //, bu, mu, fpu =
         //!iuRS |> Array.iter (printfn "%O")
         IntegerUnit.GetInstance iuRS,
-        TrapUnit.GetInstance tuRS,
-        BranchUnit.GetInstance buRS,
-        MemoryUnit.GetInstance muRS,
-        FloatingPointUnit.GetInstance fpuRS
+        TrapUnit.GetInstance tuRS
+//        BranchUnit.GetInstance buRS,
+//        MemoryUnit.GetInstance muRS,
+//        FloatingPointUnit.GetInstance fpuRS
 
 
 
     let allfu =
-        //printfn "iu, tu, bu, mu, fpu length ==> %A, %A, %A, %A, %A" (iu.Length) (tu.Length) (bu.Length) (mu.Length) (fpu.Length)
-//        printfn "iu ==> %A" iu
-        let cast units = units |> Array.map (fun u -> u :> FunctionalUnit)
-        let iu, tu, bu, mu, fpu =
-            cast iu,
-            cast tu,
-            cast bu,
-            cast mu,
-            cast fpu
-        [| iu; tu; bu; mu; fpu |] |> Array.concat //|> p
+        let cast u = u :> FunctionalUnit
+        let iu, tu = cast iu, cast tu
+        [| iu; tu |] 
 
     let allrs = 
         [| 
@@ -540,9 +529,9 @@ and FunctionalUnits() =
     member val IntegerUnitReservationStations = !iuRS with get
     member val TrapUnit = tu with get
     member val TrapUnitReservationStations = !tuRS with get
-    member val BranchUnit = bu with get
-    member val MemoryUnit = mu with get
-    member val FloatingPointUnit = fpu with get
+//    member val BranchUnit = bu with get
+//    member val MemoryUnit = mu with get
+//    member val FloatingPointUnit = fpu with get
 
     member val All = allfu with get
 

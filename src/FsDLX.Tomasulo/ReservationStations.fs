@@ -9,16 +9,16 @@ and RSGroupRef = RSGroup ref
 and RS =
     | IntegerUnit of RSGroupRef
     | TrapUnit of RSGroupRef
-    | BranchUnit of RSGroupRef
-    | MemoryUnit of RSGroupRef
-    | FloatingPointUnit of RSGroupRef
+//    | BranchUnit of RSGroupRef
+//    | MemoryUnit of RSGroupRef
+//    | FloatingPointUnit of RSGroupRef
 
     static member ApplyFunction (f:RSGroupRef -> 'T) = function
         | IntegerUnit rs -> f rs
         | TrapUnit rs -> f rs
-        | BranchUnit rs -> f rs
-        | MemoryUnit rs -> f rs
-        | FloatingPointUnit rs -> f rs
+//        | BranchUnit rs -> f rs
+//        | MemoryUnit rs -> f rs
+//        | FloatingPointUnit rs -> f rs
 
     member rs.Contents = rs |> RS.ApplyFunction (!)
 
@@ -114,7 +114,7 @@ and ReservationStation =
     member rs.ClearIfResultWritten() = if rs.ResultWritten then rs.Clear()
 
     member rs.IsReady() =
-        rs.Busy                 &&
+        //rs.Busy                 &&
         rs.Qj.IsNone            &&
         rs.Qk.IsNone            &&
         not(rs.ResultReady)

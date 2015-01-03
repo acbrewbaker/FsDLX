@@ -16,7 +16,7 @@ open FsDLX.Common
 // and used to initialize the reservation station.  In this way, it is possible to write 
 // issuing code that can be placed in the FUContainer class and used to issue any instruction.  For example, the fields of the Instruction class could be:
 type Instruction(i:int) =
-    let info : InstructionInfo = InstructionInfo.ofInt i
+    let info : InstructionInfo = InstructionInfo.ofInstructionInt i
     member val Int = i with get
     member val Info = info with get
     member val rd = info.rd with get
@@ -24,9 +24,11 @@ type Instruction(i:int) =
     member val rt = info.rt with get
     member val imm = info.imm with get
 
+    new(hex:string) = Instruction(Convert.hex2int hex)
+
 
 and InstructionInfo(kind:InstructionKind, opcode:string, funCode:int, rd:DstReg, rs:S1Reg, rt:S2Reg, imm:Imm) =
-
+    
     static let threeGpr kind opcode = InstructionInfo(kind, opcode, 0, DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11, Imm.NONE)
     static let threeFpr kind opcode = InstructionInfo(kind, opcode, 0, DstReg.FPR 16, S1Reg.FPR 6, S2Reg.FPR 11, Imm.NONE)
 
@@ -43,10 +45,10 @@ and InstructionInfo(kind:InstructionKind, opcode:string, funCode:int, rd:DstReg,
     static let MOVI2FP = InstructionInfo(Integer, "movi2fp", 0, DstReg.FPR 16, S1Reg.GPR 6, S2Reg.NONE, Imm.NONE)
     
     // TrapUnit instructions
-    static let HALT = InstructionInfo(Trap, "halt", 0, DstReg.NONE, S1Reg.GPR 6, S2Reg.NONE, Imm.NONE)
-    static let DUMPGPR = InstructionInfo(Trap, "dumpgpr", 1, DstReg.NONE, S1Reg.GPR 6, S2Reg.NONE, Imm.NONE)
-    static let DUMPFPR = InstructionInfo(Trap, "dumpfpr", 2, DstReg.NONE, S1Reg.FPR 6, S2Reg.NONE, Imm.NONE)
-    static let DUMPSTR = InstructionInfo(Trap, "dumpstr", 3, DstReg.NONE, S1Reg.GPR 6, S2Reg.NONE, Imm.NONE)
+    static let HALT = InstructionInfo(Trap, "trap", 0, DstReg.NONE, S1Reg.GPR 6, S2Reg.NONE, Imm.NONE)
+    static let DUMPGPR = InstructionInfo(Trap, "trap", 1, DstReg.NONE, S1Reg.GPR 6, S2Reg.NONE, Imm.NONE)
+    static let DUMPFPR = InstructionInfo(Trap, "trap", 2, DstReg.NONE, S1Reg.FPR 6, S2Reg.NONE, Imm.NONE)
+    static let DUMPSTR = InstructionInfo(Trap, "trap", 3, DstReg.NONE, S1Reg.GPR 6, S2Reg.NONE, Imm.NONE)
 
     // BranchUnit instructions
     static let BEQZ = InstructionInfo(Branch, "beqz", 0, DstReg.NONE, S1Reg.GPR 6, S2Reg.NONE, Imm.A(16, 31))
@@ -78,47 +80,51 @@ and InstructionInfo(kind:InstructionKind, opcode:string, funCode:int, rd:DstReg,
     member val rs = rs with get
     member val rt = rt with get
     member val imm = imm with get
-    
-    static member ofInt = Opcode.ofInstructionInt >> InstructionInfo.ofOpcode
 
-    static member ofOpcode(opcode:Opcode) = opcode.Name |> function
-        | "addi" -> ADDI
-        | "nop" -> NOP
-        | "add" -> ADD
-        | "sub" -> SUB
-        | "and" -> AND
-        | "or" -> OR
-        | "xor" -> XOR
-        | "movf" -> MOVF
-        | "movfp2i" -> MOVFP2I
-        | "movi2fp" -> MOVI2FP
+    static member ofInstructionInt(i:int) =
+        let opcode = Opcode.ofInstructionInt i
+        let funcCode = 
+            if      opcode.Name = "trap" 
+            then    Convert.int2bits2int i 27 31
+            else    -1
+        (opcode.Name, funcCode) |> function
+        | "addi", _ -> ADDI
+        | "nop", _ -> NOP
+        | "add", _ -> ADD
+        | "sub", _ -> SUB
+        | "and", _ -> AND
+        | "or", _ -> OR
+        | "xor", _ -> XOR
+        | "movf", _ -> MOVF
+        | "movfp2i", _ -> MOVFP2I
+        | "movi2fp", _ -> MOVI2FP
 
-        | "halt" -> HALT
-        | "dumpgpr" -> DUMPGPR
-        | "dumpfpr" -> DUMPFPR
-        | "dumpstr" -> DUMPSTR
+        | "trap", 0 -> HALT
+        | "trap", 1 -> DUMPGPR
+        | "trap", 2 -> DUMPFPR
+        | "trap", 3 -> DUMPSTR
         
-        | "beqz" -> BEQZ
-        | "j" -> J
-        | "jr" -> JR
-        | "jal" -> JAL
-        | "jalr" -> JALR
+        | "beqz", _ -> BEQZ
+        | "j", _ -> J
+        | "jr", _ -> JR
+        | "jal", _ -> JAL
+        | "jalr", _ -> JALR
         
-        | "lw" -> LW
-        | "lf" -> LF
-        | "sw" -> SW
-        | "sf" -> SF
+        | "lw", _ -> LW
+        | "lf", _ -> LF
+        | "sw", _ -> SW
+        | "sf", _ -> SF
         
-        | "addf" -> ADDF
-        | "subf" -> SUBF
-        | "multf" -> MULTF
-        | "divf" -> DIVF
-        | "mult" -> MULT
-        | "div" -> DIV
-        | "cvtf2i" -> CVTF2I
-        | "cvti2f" -> CVTI2F
+        | "addf", _ -> ADDF
+        | "subf", _ -> SUBF
+        | "multf", _ -> MULTF
+        | "divf", _ -> DIVF
+        | "mult", _ -> MULT
+        | "div", _ -> DIV
+        | "cvtf2i", _ -> CVTF2I
+        | "cvti2f", _ -> CVTI2F
         
-        | _ -> failwith "opcode not supported"
+        | op, _ -> failwith (sprintf "opcode <%s> not supported" op)
 
 and InstructionKind = | Integer | Trap | Branch | Memory | FloatingPoint
 and DstReg  = | NONE | GPR of int | FPR of int

@@ -66,6 +66,7 @@
     <Compile Include="Common.fs" />
     <Compile Include="Registers.fs" />
     <Compile Include="Instructions.fs" />
+    <Compile Include="ReservationStations.fs" />
     <Compile Include="FunctionalUnits.fs" />
     <Compile Include="Memory.fs" />
     <Compile Include="Interface.fs" />
