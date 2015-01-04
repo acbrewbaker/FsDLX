@@ -84,14 +84,14 @@ type XUnit(maxCycles:int) =
                 doCompute := true
                 rs.[i].ResultReady <- true
                 xu.Busy <- false
-        | _, None ->
-            xu.CurrentInstruction <- rs.TryFindReady()
+        | _, _ ->
+            //xu.CurrentInstruction <- Some i
             xu.Busy <- true
             if      xu.RemainingCycles = 0
             then    xu.RemainingCycles  <- xu.MaxCycles - 1
             else    xu.Cycle()
         
-        | busy, ins -> failwith (sprintf "busy: %O, ins: %O" busy ins)
+        //| busy, ins -> failwith (sprintf "busy: %O, ins: %O" busy ins)
         !doCompute
             
     override xu.ToString() =
@@ -237,64 +237,42 @@ and IntegerUnit private (cfg, rsRef) =
         let opcode = i.Info.opcode
         let rd, rs, rt, imm = i.rd, i.rs, i.rt, i.imm
         
-        let regId startBit = Convert.int2bits2reg i.Int startBit
-        let immVal a b = Convert.int2bits2int i.Int a b
+        let reg s = Convert.int2bits2reg i.Int s
+        let immval (a,b) = Convert.int2bits2int i.Int a b
 
-        let p x = printfn "%A" x; x
+        let RS(r) = iu.RS.[r]
 
-        RS.TryFindNotBusy() |> function
-        | Some r -> 
-                        
-            //printfn "Opcode: %O" opcode
-            (rd, rs, rt, imm) |> function
-                | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.A(a,b) -> 
-                    //printfn "case1.0"
-                    //printfn "Opcode: %O" opcode
-                    RS.[r].Busy <- true
-                    RS.[r].Op <- Some opcode
-                    let Regs(i)= GPR.GetInstance.[i].Contents
-                    let RegisterStat(i) = GPR.GetInstance.[i]
-                    
-                    let rd, rs, rt = regId rd, regId rs, immVal a b
+        let Regs = function
+            | OperandReg.NONE -> Register.Init(0).Contents
+            | OperandReg.GPR s -> GPR.GetInstance.[reg s].Contents
+            | OperandReg.FPR s -> FPR.GetInstance.[reg s].Contents
 
-                    //printfn "rd, rs, rt, imm ==> %A, %A, %A, %A" rd rs rt imm
-                    RS.[r].A <- Some rt
+        let RegisterStat = function
+            | OperandReg.NONE -> Register.Init(0)
+            | OperandReg.GPR s -> GPR.GetInstance.[reg s]
+            | OperandReg.FPR s -> FPR.GetInstance.[reg s]  
 
-                    if RegisterStat(rs).Qi.IsSome
-                    then RS.[r].Qj <- RegisterStat(rs).Qi
-                    else RS.[r].Vj <- Regs(rs); RS.[r].Qj <- None
+        iu.RS.TryFindNotBusy() |> function
+        | Some r ->
+            if      RegisterStat(rs).Qi.IsSome 
+            then    RS(r).Qj <- RegisterStat(rs).Qi
+            else    RS(r).Vj <- Regs(rs); RS(r).Qj <- None
+            
+            if      RegisterStat(rt).Qi.IsSome
+            then    RS(r).Qk <- RegisterStat(rt).Qi
+            else    RS(r).Vk <- Regs(rt); RS(r).Qk <- None
 
-                    if RegisterStat(rt).Qi.IsSome
-                    then RS.[r].Qk <- RegisterStat(rt).Qi
-                    else RS.[r].Vk <- Regs(rt); RS.[r].Qk <- None
+            RS(r).Op <- Some opcode
+            RS(r).Busy <- true
+            RegisterStat(rd).Qi <- Some(cfg.rsPrefix + string r)
 
-                    //RS.[r].Busy <- true
-                    RegisterStat(rd).Qi <- Some(RS.[r].Name)
+            RS(r).A <- imm |> function
+            | Imm.NONE -> None
+            | Imm.A imm -> Some(immval imm)
 
-                | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.GPR rt, Imm.NONE ->
-                    //printfn "case2"
-                    let gpr = GPR.GetInstance
-
-                    let rd, rs, rt = regId rd, regId rs, regId rt
-                    
-                    if      gpr.[rs].Qi.IsSome
-                    then    RS.[r].Qj <- gpr.[rs].Qi
-                    else    RS.[r].Vj <- gpr.[rs].Contents; RS.[r].Qj <- None
-
-                    if      gpr.[rt].Qi.IsSome
-                    then    RS.[r].Qk <- gpr.[rt].Qi
-                    else    RS.[r].Vk <- gpr.[rt].Contents; RS.[r].Qk <- None
-
-                | DstReg.FPR rd, S1Reg.FPR rs, S2Reg.NONE, Imm.NONE -> ()
-
-                | DstReg.GPR rd, S1Reg.FPR rs, S2Reg.NONE, Imm.NONE -> ()
-
-                | DstReg.FPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.NONE -> ()
-                
-                | _ -> failwith "didnt match any int instruction case"
-                
             false
-        | None -> true
+        | _ -> true
+
 
     override iu.Compute r =
         //printfn "int unit compute"

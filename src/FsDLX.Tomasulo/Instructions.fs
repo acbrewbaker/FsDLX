@@ -4,6 +4,7 @@ namespace FsDLX.Tomasulo
 open System.Collections
 open FsDLX.Common
 
+
 // In addition, it is helpful to create an Instruction class that contains information 
 // that can be used to issue an instruction to a reservation station and set the Qi field 
 // of a register in the register file.  The Vj (Qj) and Vk (Qk) fields are initialized via 
@@ -15,14 +16,26 @@ open FsDLX.Common
 // instruction. The fields of an instruction object can be accessed to get this information 
 // and used to initialize the reservation station.  In this way, it is possible to write 
 // issuing code that can be placed in the FUContainer class and used to issue any instruction.  For example, the fields of the Instruction class could be:
+
 type Instruction(i:int) =
     let info : InstructionInfo = InstructionInfo.ofInstructionInt i
+    let opcode = info.opcode
+
+    let reg = function
+        | OperandReg.NONE -> None
+        | OperandReg.GPR s -> GPR.GetInstance.[Convert.int2bits2reg i s] |> Some
+        | OperandReg.FPR s -> FPR.GetInstance.[Convert.int2bits2reg i s] |> Some
+
+    let immval = function
+        | Imm.NONE -> None
+        | Imm.A imm -> imm ||> Convert.int2bits2int i |> Some
+
     member val Int = i with get
     member val Info = info with get
-    member val rd = info.rd with get
-    member val rs = info.rs with get
-    member val rt = info.rt with get
-    member val imm = info.imm with get
+    member val rd = info.rd //|> reg
+    member val rs = info.rs //|> reg
+    member val rt = info.rt //|> reg
+    member val imm = info.imm //|> immval
 
     new(hex:string) = Instruction(Convert.hex2int hex)
 
@@ -76,10 +89,10 @@ and InstructionInfo(kind:InstructionKind, opcode:string, funCode:int, rd:DstReg,
     member val kind = kind with get
     member val opcode = Opcode.ofName opcode with get
     member val funCode = funCode with get
-    member val rd : DstReg = rd 
-    member val rs = rs with get
-    member val rt = rt with get
-    member val imm = imm with get
+    member val rd : DstReg = rd with get
+    member val rs : S1Reg = rs with get
+    member val rt : S2Reg = rt with get
+    member val imm : Imm = imm with get
 
     static member ofInstructionInt(i:int) =
         let opcode = Opcode.ofInstructionInt i
@@ -127,10 +140,19 @@ and InstructionInfo(kind:InstructionKind, opcode:string, funCode:int, rd:DstReg,
         | op, _ -> failwith (sprintf "opcode <%s> not supported" op)
 
 and InstructionKind = | Integer | Trap | Branch | Memory | FloatingPoint
-and DstReg  = | NONE | GPR of int | FPR of int
-and S1Reg   = | NONE | GPR of int | FPR of int
-and S2Reg   = | NONE | GPR of int | FPR of int
-and Imm     = | NONE | A of int * int
+and OperandReg = | NONE | GPR of int | FPR of int
+and DstReg  = OperandReg
+and S1Reg   = OperandReg //| NONE | GPR of int | FPR of int
+and S2Reg   = OperandReg //| NONE | GPR of int | FPR of int
+and Imm     = | NONE  | A of (int * int)
+
+
+//    let (|ADDI|_|) = function
+//        | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.A imm ->
+//            fun i ->
+//                let rd, rs, imm = reg i rd, reg i rs, imm i imm
+//                let Regs(i) = GPR.GetInstance.[i]
+//                let RegisterStat(i) = GPR.GetInstance.[i].Qi
 
 //    static let ofHex hex =
 //        let opcode = Opcode.ofInstructionHex hex

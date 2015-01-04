@@ -76,7 +76,7 @@ and RS =
     override rs.ToString() =
         let onlyBusy = rs.Contents |> Array.filter (fun r -> r.Busy)
         if onlyBusy.Length <> 0 
-        then onlyBusy |> Array.map (sprintf "%O") |> Array.reduce (+)
+        then onlyBusy |> Array.map (sprintf "%O\n") |> Array.reduce (+)
         else ""
 
     static member Filter(rs:RS[], f) =

@@ -32,7 +32,7 @@ and Register =
         r.Qi |> function | Some _ -> false | _ -> true
 
     override r.ToString() = sprintf "%s" (Convert.int2hex r.Contents)
-
+    
     static member Init _ = { Qi = None; Contents = 0 }
     static member ArrayInit n = Array.init n Register.Init
 

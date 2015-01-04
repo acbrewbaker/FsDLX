@@ -97,29 +97,16 @@ type Simulator(input:string, verbose:bool) =
         let i = Instruction(instruction)
         let opcode = i.Info.opcode
 //        printfn "Issuing: %O" opcode
-        let stall = false
-//            i.Info.kind |> function
-//            | Integer ->
-//                printfn "Issuing: %O" opcode
-////                funits.IntegerUnit |> Array.iter (fun u -> printfn "%s" (u.Dump()))
-////                funits.IntegerUnit |> Array.tryFindIndex (fun u -> not(u.Busy)) |> function
-//                | Some u -> 
-//                    printfn "unit id: %d" u
-//                    funits.IntegerUnit.[u].Insert i
-//                | _ -> 
-//                    printfn "stall in int issue"
-//                    true
-//            | Trap -> 
-//                funits.TrapUnit |> Array.tryFindIndex (fun u -> not(u.Busy)) |> function
-//                | Some u -> 
-//                    
-//                    //true
-//                    funits.TrapUnit.[u].Insert i |> ignore
-//                    false
-//                | _ -> true
-//            | Branch -> false
-//            | Memory -> false
-//            | FloatingPoint -> false
+        let stall =
+            i.Info.kind |> function
+            | Integer ->
+                printfn "Issuing: %O" opcode
+                funits.IntegerUnit.Insert i
+            | Trap -> 
+                funits.TrapUnit.Insert i
+            | Branch -> false
+            | Memory -> false
+            | FloatingPoint -> false
         
         stall
 

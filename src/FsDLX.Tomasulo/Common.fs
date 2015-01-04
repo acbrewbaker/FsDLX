@@ -12,6 +12,7 @@ type SimulatorOutputLevel =
     | Verbose
     | Debug
 
+type InsertFunc = Opcode -> int * int * int * int -> bool
 
 type CDB private () =
     static let instance = CDB()

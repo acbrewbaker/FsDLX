@@ -17,6 +17,9 @@ let hex = lines |> List.map splitForHex
 
 let ints = hex |> List.map (Convert.hex2int)
 
+let regId i s = Convert.int2bits2reg i s
+let immVal i a b = Convert.int2bits2int i a b
+
 type XUnit =
     {
         MaxCycles : int
@@ -41,9 +44,50 @@ let ``intUnit1`` () =
     let RS' = ReservationStation.ArrayInit cfg |> ref   
     let RS = RS' |> RS.IntegerUnit
 
-    RS.TryFindReady() |> function
-    | Some r -> printfn "%d" r
-    | None -> printfn "none"
+    let i0 = Instruction(ints.[0])
+    let i1 = Instruction(ints.[1])
+
+    let insert (opcode:Opcode) (rs:int) (rt:int) (rd:int) =
+        let gpr = GPR.GetInstance
+        RS.TryFindNotBusy() |> function
+        | Some r ->
+            RS.[r].Busy <- true
+            RS.[r].Op <- Some opcode
+            RS.[r].A <- Some rd
+
+            if gpr.[rs].IsAvailable() then
+                RS.[r].Vj <- gpr.[rs].Contents
+            else
+                RS.[r].Qj <- gpr.[rs].Qi
+            
+            gpr.[rt].Qi <- Some(cfg.rsPrefix + string r)
+
+            false
+        | _ -> true
+
+    let rs, rt, rd, imm = i0.Info.rs, i0.Info.rt, i0.Info.rd, i0.Info.imm
+
+    let issue (i:Instruction) =
+        let rs, rt, rd, imm = i.Info.rs, i.Info.rt, i.Info.rd, i.Info.imm
+        (rd,rs,rt,imm) |> function
+        | DstReg.GPR rd, S1Reg.GPR rs, S2Reg.NONE, Imm.A(a,b) ->
+            let rd, rs, imm =
+                regId i.Int rd,
+                regId i.Int rs,
+                immVal i.Int a b
+            printfn "rd, rs, imm  ===> %d, %d, %d" rd rs imm
+            insert (i.Info.opcode) rs rd imm
+        | _ -> false
+
+    let stall = issue i0
+    printfn "stall : %A" stall
+    printfn "%O" RS
+
+    let stall = issue i1
+    printfn "stall : %A" stall
+    printfn "%O" RS
+
+
 
 [<Test>]
 let ``intUnit2`` () =
