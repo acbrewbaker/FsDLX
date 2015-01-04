@@ -14,6 +14,8 @@ type SimulatorOutputLevel =
 
 type InsertFunc = Opcode -> int * int * int * int -> bool
 
+type OperandReg = | NONE | GPR of int | FPR of int
+
 type CDB private () =
     static let instance = CDB()
 
@@ -56,6 +58,11 @@ module InstructionInt =
     let toOpcodeBits i = InstructionHex.toOpcodeBits (Convert.int2hex i)
 
 module Config =
+    module Registers = 
+        let nGPR = 32
+        let nFPR = 32
+        let RegCount = nGPR + nFPR
+
     module Memory =
         let outputLevel = SimulatorOutputLevel.Regular
         let DefaultMemorySize = 1000
@@ -68,8 +75,6 @@ module Config =
 
 
     let nCharsInHexInstruction = 8
-    let nGPRregisters = 32
-    let nFPRregisters = 32
     
 //    module IntegerUnit =
 //        let rsPrefix = "Int" 
@@ -160,6 +165,12 @@ module Config =
                 instructions = [| "addf"; "subf"; "multf"; "divf"; "mult"; "div"; "cvtf2i"; "cvti2f" |]
             }
 
+        static member RSTotal =
+            FunctionalUnit.IntegerUnit.rsCount +
+            FunctionalUnit.TrapUnit.rsCount +
+            FunctionalUnit.BranchUnit.rsCount +
+            FunctionalUnit.MemoryUnit.rsCount +
+            FunctionalUnit.FloatingPointUnit.rsCount
 
 
 

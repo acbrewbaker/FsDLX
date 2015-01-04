@@ -53,8 +53,12 @@ and RS =
 //                    r.Qk <- None; r.Vk <- cdb.Result )
         //RS.ApplyFunction rs update
 
+    member rs.Clear() = rs.Contents |> Array.iter (fun r -> r.ClearIfResultWritten())
 
     member rs.TryFindReady() = rs.Contents |> Array.tryFindIndex (fun r -> r.IsReady())
+    member rs.TryFindResultReady() = rs.Contents |> Array.tryFindIndex (fun r -> r.ResultReady)
+    member rs.TryFindEmpty() = rs.Contents |> Array.tryFindIndex (fun r -> r.IsEmpty())
+
 //        let tryFindReady (rsGroupRef:RSGroupRef) = !rsGroupRef |> Array.tryFindIndex (fun r -> r.IsReady())
 //        RS.ApplyFunction rs tryFindReady
 
@@ -76,7 +80,7 @@ and RS =
     override rs.ToString() =
         let onlyBusy = rs.Contents |> Array.filter (fun r -> r.Busy)
         if onlyBusy.Length <> 0 
-        then onlyBusy |> Array.map (sprintf "%O\n") |> Array.reduce (+)
+        then (onlyBusy |> Array.map (sprintf "%O\n") |> Array.reduce (+)).Trim()
         else ""
 
     static member Filter(rs:RS[], f) =
@@ -116,8 +120,8 @@ and ReservationStation =
     member rs.IsReady() =
         //rs.Busy                 &&
         rs.Qj.IsNone            &&
-        rs.Qk.IsNone            &&
-        not(rs.ResultReady)
+        rs.Qk.IsNone            
+        //not(rs.ResultReady)
 
     member rs.IsEmpty() = 
         rs.Busy = false         &&
@@ -138,13 +142,25 @@ and ReservationStation =
             rs.ResultReady rs.ResultWritten
             (Convert.int2hex rs.Result)
 
+    member private rs.Opt2String (o:Opcode option) = o |> function
+        | Some o -> sprintf "%s" o.Name
+        | None -> sprintf "%O" o
+
+    member private rs.Opt2String (o:string option) = o |> function
+        | Some o -> sprintf "%s" o
+        | None -> sprintf "%O" o
+
+    member private rs.Opt2String (o:int option) = o |> function
+        | Some o -> Convert.int2hex o
+        | None -> sprintf "%O" o
+
     override rs.ToString() =
-        sprintf "%s  %O  %O  %s  %s  %O  %O  %O"
-            rs.Name rs.Busy rs.Op 
+        sprintf "%s  %O  %O  %s  %s  %s  %s  %s"
+            rs.Name rs.Busy (rs.Opt2String(rs.Op))
             (Convert.int2hex rs.Vj)
             (Convert.int2hex rs.Vk) 
-            rs.Qj rs.Qk 
-            rs.A
+            (rs.Opt2String(rs.Qj)) (rs.Opt2String(rs.Qk))
+            (rs.Opt2String(rs.A))
 
 //    override rs.ToString() =
 //        sprintf "%s  %O  %O  %s  %s  %O  %O  %s"
@@ -176,6 +192,10 @@ and ReservationStation =
 
     static member ArrayInit(cfg:Config.FunctionalUnit) =
         Array.init cfg.rsCount (fun i -> ReservationStation.Init (cfg.rsPrefix + string i))
+
+
+    static member IntUnitInit() = ReservationStation.ArrayInit Config.FunctionalUnit.IntegerUnit
+    static member TrapUnitInit() = ReservationStation.ArrayInit Config.FunctionalUnit.TrapUnit
 
 
     static member Clear (r:ReservationStation) = r.Clear()

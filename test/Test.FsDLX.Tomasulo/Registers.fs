@@ -35,5 +35,5 @@ let ``gpr update`` () =
     cdb.Result <- 3
     cdb.Src <- "IntUnit0"
     printfn "GPR before update:\n%O" gpr
-    gpr.Update()
+    //gpr.Update()
     printfn "GPR after update:\n%O" gpr

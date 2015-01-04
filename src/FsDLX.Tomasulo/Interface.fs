@@ -55,8 +55,8 @@ type Simulator(input:string, verbose:bool) =
     let updateReservationStations() = cdb |> function
         | Some _ ->
             funits.UpdateReservationStations()
-            GPR.GetInstance.Update()
-            FPR.GetInstance.Update()
+//            GPR.GetInstance.Update()
+//            FPR.GetInstance.Update()
         | None -> ()
 
     let clearReservationStations() = funits.ClearReservationStations()

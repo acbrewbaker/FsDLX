@@ -72,28 +72,22 @@ type XUnit(maxCycles:int) =
 
     member xu.Cycle() = xu.RemainingCycles <- xu.RemainingCycles - 1
 
-    member xu.Update(rs:RS) = 
-        let doCompute = ref false
-        xu.CurrentInstruction <- rs.TryFindReady()
-        (xu.Busy, xu.CurrentInstruction) |> function
-        | true, Some i ->
-            if xu.RemainingCycles > 0 then xu.Cycle()
-            if  xu.RemainingCycles = 0 &&
-                not(rs.[i].ResultReady)
-            then
-                doCompute := true
-                rs.[i].ResultReady <- true
-                xu.Busy <- false
-        | _, _ ->
-            //xu.CurrentInstruction <- Some i
-            xu.Busy <- true
-            if      xu.RemainingCycles = 0
-            then    xu.RemainingCycles  <- xu.MaxCycles - 1
-            else    xu.Cycle()
-        
-        //| busy, ins -> failwith (sprintf "busy: %O, ins: %O" busy ins)
-        !doCompute
-            
+    member xu.Update (RS:RS) (compute:int -> unit) =
+        RS.TryFindReady() |> function
+        | Some r ->
+            if not(xu.Busy) then
+                xu.Busy <- true
+                xu.Cycle()
+            else        
+                if xu.RemainingCycles > 0 then xu.Cycle()
+                if  xu.RemainingCycles = 0 &&
+                    not(RS.[r].ResultReady)
+                then
+                    compute r
+                    RS.[r].ResultReady <- true
+                    xu.Busy <- false
+         | _ -> ()
+
     override xu.ToString() =
         sprintf "Busy? %O, RemainingCycles? %O, CurrentInstruction? %O"
             xu.Busy
@@ -141,8 +135,7 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
     
 
     member fu.Execute() = fu.XUnits |> Array.iter (fun xunit -> 
-        if      xunit.Update(fu.RS) 
-        then    fu.Compute xunit.CurrentInstruction.Value)
+        xunit.Update fu.RS fu.Compute)
             
         
 

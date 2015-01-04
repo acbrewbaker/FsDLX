@@ -140,7 +140,6 @@ and InstructionInfo(kind:InstructionKind, opcode:string, funCode:int, rd:DstReg,
         | op, _ -> failwith (sprintf "opcode <%s> not supported" op)
 
 and InstructionKind = | Integer | Trap | Branch | Memory | FloatingPoint
-and OperandReg = | NONE | GPR of int | FPR of int
 and DstReg  = OperandReg
 and S1Reg   = OperandReg //| NONE | GPR of int | FPR of int
 and S2Reg   = OperandReg //| NONE | GPR of int | FPR of int
