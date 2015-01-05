@@ -16,7 +16,8 @@ type RegisterFile private () =
 //            let r = (Convert.int2bin i).[idx..idx+5] |> Convert.bin2int
 //            regs.[r]
 
-    
+    member rf.Update(cdb) = regs |> Array.iter (fun reg -> reg.Update(cdb))
+
     static member GetInstance = instance
 
     static member HasContent (regs:Register[]) =
@@ -121,6 +122,10 @@ and Register =
 
     member r.IsAvailable() = 
         r.Qi |> function | Some _ -> false | _ -> true
+
+    member r.Update(cdb:CDB option) = (cdb, r.Qi) |> function
+        | Some cdb, Some Qi -> if Qi = cdb.Src then r.Contents <- cdb.Result; r.Qi <- None
+        | _ -> ()
 
     override r.ToString() = sprintf "%s" (Convert.int2hex r.Contents)
     

@@ -68,31 +68,40 @@ type XUnit(maxCycles:int) =
     member val MaxCycles = maxCycles with get
     member val RemainingCycles = maxCycles with get, set
     member val Busy = false with get, set
-    member val CurrentInstruction : int option = None with get, set
+    member val CurrentRS : string option = None with get, set
 
     member xu.Cycle() = xu.RemainingCycles <- xu.RemainingCycles - 1
 
-    member xu.Update (RS:RS) (compute:int -> unit) =
+    member private xu.Reset() =
+        xu.RemainingCycles <- xu.MaxCycles
+        xu.Busy <- false
+        xu.CurrentRS <- None
+
+    member xu.Update (RS:RS) (compute:string -> unit) =
         RS.TryFindReady() |> function
         | Some r ->
             if not(xu.Busy) then
                 xu.Busy <- true
+                xu.CurrentRS <- RS.[r].Name |> Some
                 xu.Cycle()
-            else        
+            xu.CurrentRS
+        | None ->
+            if xu.Busy && xu.CurrentRS.IsSome then        
+                let r = xu.CurrentRS.Value
                 if xu.RemainingCycles > 0 then xu.Cycle()
-                if  xu.RemainingCycles = 0 &&
-                    not(RS.[r].ResultReady)
+                if  xu.RemainingCycles = 0 //&&
+                    //not(RS.[r].ResultReady)
                 then
                     compute r
-                    RS.[r].ResultReady <- true
-                    xu.Busy <- false
-         | _ -> ()
+                    xu.Reset()
+
+            xu.CurrentRS
 
     override xu.ToString() =
         sprintf "Busy? %O, RemainingCycles? %O, CurrentInstruction? %O"
             xu.Busy
             xu.RemainingCycles
-            xu.CurrentInstruction 
+            xu.CurrentRS
 
     static member TryFindNotBusy (xunits:XUnit[]) =
         xunits |> Array.tryFindIndex (fun xu -> not(xu.Busy))
@@ -109,7 +118,8 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
 //        | :? FloatingPointUnit -> RS.FloatingPointUnit rsRef
         | _ -> failwith "invalid reservation station group"
 
-
+    member val private UnitInfoString = "" with get, set
+    member val private CurrentRS : string option = None with get, set
     member val RS = reservationStations with get
     member val XUnits = xunits with get
     
@@ -134,25 +144,32 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
         
     
 
-    member fu.Execute() = fu.XUnits |> Array.iter (fun xunit -> 
-        xunit.Update fu.RS fu.Compute)
-            
+    member fu.Execute() = 
+        fu.XUnits 
+        |> Array.tryPick (fun xunit -> xunit.Update fu.RS fu.Compute)
+        |> function | currentRS -> fu.CurrentRS <- currentRS
+        fu.UpdateInfoString()
         
 
 
     member fu.Write() =
         let cdb = CDB.GetInstance
-        fu.RS.TryFindReady() |> function
-        | Some r ->
-            fu.RS.[r].ResultWritten <- true
-            cdb.Result <- fu.RS.[r].Result
-            cdb.Src <- fu.RS.[r].Name
-            Some(cdb)
-        | None -> None
+        let RS(r:int) = fu.RS.[r]
+        let RegisterStat(x) = RegisterFile.GetInstance.[x]
+        let Regs(x) = RegisterFile.GetInstance.[x]
+        let cdb' = fu.RS.TryFindResultReady() |> function
+            | Some r ->
+                RS(r).ResultWritten <- true
+                cdb.Result <- RS(r).Result
+                cdb.Src <- RS(r).Name
+                Some(cdb)
+            | None -> None
+        fu.UpdateInfoString()
+        cdb'
 
     member fu.Dump() = fu.XUnits |> Array.map (sprintf "%O\n") |> Array.reduce (+) 
 
-    override fu.ToString() =
+    member fu.UpdateInfoString() =
         //sprintf "MaxCycles: %d; Remaining Cycles: %d; Busy: %A" fu.MaxCycles fu.RemainingCycles fu.Busy
         let s1 = 
             sprintf "%sUNIT RESERVATION STATIONS"
@@ -163,11 +180,15 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
 //                    | :? MemoryUnit -> "MEM"
 //                    | :? FloatingPointUnit -> "FP"
                     | _ -> "FunctionalUnit")
+
+        let s2 = if fu.CurrentRS.IsSome then sprintf "\nEXECUTING: instruction in station %s" (fu.CurrentRS.Value) else ""
 //        let s2 = 
 //            [for r in fu.RS.Contents do
 //                if not(r.IsEmpty()) then
 //                    yield sprintf "%s\n" (r.ToString())]
-        sprintf "%s\n%O" s1 fu.RS
+        fu.UnitInfoString <- sprintf "%s\n%O%s" s1 fu.RS s2
+
+    override fu.ToString() = fu.UnitInfoString
 
 //    static member ArrayInit (cfg:Config.FunctionalUnit) (init:_ -> FunctionalUnit) =
 //        Array.init cfg.XUnitCount init
@@ -183,7 +204,7 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
     
 //    abstract member Instructions        : Map<string, Instruction>
     abstract member Insert   : Instruction -> bool
-    abstract member Compute  : int -> unit
+    abstract member Compute  : string -> unit
     //abstract member Write    : CDB -> unit
 
 //    override fu.ToString() = 
@@ -225,47 +246,46 @@ and IntegerUnit private (cfg, rsRef) =
 
    
     
-    override iu.Insert i =
-        let RS = iu.RS
-        let opcode = i.Info.opcode
-        let rd, rs, rt, imm = i.rd, i.rs, i.rt, i.imm
+    override iu.Insert instruction =
         
-        let reg s = Convert.int2bits2reg i.Int s
-        let immval (a,b) = Convert.int2bits2int i.Int a b
+        let opcode = instruction.Info.opcode
 
-        let RS(r) = iu.RS.[r]
+        let rd, rs, rt, imm = 
+            instruction.rd, 
+            instruction.rs, 
+            instruction.rt, 
+            instruction.imm
+       
+        let RS(r:int) = iu.RS.[r]
 
-        let Regs = function
-            | OperandReg.NONE -> Register.Init(0).Contents
-            | OperandReg.GPR s -> GPR.GetInstance.[reg s].Contents
-            | OperandReg.FPR s -> FPR.GetInstance.[reg s].Contents
+        let Regs(i) = (Regs.GetInstance instruction.Int).[i]
+        let RegisterStat(i) = (RegisterStat.GetInstance instruction.Int).[i]
 
-        let RegisterStat = function
-            | OperandReg.NONE -> Register.Init(0)
-            | OperandReg.GPR s -> GPR.GetInstance.[reg s]
-            | OperandReg.FPR s -> FPR.GetInstance.[reg s]  
+        let  immval (a,b) = Convert.int2bits2int instruction.Int a b
 
-        iu.RS.TryFindNotBusy() |> function
-        | Some r ->
-            if      RegisterStat(rs).Qi.IsSome 
-            then    RS(r).Qj <- RegisterStat(rs).Qi
-            else    RS(r).Vj <- Regs(rs); RS(r).Qj <- None
+        let stall =
+            iu.RS.TryFindNotBusy() |> function
+            | Some r ->
+                if      RegisterStat(rs).Qi.IsSome 
+                then    RS(r).Qj <- RegisterStat(rs).Qi
+                else    RS(r).Vj <- Regs(rs); RS(r).Qj <- None
             
-            if      RegisterStat(rt).Qi.IsSome
-            then    RS(r).Qk <- RegisterStat(rt).Qi
-            else    RS(r).Vk <- Regs(rt); RS(r).Qk <- None
+                if      RegisterStat(rt).Qi.IsSome
+                then    RS(r).Qk <- RegisterStat(rt).Qi
+                else    RS(r).Vk <- Regs(rt); RS(r).Qk <- None
 
-            RS(r).Op <- Some opcode
-            RS(r).Busy <- true
-            RegisterStat(rd).Qi <- Some(cfg.rsPrefix + string r)
+                RS(r).Op <- Some opcode
+                RS(r).Busy <- true
+                RegisterStat(rd).Qi <- Some(RS(r).Name)
 
-            RS(r).A <- imm |> function
-            | Imm.NONE -> None
-            | Imm.A imm -> Some(immval imm)
+                RS(r).A <- imm |> function
+                | Imm.NONE -> 0
+                | Imm.A imm -> immval imm
 
-            false
-        | _ -> true
-
+                false
+            | _ -> true
+        iu.UpdateInfoString()
+        stall
 
     override iu.Compute r =
         //printfn "int unit compute"
@@ -277,7 +297,7 @@ and IntegerUnit private (cfg, rsRef) =
         
         RS.[r].Result <-  RS.[r].Op |> function
             | Some op -> op.Name |> function
-                | "addi" -> if a.IsSome then vj + a.Value else vj
+                | "addi" -> vj + a
                 | "nop" -> 0
                 | "add" -> vj + vk
                 | "sub" -> vj - vk
@@ -360,22 +380,18 @@ and TrapUnit private (cfg, rsRef) =
         | None -> true
 
     override tu.Compute r =
-        let RS = tu.RS.Contents
-        let vj, vk, a =
-            RS.[r].Vj,
-            RS.[r].Vk,
-            RS.[r].A
-
-        let halt, result = RS.[r].Op |> function
+        let RS(r:string) = tu.RS.[r]
+        
+        let halt, result = RS(r).Op |> function
             | Some op -> op.Name |> function
                 | "halt" -> true, 0
-                | "dumpgpr" -> false, vj
-                | "dumpfpr" -> false, vj
-                | "dumpstr" -> false, if a.IsSome then Memory.GetInstance.[a.Value] else 0
+                | "dumpgpr" -> false, RS(r).Vj
+                | "dumpfpr" -> false, RS(r).Vj
+                | "dumpstr" -> false, Memory.GetInstance.[RS(r).A]
                 | _ -> failwith "invalid trap unit instruction"
             | None -> false, 0
         printfn "trap Result:  %A" result
-        RS.[r].Result <- result
+        RS(r).Result <- result
 //        halt
 
     static member GetInstance = instance
@@ -551,7 +567,7 @@ and FunctionalUnits() =
 //
 //    // The update reservation stations step will use the name and result on the CDB to 
 //    // update each reservation station and register file.
-    member fu.UpdateReservationStations() = fu.ReservationStations |> RS.Update
+    member fu.UpdateReservationStations cdb = RS.Update(fu.ReservationStations, cdb)
 //
     // The clear reservation stations step will clear each reservation station who has 
     // written in the current clock cycle. (Note there may be more than one since not 

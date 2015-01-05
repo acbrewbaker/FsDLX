@@ -16,6 +16,7 @@ type InsertFunc = Opcode -> int * int * int * int -> bool
 
 type OperandReg = | NONE | GPR of int | FPR of int
 
+
 type CDB private () =
     static let instance = CDB()
 
@@ -35,6 +36,9 @@ type CDB private () =
 
     static member GetInstance = instance
 
+    static member Opt2String (cdb:CDB option) = cdb |> function
+        | Some cdb -> sprintf "%O" cdb
+        | None -> ""
 
 type PC private () =
     static let instance = PC()

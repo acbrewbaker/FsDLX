@@ -9,14 +9,18 @@ type Memory private () =
     let size = Config.Memory.DefaultMemorySize
 
     let dumpBy (by:int) (mem:int[]) =
-        [for i = 0 to mem.Length / (by*4) do 
-            let m = mem.[i*by..i*by + by]
-            let hasContent = not (Array.forall (fun x -> x = 0) m) 
-            if hasContent then yield (i*by*4, m)]
-        |> List.map (fun (pc, vals) ->
-            sprintf "%s: %s"
+        let content = 
+            [for i = 0 to mem.Length / (by*4) do 
+                let m = mem.[i*by..(i*by + by) - 1]
+                let hasContent = not (Array.forall (fun x -> x = 0) m) 
+                if hasContent then yield (i*by*4, m)]
+        let content = 
+            let i = content.Length
+            content @ [i*by*4, (mem.[i*by..(i*by+by) - 1])]
+        content |> List.map (fun (pc, vals) ->
+            sprintf "%s:   %s"
                 (Convert.int2nibble pc)
-                (vals |> Array.fold (fun s v -> s + (Convert.int2hex v) + " ") ("")))
+                ((vals |> Array.fold (fun s v -> s + (Convert.int2hex v) + " ") ("")).Trim()))
         |> List.fold (fun s l -> s + l + "\n") ("")
         |> sprintf "MEMORY\n%s"
             

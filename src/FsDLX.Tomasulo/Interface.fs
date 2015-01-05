@@ -52,12 +52,10 @@ type Simulator(input:string, verbose:bool) =
         if Clock.GetInstance.Cycles = 0 then false else funits.AllFinished()
         
 
-    let updateReservationStations() = cdb |> function
-        | Some _ ->
-            funits.UpdateReservationStations()
+    let updateReservationStations() = 
+        funits.UpdateReservationStations(cdb)
 //            GPR.GetInstance.Update()
 //            FPR.GetInstance.Update()
-        | None -> ()
 
     let clearReservationStations() = funits.ClearReservationStations()
     

@@ -119,7 +119,13 @@ module Convert =
 
     let int2bits2reg i startBit = int2bits2int i startBit (startBit + 4)
 
+    let strOption2str (o:string option) = o |> function
+        | Some o -> sprintf "%s" o
+        | None -> sprintf "%O" o
 
+    let intOption2str (o:int option) = o |> function
+        | Some o -> int2hex o
+        | None -> sprintf "%O" o
 
 
 //    module InputLine =

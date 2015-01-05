@@ -302,3 +302,7 @@ type Opcode(op:string, enc:int) =
             failwith "opcode lookup failure"
     
     static member ofInstructionInt i = Opcode.ofInstructionHex(Convert.int2hex i)
+
+    static member Opt2String (o:Opcode option) = o |> function
+        | Some o -> sprintf "%s" o.Name
+        | None -> sprintf "%O" o

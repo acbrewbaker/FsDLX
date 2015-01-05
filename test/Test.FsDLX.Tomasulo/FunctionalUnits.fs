@@ -30,92 +30,89 @@ type RS2() =
 
     member rs2.Item
         with get i = RS.[i]
+ 
+let strListToStr l = (l |> List.fold (fun s r -> s + r + "\n") ("")).Trim()
+
+let displayThenAssert (expected:string list) (actual:string list) =
+    let e, a = strListToStr expected, strListToStr actual
+    printfn "==== Expected ===="
+    printfn "%s\n" e
+    printfn "==== Actual ===="
+    printfn "%s\n" a
+    Assert.AreEqual(e,a)
 
 
+let expectedCycle0 =
+    [
+        "Clock cycle: 0"
+        "INTUNIT RESERVATION STATIONS"
+        "IntUnit0  True  addi  00000000  00000000  <null>  <null>  00000003"
+        "MEMORY"
+        "0000:   20010003 20020006 00221820 44600001 44000000 00000000 00000000 00000000"
+        "0020:   00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000"  
+    ]
 
+let expectedCycle1 =
+    [
+        "Clock cycle: 1"
+        "INTUNIT RESERVATION STATIONS"
+        "IntUnit0  True  addi  00000000  00000000  <null>  <null>  00000003"
+        "IntUnit1  True  addi  00000000  00000000  <null>  <null>  00000006"
+        "EXECUTING: instruction in station IntUnit0"
+    ]
 
-type InstructionStage =
-    | Issue
-    | Execute
-    | Write
+let expectedCycle2 =
+    [
+        "Clock cycle: 2"
+        "INTUNIT RESERVATION STATIONS"
+        "IntUnit1  True  addi  00000000  00000000  <null>  <null>  00000006"
+        "IntUnit2  True  add  00000003  00000000  <null>  IntUnit1 00000000"
+        "EXECUTING: instruction in station IntUnit1"
+        "CDB: result: 00000003 station: IntUnit0"
+        "R0-R7:   00000000 00000003 IntUnit1 IntUnit2 00000000 00000000 00000000 00000000"
+    ]
 
-and IssueStage =
-    | Issue of Instruction
-    | LoadOrStore
-    | LoadOnly
-    | StoreOnly
+let expectedCycle3 =
+    [
+        "Clock cycle: 3"
+        "TRAPUNIT RESERVATION STATIONS"
+        "TrapUnit0    true dumpGPR 00000000 00000000 IntUnit2     null 00000000"
+        "CDB: result: 00000006 station: IntUnit1"
+        "R0-R7:   00000000 00000003 00000006 IntUnit2 00000000 00000000 00000000 00000000"
+    ]
 
-    member is.Go(RS:RS) = is |> function
-        | Issue instruction -> 
-            let RegisterStat(i) = (RegisterStat.GetInstance instruction.Int).[i]
-            let Regs(i) = (Regs.GetInstance instruction.Int).[i]
-            let rd, rs, rt = instruction.rd, instruction.rs, instruction.rt
-            RS.TryFindEmpty() |> function
-            | Some r ->
-                if      RegisterStat(rs).Qi.IsSome 
-                then    RS.[r].Qj <- RegisterStat(rs).Qi
-                else    RS.[r].Vj <- Regs(rs); RS.[r].Qj <- None
-                
-                if      RegisterStat(rt).Qi.IsSome
-                then    RS.[r].Qk <- RegisterStat(rt).Qi
-                else    RS.[r].Vk <- Regs(rt); RS.[r].Qk <- None
-                
-                RS.[r].Busy <- true
-                RegisterStat(rd).Qi <- Some(RS.[r].Name)   
+let expectedCycle4 =
+    [
+        "Clock cycle: 4"
+        "TRAPUNIT RESERVATION STATIONS"
+        "TrapUnit0    true dumpGPR 00000000 00000000 IntUnit2     null 00000000"
+        "TrapUnit1    true    halt 00000000 00000000     null     null 00000000"
+        "EXECUTING: instruction in station IntUnit2"
+    ]
 
-            | None -> ()
-        | _ -> ()
+let expectedCycle5 =
+    [
+        "Clock cycle: 5"
+        "CDB: result: 00000009 station: IntUnit2"
+        "R0-R7:   00000000 00000003 00000006 00000009 00000000 00000000 00000000 00000000"
+    ]
 
-and ExecuteStage =
-    | FPOperation of Instruction
-    | LoadStoreStep1
-    | LoadStep2
+let expectedCycle6 =
+    [
+        "Clock cycle: 6"
+        "EXECUTING: instruction in station TrapUnit0"
+    ]
 
-    member es.Go(RS:RS, compute:int -> unit) = es |> function
-        | FPOperation i ->
-            RS.TryFindReady() |> function
-            | Some r -> compute r
-            | None -> ()
-        | _ -> ()
+let expectedCycle7 =
+    [
+        "Clock cycle: 7"
+        "EXECUTING: instruction in station TrapUnit1"
+    ]
 
-and WriteStage =
-    | FPOperationOrLoad
-    | Store
-
-    member ws.Go(RS:RS) = 
-        let RegisterStat = RegisterFile.GetInstance
-        let Regs = RegisterFile.GetInstance
-        ws |> function
-        | FPOperationOrLoad ->
-            let cdb = CDB.GetInstance
-            RS.TryFindResultReady() |> function
-            | Some r ->
-                for x = 0 to Config.Registers.RegCount - 1 do
-                    if RegisterStat.[x].Qi.Value = RS.[r].Name then
-                        Regs.[x] <- cdb.Result
-                        RegisterStat.[x].Qi <- None
-                    
-                for x = 0 to RS.Length - 1 do
-                    if      RS.[x].Qj.Value = RS.[r].Name 
-                    then    RS.[x].Vj <- cdb.Result; RS.[x].Qj <- None
-
-                    if      RS.[x].Qk.Value = RS.[r].Name
-                    then    RS.[x].Vk <- cdb.Result; RS.[x].Qk <- None
-
-                RS.[r].Busy <- false
-                Some(cdb)
-            | None -> None
-        | Store ->
-            let Mem = Memory.GetInstance
-            RS.TryFindResultReady() |> function
-            | Some r ->
-                if      RS.[r].Qk.IsNone 
-                then    
-                    Mem.[RS.[r].A.Value] <- RS.[r].Vk
-                    RS.[r].Busy <- false
-                None
-            | None -> None
-                
+let expectedCycle8 =
+    [
+        "Clock cycle: 8"
+    ]
 
 type XUnit2 =
     {
@@ -144,6 +141,239 @@ type FuncUnit(rsRef:RSGroupRef) =
     let xunits = Array.init cfg.unitCount (fun _ -> XUnit2.Create(cfg.maxCycles))
 
     let RS = RS.IntegerUnit rsRef
+
+[<Test>]
+let ``cycle0`` () =
+    let cfg = Config.FunctionalUnit.IntegerUnit
+    let cc = ref 0
+    let cdb : (CDB option) ref = ref None
+    let RS' = ReservationStation.ArrayInit cfg |> ref
+    let RS = RS.IntegerUnit RS'
+    let intUnit = IntegerUnit.GetInstance RS'
+
+    let i0 = Instruction(ints.[0])
+
+    let memory = Memory.GetInstance
+    memory.Load(inputdir @@ "add.hex")
+
+    cdb := intUnit.Write()
+    intUnit.Execute()
+    intUnit.Insert i0 |> ignore
+    RS.Update(!cdb)
+    RS.Clear()
+
+    let clockStr() = sprintf "Clock cycle: %d" !cc
+    let rsInfo() = intUnit.ToString()
+    let memDump() = memory.ToString()
+
+    let actualCycle0 =
+        [
+            clockStr()
+            rsInfo()
+            memDump()
+        ]
+
+    (expectedCycle0, actualCycle0) ||> displayThenAssert
+
+[<Test>]
+let ``cycle1`` () =
+    let cfg = Config.FunctionalUnit.IntegerUnit
+    let cc = ref 0
+    let cdb : (CDB option) ref = ref None
+    let RS' = ReservationStation.ArrayInit cfg |> ref
+    let RS = RS.IntegerUnit RS'
+    let intUnit = IntegerUnit.GetInstance RS'
+
+    let i0 = Instruction(ints.[0])
+    let i1 = Instruction(ints.[1])
+
+    let memory = Memory.GetInstance
+    memory.Load(inputdir @@ "add.hex")
+
+    cdb := intUnit.Write()
+    intUnit.Execute()
+    intUnit.Insert i0 |> ignore
+    RS.Update(!cdb)
+    RS.Clear()
+    cc := !cc + 1
+    
+    cdb := intUnit.Write()
+    intUnit.Execute()
+    intUnit.Insert i1 |> ignore
+    RS.Update(!cdb)
+    RS.Clear()
+
+    let clockStr() = sprintf "Clock cycle: %d" !cc
+    let rsInfo() = intUnit.ToString()
+
+    let actualCycle1 =
+        [
+            clockStr()
+            rsInfo()
+        ]
+
+    (expectedCycle1, actualCycle1) ||> displayThenAssert
+
+[<Test>]
+let ``cycle2`` () =
+    let cfg = Config.FunctionalUnit.IntegerUnit
+    let cc = ref 0
+    let cdb : (CDB option) ref = ref None
+    let RS' = ReservationStation.ArrayInit cfg |> ref
+    let RS = RS.IntegerUnit RS'
+    let intUnit = IntegerUnit.GetInstance RS'
+
+    let i0 = Instruction(ints.[0])
+    let i1 = Instruction(ints.[1])
+    let i2 = Instruction(ints.[2])
+
+    let memory = Memory.GetInstance
+    memory.Load(inputdir @@ "add.hex")
+
+    cdb := intUnit.Write()
+    intUnit.Execute()
+    intUnit.Insert i0 |> ignore
+    RS.Update(!cdb)
+    RS.Clear()
+    cc := !cc + 1
+    
+    cdb := intUnit.Write()
+    intUnit.Execute()
+    intUnit.Insert i1 |> ignore
+    RS.Update(!cdb)
+    RS.Clear()
+    cc := !cc + 1
+
+    cdb := intUnit.Write()
+    intUnit.Execute()
+    intUnit.Insert i2 |> ignore
+    RS.Update(!cdb)
+    RegisterFile.GetInstance.Update(!cdb)
+    RS.Clear()
+
+    let clockStr() = sprintf "Clock cycle: %d" !cc
+    let rsInfo() = intUnit.ToString()
+    let cdbInfo() = CDB.Opt2String !cdb
+    let regInfo() = GPR.GetInstance.ToString()
+
+    let actualCycle2 =
+        [
+            clockStr()
+            rsInfo()
+            cdbInfo()
+            regInfo()
+        ]
+
+    (expectedCycle2, actualCycle2) ||> displayThenAssert
+
+[<Test>]
+let ``cycle3`` () = ()
+
+[<Test>]
+let ``cycle4`` () = ()
+
+[<Test>]
+let ``cycle5`` () = ()
+
+[<Test>]
+let ``cycle6`` () = ()
+
+[<Test>]
+let ``cycle7`` () = ()
+
+[<Test>]
+let ``cycle8`` () = ()
+
+
+[<Test>]
+let ``intUnit0``() =
+    let i0 = Instruction(ints.[0])
+    let i1 = Instruction(ints.[1])
+    let i2 = Instruction(ints.[2])
+
+    // for the issuing instruction:
+    // rd - the destination
+    // rs - source register number
+    // rt - source register number
+    // imm - sign-extended immediate field
+    let rd, rs, rt, imm =
+        i0.rd, i0.rs, i0.rt, i0.imm
+
+    // r - reservation station or buffer that the instruction is assigned to
+    let r = 0
+
+    // RS - reservation station data structure
+    let RS' = ReservationStation.ArrayInit Config.FunctionalUnit.IntegerUnit |> ref
+    let RS = RS' |> RS.IntegerUnit
+
+    let X = Array.init Config.FunctionalUnit.IntegerUnit.unitCount (fun _ -> XUnit2.Create Config.FunctionalUnit.IntegerUnit.maxCycles)
+    // result - value returned by FP unit or load unit
+    
+    // RegisterStat - register status data structure
+    // Regs - register file
+    let issue (instruction:Instruction) =
+        let RegisterStat(x) = (RegisterStat.GetInstance instruction.Int).[x]
+        let Regs(x) = (Regs.GetInstance instruction.Int).[x]
+
+        RS.TryFindEmpty() |> function
+        | Some r ->
+        // When an instruction is issued, the destination register has its Qi field set to the
+        // number of the buffer or reservation station to which the instruction is issued.
+        // If the operands are available in the registers, they are stored in the V fields.
+        // Otherwise, the Q fields are set to indicate the reservation station that will produce
+        // the values needed as source operands.
+            if      RegisterStat(rs).Qi.IsSome
+            then    RS.[r].Qj <- RegisterStat(rs).Qi
+            else    RS.[r].Vj <- Regs(rs); RS.[r].Qj <- None
+
+            if      RegisterStat(rt).Qi.IsSome
+            then    RS.[r].Qk <- RegisterStat(rt).Qi
+            else    RS.[r].Vk <- Regs(rt); RS.[r].Qk <- None
+
+            RS.[r].Busy <- true; RegisterStat(rd).Qi <- RS.[r].Name |> Some
+        | None -> ()
+
+    // The instruction waits at the reservation station until both its operands are available,
+    // indicated by zero in the Q fields.  The Q fields are set to zero either when this instruction
+    // is issed or when an instruction on which this instruction depends complete and does its write
+    // back.
+    let execute() =
+        let compute (r:int) =
+            let vj, vk, a = RS.[r].Vj, RS.[r].Vk, RS.[r].A
+            RS.[r].Result <- RS.[r].Op |> function
+                | Some op -> op.Name |> function
+                    | "addi" -> vj + a
+                    | "add" -> vj + vk
+                    | _ -> failwith "failed compute instruction"
+                | None -> failwith "tried to compute rs with null op"  
+        
+        X |> Array.iter (fun u ->
+            if not(u.Busy) then
+                u.Busy <- true
+                u.Cycle()
+            else
+                if u.RemainingCycles > 0 then u.Cycle()
+                if u.RemainingCycles = 0 && not(RS.[u.RSId].ResultReady) then
+                    compute 0 //u.RSId
+                    RS.[u.RSId].ResultReady <- true
+                    u.Busy <- false
+                    u.RemainingCycles <- u.MaxCycles)
+//        for r = 0 to RS.Length - 1 do
+//            (RS.[r].Qj, RS.[r].Qk) |> function
+//            | None, None ->
+    ()
+        //  When an instruction has finished execution and the CDB is available, it can do its write back.
+        // All the buffers, registers, and reservation stations whose values of Qj or Qk are the same as
+        // the completing reservation station update their values from the CDB and mark the Q fields to
+        // indicate that values have been received.  Thus, the CDB can broadcast its result to many
+        // destinations in a single clock cycle, and if the waiting instructions have their operands they
+        // can all begin execution on the next clock cycle.  Loads go through two steps in execute, and
+        // stores perform slightly differently during write result, where they may have to wait for the
+        // value to store.  Remember that, to preserve exception behavior, instruction should not be allowed
+        // to execute if a branch that is earlier in program order has not yet completed.  Because any
+        // concept of program order is not maintained after the issue stage, this restriction is usually
+        // implemented by preventing any instruction from leaving the issue step, if there is a pending
+        // branch already in the pipeline.
 
 [<Test>]
 let ``intUnit1`` () =
@@ -178,20 +408,12 @@ let ``intUnit1`` () =
         let reg s = Convert.int2bits2reg i.Int s
         let immval (a,b) = Convert.int2bits2int i.Int a b
 
-       
-        let Regs = function
-            | OperandReg.NONE -> Register.Init(0).Contents
-            | OperandReg.GPR s -> GPR.GetInstance.[reg s].Contents
-            | OperandReg.FPR s -> FPR.GetInstance.[reg s].Contents
-
-        let RegisterStat = function
-            | OperandReg.NONE -> Register.Init(0)
-            | OperandReg.GPR s -> GPR.GetInstance.[reg s]
-            | OperandReg.FPR s -> FPR.GetInstance.[reg s]  
+        let RegisterStat(x) = (RegisterStat.GetInstance i.Int).[x]
+        let Regs(x) = (Regs.GetInstance i.Int).[x]
 
         RS.TryFindNotBusy() |> function
         | Some r ->
-            let RS(r) = RS.[r]
+            let RS(r:int) = RS.[r]
 
             if      RegisterStat(rs).Qi.IsSome 
             then    RS(r).Qj <- RegisterStat(rs).Qi
@@ -206,8 +428,8 @@ let ``intUnit1`` () =
             RegisterStat(rd).Qi <- Some(cfg.rsPrefix + string r)
 
             RS(r).A <- imm |> function
-            | Imm.NONE -> None
-            | Imm.A imm -> Some(immval imm)
+            | Imm.NONE -> 0
+            | Imm.A imm -> immval imm
 
             false
         | _ -> true
@@ -218,10 +440,11 @@ let ``intUnit1`` () =
             let vj, vk, a = RS.[r].Vj, RS.[r].Vk, RS.[r].A
             RS.[r].Result <- RS.[r].Op |> function
                 | Some op -> op.Name |> function
-                    | "addi" -> if a.IsSome then vj + a.Value else vj
+                    | "addi" -> vj + a
                     | "add" -> vj + vk
                     | _ -> failwith "failed compute instruction"
                 | None -> failwith "tried to compute rs with null op"    
+//        for r = 0 to RS.Length - 1
         XUnit2.TryFindNotBusy xunits |> function
             | Some u -> 
                 RS.TryFindReady() |> function
@@ -250,7 +473,7 @@ let ``intUnit1`` () =
             Some(cdb)
         | None -> None
 
-    let updateReservationStations() = RS.Update()
+    let updateReservationStations = RS.Update
     let clearReservationStations() = RS.Clear()
     let cc = ref 0
     let stall = ref false
@@ -268,7 +491,7 @@ let ``intUnit1`` () =
         execute()
         let stall = issue instruction
         display()
-        updateReservationStations()
+        updateReservationStations(!cdb)
         
         clearReservationStations()
 //        display()
@@ -296,7 +519,7 @@ let ``intUnit2`` () =
 
     let mutable cdb : CDB option = None
 
-    let updateReservationStations() = iuRS |> RS.Update
+    let updateReservationStations cdb = RS.Update(iuRS, cdb)
 
     let write() = intUnit.Write() // |> Array.tryPick (fun u -> u.Write())
 

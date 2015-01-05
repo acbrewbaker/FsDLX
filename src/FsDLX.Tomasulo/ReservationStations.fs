@@ -22,40 +22,36 @@ and RS =
 
     member rs.Contents = rs |> RS.ApplyFunction (!)
 
+    member private rs.GetMap() =
+        let kvp (r:ReservationStation) = (r.Name, r)
+        rs.Contents |> Array.map kvp |> Map.ofArray
+
     member rs.Item
         with get(i) = rs.Contents.[i]            
         and set i value = rs.Contents.[i] <- value
+
+    member rs.Item
+        with get(i) = rs.GetMap().[i]
     
     member rs.Length = rs.Contents.Length
 
-    member rs.Update() =
-        let cdb = CDB.GetInstance
-        //printfn "Update Reservation Stations"
-        //printfn "RS contents length: %d" (rs.Contents.Length)
-        rs.Contents |> Array.iteri (fun i r ->
-//        let update (rsGroupRef:RSGroupRef) = !rsGroupRef |> Array.iter (fun r ->
-            //printfn "RS(%d):%O  r.Qj.IsSome?  %O" i r (r.Qj)
-            (r.Qj, r.Qk) |> function
-            | Some Qj, _ ->
-                if r.Busy && cdb.Src = Qj then 
-                    r.Qj <- None; r.Vj <- cdb.Result
-            | _, Some Qk ->
-                if r.Busy && cdb.Src = Qk then
-                    r.Qk <- None; r.Vk <- cdb.Result
-            | None, None -> () )
-//            if r.Qj.IsSome then 
-//                //printfn "Qj.IsSome\nUpdate RS(%d), cdb:\n%O" i cdb
-//                if r.Busy && cdb.Src = r.Qj.Value then 
-//                    r.Qj <- None; r.Vj <- cdb.Result
-//            if r.Qk.IsSome then
-//                //printfn "Qk.IsSome\nUpdate RS(%d), cdb:\n%O" i cdb
-//                if r.Busy && cdb.Src = r.Qk.Value then
-//                    r.Qk <- None; r.Vk <- cdb.Result )
-        //RS.ApplyFunction rs update
+    member rs.Update(cdb:CDB option) = 
+        match cdb with
+        | Some cdb ->
+            rs.Contents |> Array.iteri (fun i r ->
+                (r.Qj, r.Qk) |> function
+                | Some Qj, _ ->
+                    if r.Busy && cdb.Src = Qj then 
+                        r.Qj <- None; r.Vj <- cdb.Result
+                | _, Some Qk ->
+                    if r.Busy && cdb.Src = Qk then
+                        r.Qk <- None; r.Vk <- cdb.Result
+                | None, None -> () )
+        | None -> ()
 
     member rs.Clear() = rs.Contents |> Array.iter (fun r -> r.ClearIfResultWritten())
 
-    member rs.TryFindReady() = rs.Contents |> Array.tryFindIndex (fun r -> r.IsReady())
+    member rs.TryFindReady() = rs.Contents |> Array.tryFindIndex (fun r -> r.OperandsAvailable())
     member rs.TryFindResultReady() = rs.Contents |> Array.tryFindIndex (fun r -> r.ResultReady)
     member rs.TryFindEmpty() = rs.Contents |> Array.tryFindIndex (fun r -> r.IsEmpty())
 
@@ -86,7 +82,7 @@ and RS =
     static member Filter(rs:RS[], f) =
         rs |> Array.map (fun r -> r.Filter f) |> Array.concat
 
-    static member Update (rs:RS[]) = rs |> Array.iter (fun r -> r.Update())
+    static member Update(rs:RS[], cdb:CDB option) = rs |> Array.iter (fun r -> r.Update(cdb))
 
 // The ReservationStation class contains the fields of an individual reservation station: 
 // name, busy, opcode, Vj, Vk, Qj, Qk, A, result, resultReady, resultWritten.  It also 
@@ -100,7 +96,7 @@ and ReservationStation =
         mutable Vk              : int
         mutable Qj              : string option
         mutable Qk              : string option
-        mutable A               : int option
+        mutable A               : int
         mutable ResultReady     : bool
         mutable ResultWritten   : bool
         mutable Result          : int
@@ -111,17 +107,17 @@ and ReservationStation =
         rs.Op <- None
         rs.Vj <- 0; rs.Vk <- 0
         rs.Qj <- None; rs.Qk <- None
-        rs.A <- None
+        rs.A <- 0
         rs.ResultReady <- false
         rs.ResultWritten <- false
 
     member rs.ClearIfResultWritten() = if rs.ResultWritten then rs.Clear()
 
-    member rs.IsReady() =
-        //rs.Busy                 &&
+    member rs.OperandsAvailable() =
+        rs.Busy                 &&
         rs.Qj.IsNone            &&
-        rs.Qk.IsNone            
-        //not(rs.ResultReady)
+        rs.Qk.IsNone            &&
+        not(rs.ResultReady)
 
     member rs.IsEmpty() = 
         rs.Busy = false         &&
@@ -130,7 +126,7 @@ and ReservationStation =
         rs.Vk   = 0             &&
         rs.Qj   = None          &&
         rs.Qk   = None          &&
-        rs.A.IsNone
+        rs.A    = 0
 
     member rs.Dump() =
         sprintf "%s  %O  %O  %s  %s  %O  %O  %O  %O  %O  %s"
@@ -142,25 +138,13 @@ and ReservationStation =
             rs.ResultReady rs.ResultWritten
             (Convert.int2hex rs.Result)
 
-    member private rs.Opt2String (o:Opcode option) = o |> function
-        | Some o -> sprintf "%s" o.Name
-        | None -> sprintf "%O" o
-
-    member private rs.Opt2String (o:string option) = o |> function
-        | Some o -> sprintf "%s" o
-        | None -> sprintf "%O" o
-
-    member private rs.Opt2String (o:int option) = o |> function
-        | Some o -> Convert.int2hex o
-        | None -> sprintf "%O" o
-
     override rs.ToString() =
         sprintf "%s  %O  %O  %s  %s  %s  %s  %s"
-            rs.Name rs.Busy (rs.Opt2String(rs.Op))
+            rs.Name rs.Busy (Opcode.Opt2String(rs.Op))
             (Convert.int2hex rs.Vj)
             (Convert.int2hex rs.Vk) 
-            (rs.Opt2String(rs.Qj)) (rs.Opt2String(rs.Qk))
-            (rs.Opt2String(rs.A))
+            (Convert.strOption2str(rs.Qj)) (Convert.strOption2str(rs.Qk))
+            (Convert.int2hex rs.A)
 
 //    override rs.ToString() =
 //        sprintf "%s  %O  %O  %s  %s  %O  %O  %s"
@@ -182,7 +166,7 @@ and ReservationStation =
 
     static member Init name =
         {   Name = name; Busy = false; Op = None; 
-            Vj = 0; Vk = 0; Qj = None; Qk = None; A = None
+            Vj = 0; Vk = 0; Qj = None; Qk = None; A = 0
             ResultReady = false;
             ResultWritten = false;
             Result = 0 }
