@@ -7,13 +7,22 @@ type RegisterFile private () =
     static let instance = RegisterFile()
     let regs = Array.init Config.Registers.RegCount Register.Init //Register.ArrayInit 64
 
+    let mutable info : string option = None
+
     member rf.Item
         with    get i = regs.[i]
         and     set i v = regs.[i].Contents <- v
     
-    member rf.Update(cdb) = regs |> Array.iter (fun reg -> reg.Update(cdb))
+    member rf.UpdateInfo() = info <- sprintf "%O%O" (GPR.GetInstance) (FPR.GetInstance) |> Some
 
-    override rf.ToString() = sprintf "%O\n%O" (GPR.GetInstance) (FPR.GetInstance)
+    member rf.Update(cdb) = 
+        regs |> Array.iter (fun reg -> reg.Update(cdb))
+        rf.UpdateInfo()
+
+    override rf.ToString() =
+        match info with
+        | Some info -> info
+        | None -> ""
 
     static member GetInstance = instance
 
@@ -139,123 +148,3 @@ and RegisterSet(heading:string, regs:Register[]) =
             rs.Regs |> Array.map (sprintf "%O")
             |> Array.fold (fun s r -> s + " " + r) (sprintf "%s: " heading)
         else ""
-
-//type GPR private () =
-//    static let instance = 
-//        RegisterInfo.Create
-//            RegisterStatus.InitGPR
-//            RegisterFile.InitGPR
-//
-//    static member GetInstance = instance
-//
-//and FPR private () =
-//    static let instance =
-//        RegisterInfo.Create
-//            RegisterStatus.InitFPR
-//            RegisterFile.InitFPR
-//
-//and RegisterInfo =
-//    {
-//        RegisterStat : RegisterStatus
-//        Regs : RegisterFile
-//    }
-//
-//    override ri.ToString() =
-//        let heading a b = ri.Regs |> function
-//            | RegisterFile.GPR _ -> sprintf "R%dR%d" a b
-//            | RegisterFile.FPR _ -> sprintf "F%dR%d" a b
-//
-//        let _0to7 = RegisterSet(heading 0 7, ri.RegisterStat._0to7(), ri.Regs._0to7())
-//        let _8to15 = RegisterSet(heading 8 15, ri.RegisterStat._8to15(), ri.Regs._8to15())
-//        let _16to23 = RegisterSet(heading 16 23, ri.RegisterStat._16to23(), ri.Regs._16to23())
-//        let _24to31 = RegisterSet(heading 24 31, ri.RegisterStat._24to31(), ri.Regs._24to31())
-//        sprintf "%O\n%O\n%O\n%O" _0to7 _8to15 _16to23 _24to31
-//
-//    static member Create registerStat regs = (registerStat, regs) |> function
-//        | RegisterStatus.GPR _, RegisterFile.GPR _ -> { RegisterStat = registerStat; Regs = regs }
-//        | RegisterStatus.FPR _, RegisterFile.FPR _ -> { RegisterStat = registerStat; Regs = regs }
-//        | _ -> failwith "non matching register types"
-//
-//and RegisterFile = 
-//    | GPR of int[]
-//    | FPR of int[]
-//
-//    static member ApplyFunction (f:int[] -> 'T) = function
-//        | GPR gpr -> f gpr
-//        | FPR fpr -> f fpr
-//
-//    member rf.Item
-//        with get i = rf |> function
-//            | GPR gpr -> gpr.[i]
-//            | FPR fpr -> fpr.[i]
-//        and set i value = rf |> function
-//            | GPR gpr -> gpr.[i] <- value
-//            | FPR fpr -> fpr.[i] <- value
-//
-//    member rf.Length = rf |> RegisterFile.ApplyFunction (fun arr -> arr.Length)
-//
-//    member rf._0to7() = rf |> RegisterFile.ApplyFunction (fun arr -> arr.[0..7])
-//    member rf._8to15() = rf |> RegisterFile.ApplyFunction (fun arr -> arr.[8..15])
-//    member rf._16to23() = rf |> RegisterFile.ApplyFunction (fun arr -> arr.[16..23])
-//    member rf._24to31() = rf |> RegisterFile.ApplyFunction (fun arr -> arr.[24..31])
-//
-//    static member InitGPR = Array.zeroCreate<int> 32 |> RegisterFile.GPR
-//    static member InitFPR = Array.zeroCreate<int> 32 |> RegisterFile.FPR
-//
-//    static member HasContent = 
-//        RegisterFile.ApplyFunction 
-//            (fun arr -> arr |> Array.forall (fun x -> x = 0) |> not)
-//
-//
-//and RegisterStatus =
-//    | GPR of Qi[]
-//    | FPR of Qi[]
-//
-//    static member ApplyFunction (f:Qi[] -> 'T) = function
-//        | GPR gpr -> f gpr
-//        | FPR fpr -> f fpr
-//
-//    member rs.Item
-//        with get i = rs |> function
-//            | GPR gpr -> gpr.[i]
-//            | FPR fpr -> fpr.[i]
-//        and set i value = rs |> function
-//            | GPR gpr -> gpr.[i] <- value
-//            | FPR fpr -> fpr.[i] <- value
-//
-//    member rf.Length = rf |> RegisterStatus.ApplyFunction (fun arr -> arr.Length)
-//
-//    member rs._0to7() = rs |> RegisterStatus.ApplyFunction (fun arr -> arr.[0..7])
-//    member rs._8to15() = rs |> RegisterStatus.ApplyFunction (fun arr -> arr.[8..15])
-//    member rs._16to23() = rs |> RegisterStatus.ApplyFunction (fun arr -> arr.[16..23])
-//    member rs._24to31() = rs |> RegisterStatus.ApplyFunction (fun arr -> arr.[24..31])
-//
-//    static member InitGPR = 
-//        Array.init 32 (fun _ -> None) |> RegisterStatus.GPR
-//    
-//    static member InitFPR =
-//        Array.init 32 (fun _ -> None) |> RegisterStatus.FPR
-//
-//    static member HasContent = 
-//        RegisterStatus.ApplyFunction 
-//            (fun arr -> arr |> Array.forall (fun qi -> qi.IsNone) |> not)
-//
-//and Qi = string option
-//
-//
-//and RegisterSet(heading:string, registerStat:Qi[], regs:int[]) =
-//    do if regs.Length <> 8 then failwith "register set must be length 8"
-//    
-//    override rs.ToString() =
-//        let choose (qi:Qi) (x:int) = if qi.IsSome then qi.Value else Convert.int2hex x
-//        let haveContent (qi:Qi[]) (x:int[]) = (qi,x) ||> Array.forall2 (fun qi x -> qi.IsNone && x = 0) |> not
-//        if (registerStat, regs) ||> haveContent then
-//            (registerStat, regs)
-//            ||> Array.map2 choose
-//            |> Array.fold (fun s r -> s + " " + r) (sprintf "%s: " heading)
-//        else ""
-
-
-
-
-

@@ -117,12 +117,13 @@ let expectedCycle8 =
 
 let getDisplayStrings (cdb:CDB option) (funits:FunctionalUnits) =
     let memStr = if Clock.GetInstance.Cycles = 0 then Memory.GetInstance.ToString() else ""
+    funits.UpdateInfoStrings()
     [
         sprintf "%O" (Clock.GetInstance)
         sprintf "%O" funits
         memStr
-        CDB.Opt2String cdb
-        sprintf "%O" RegisterFile.GetInstance
+        //CDB.Opt2String cdb
+        //sprintf "%O" RegisterFile.GetInstance
     ]
 
 
@@ -193,6 +194,29 @@ let run (stopCycle:int) (getDisplayStrings: CDB option -> FunctionalUnits -> str
         
     output
 
+[<Test>]
+let ``xunit`` () =
+    let cfg = Config.FunctionalUnit.IntegerUnit
+    let x = XUnit(cfg.maxCycles)
+    printfn "%O" x
+
+[<Test>]
+let ``xunit 2`` () =
+    let cfg = Config.FunctionalUnit.IntegerUnit
+    let x = XUnit(cfg.maxCycles)
+    let RS' = ReservationStation.ArrayInit cfg |> ref
+    let RS = RS.IntegerUnit RS'
+    let x = x.Update(RS, fun _ -> ())
+    printfn "%O" x
+    printfn "ready? %A" (RS.TryFindReady())
+
+
+[<Test>]
+let ``integer unit`` () =
+    let cfg = Config.FunctionalUnit.IntegerUnit
+    let RS' = ReservationStation.ArrayInit cfg |> ref
+    let iu = IntegerUnit.GetInstance RS'
+    printfn "%O" iu
 
 [<Test>]
 let ``cycle0`` () =

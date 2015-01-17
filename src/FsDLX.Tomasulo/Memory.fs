@@ -17,11 +17,16 @@ type Memory private () =
         let content = 
             let i = content.Length
             content @ [i*by*4, (mem.[i*by..(i*by+by) - 1])]
-        content |> List.map (fun (pc, vals) ->
+            |> List.map (fun (pc, vals) ->
             sprintf "%s:   %s"
                 (Convert.int2nibble pc)
                 ((vals |> Array.fold (fun s v -> s + (Convert.int2hex v) + " ") ("")).Trim()))
-        |> List.fold (fun s l -> s + l + "\n") ("")
+        content 
+        |> List.mapi (function
+            | i when i = content.Length - 1 -> fun s -> s
+            | _                         -> fun s -> s + "\n")
+        |> List.reduce (+)
+        //|> List.fold (fun s l -> s + l + "\n") ("")
         |> sprintf "MEMORY\n%s"
             
 

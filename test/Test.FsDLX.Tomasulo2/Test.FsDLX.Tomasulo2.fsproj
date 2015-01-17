@@ -89,11 +89,6 @@
       <Project>{3548b64c-d96e-4033-88ee-99c87bba4793}</Project>
       <Private>True</Private>
     </ProjectReference>
-    <ProjectReference Include="..\..\src\FsDLX.Tomasulo2\FsDLX.Tomasulo2.fsproj">
-      <Name>FsDLX.Tomasulo2</Name>
-      <Project>{f67246c7-85e7-4f1e-99de-2ae95e2dfb84}</Project>
-      <Private>True</Private>
-    </ProjectReference>
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

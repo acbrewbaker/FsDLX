@@ -7,32 +7,33 @@ open FsDLX.Common
 
 
 
-type SimulatorState =
-    {
-        ClockCycles         : int
-        PC                  : string
-        Memory              : string
-        GPR                 : string
-        FPR                 : string
-        CurrentFUnit        : string
-        Executing           : string
-    }
-
-
-    override ss.ToString() =
-        [   sprintf "Clock cycles: %d\n" ss.ClockCycles
-            sprintf "%s" (if ss.ClockCycles = 0 then sprintf "Memory:\n%s" (ss.Memory) else "")
-            sprintf "EXECUTING:\n%s" (ss.CurrentFUnit)
-            sprintf "%s\n" (ss.GPR.ToString().Trim())  ]
-        |> List.reduce (+)
-
-    static member TakeSnapShot (cc:int) (pc:int) (mem:string) (gpr:GPR) (fpr:FPR) (funits:FunctionalUnits) =
-        {   ClockCycles = cc
-            PC = string pc
-            Memory = mem
-            GPR = gpr.ToString(); FPR = fpr.ToString()
-            CurrentFUnit = if cc <> 0 then funits.ToString() else ""
-            Executing = "" }
+//type SimulatorState =
+//    {
+//        ClockCycle          : string
+//        PC                  : string
+//        Memory              : string
+//        GPR                 : string
+//        FPR                 : string
+//        ReservationStations : string
+//        FunctionalUnits     : string
+//        Executing           : string
+//    }
+//
+//
+//    override ss.ToString() =
+//        [   sprintf "Clock cycles: %d\n" ss.ClockCycles
+//            sprintf "%s" (if ss.ClockCycles = 0 then sprintf "Memory:\n%s" (ss.Memory) else "")
+//            sprintf "EXECUTING:\n%s" (ss.CurrentFUnit)
+//            sprintf "%s\n" (ss.GPR.ToString().Trim())  ]
+//        |> List.reduce (+)
+//
+//    static member TakeSnapShot (cc:int) (pc:int) (mem:string) (gpr:GPR) (fpr:FPR) (funits:FunctionalUnits) =
+//        {   ClockCycles = cc
+//            PC = string pc
+//            Memory = mem
+//            GPR = gpr.ToString(); FPR = fpr.ToString()
+//            CurrentFUnit = if cc <> 0 then funits.ToString() else ""
+//            Executing = "" }
 
 type Simulator(input:string, verbose:bool) =
     let mutable cdb : CDB option = None
@@ -43,7 +44,7 @@ type Simulator(input:string, verbose:bool) =
 //    let fpr = FPR.GetInstance
     let funits = FunctionalUnits() //FU.InitAll()
     
-    let mutable logEntries = List.empty<SimulatorState>
+//    let mutable logEntries = List.empty<SimulatorState>
     
     let mutable halt = false
     
@@ -101,10 +102,10 @@ type Simulator(input:string, verbose:bool) =
         | FloatingPoint(_) -> false
 
     
-    let showLog() = for l in logEntries do printfn "%O" l
+    //let showLog() = for l in logEntries do printfn "%O" l
     let log() = 
-        let entry = SimulatorState.TakeSnapShot Clock.GetInstance.Cycles PC (memory.Dump()) GPR.GetInstance FPR.GetInstance funits
-        printfn "%O" entry
+        //let entry = SimulatorState.TakeSnapShot Clock.GetInstance.Cycles PC (memory.Dump()) GPR.GetInstance FPR.GetInstance funits
+        printfn "%O" "" //entry
         //logEntries <- logEntries @ [entry]
 
     let initialize() =

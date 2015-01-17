@@ -3,7 +3,6 @@
 open System
 open System.IO
 open NUnit.Framework
-open FsDLX.Tomasulo2
 
 open FsDLX.Common
 

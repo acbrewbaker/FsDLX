@@ -17,38 +17,6 @@ open FsDLX.Common
 //// functional unit type can be placed in the descendent class.  For example, the 
 //// IntUnitContainer class contains the method that computes the result of an 
 //// instruction handled by the integer functional unit.
-//[<AbstractClass>]
-//type FunctionalUnitContainer(cfg:Config.FunctionalUnit) =
-//    member val FunctionalUnitManager  = FunctionalUnitManager(cfg) with get
-//    member val RSManager  = RSManager(cfg) with get
-//
-//// The FunctionalUnitManager contains an array of functional units and is in charge of managing 
-//// that array (initializing, clearing, etc.).  Similarly, the RStationManager contains 
-//// an array of reservation stations and is in charge of managing that array (initializing, 
-//// clearing, updating them with a CDB value, etc.)
-//and FunctionalUnitManager(cfg:Config.FunctionalUnit) =
-//    member val FunctionalUnitnits = FunctionalUnitnit.ArrayInit cfg
-//
-//
-//
-//and RSManager(cfg:Config.FunctionalUnit) =
-//    member val RStations = ReservationStation.ArrayInit(cfg)
-//
-//// The FunctionalUnitnit class contains the fields that are necessary for keeping track of what is 
-//// going on in a particular functional unit: busy, max cycles, remaining cycles, and a 
-//// reference to the station containing the instruction that is currently being executed 
-//// by the functional unit. It also contains methods that access or modify an individual 
-//// functional unit.
-//and FunctionalUnitnit(cfg:Config.FunctionalUnit) =
-//    member val Busy = false with get, set
-//    member val MaxCycles = cfg.XCycles with get
-//    member val RemainingCycles = cfg.XCycles with get, set
-//    member val RSRef = 0
-//
-//    static member ArrayInit (cfg:Config.FunctionalUnit) = 
-//        Array.init cfg.XUnitCount (fun _ -> FunctionalUnitnit(cfg))
-
-
 type XUnit(maxCycles:int) =
     member val MaxCycles = maxCycles with get
     member val RemainingCycles = maxCycles with get, set
@@ -69,20 +37,20 @@ type XUnit(maxCycles:int) =
         then
             compute r
             RS.[r].ResultReady <- true
-            //xu.Reset()
 
     member xu.Update(RS:RS, compute:string -> unit) =
         RS.TryFindReady() |> function
         | Some r ->
-//            printfn "XU busy? %A;    Some r: %O" xu.Busy (RS.[r])
+            //printfn "XUnit (%d) is ready." r
             if not(xu.Busy) then
                 xu.Busy <- true
                 xu.CurrentRS <- RS.[r].Name |> Some
                 xu.Cycle RS compute
+            
+            elif xu.Busy && xu.RemainingCycles > 0 then printfn "do cycle"; xu.Cycle RS compute
+            
             xu.CurrentRS
-        | None -> 
-            if xu.Busy && xu.RemainingCycles > 0 then xu.Cycle RS compute
-            xu.CurrentRS
+        | None -> None
 
     override xu.ToString() =
         sprintf "Busy? %O, RemainingCycles? %O, CurrentInstruction? %O"
@@ -127,10 +95,20 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
         | _ ->
             fu.RS.Contents |> Array.iter (fun r -> r.Clear()) //ReservationStation.Clear
 
-    member fu.Execute() = 
-        fu.CurrentRS <- XUnit.Update(fu.XUnits, fu.RS, fu.Compute)
-        fu.XUnits |> Array.iter (fun xunit -> xunit.Reset())
-        fu.UpdateInfoString()
+    member fu.Execute() =
+        (fu.RS.TryFindReady(), XUnit.TryFindNotBusy fu.XUnits) |> function
+        | Some r, Some x -> 
+            fu.XUnits.[x].Busy <- true
+            fu.XUnits.[x].CurrentRS <- fu.RS.[r].Name |> Some
+            fu.XUnits.[x].Cycle fu.RS fu.Compute
+        
+        | _ ->
+            fu.XUnits |> Array.iter (fun xunit -> if xunit.Busy && xunit.RemainingCycles > 0 then xunit.Cycle fu.RS fu.Compute)    
+                    
+//        fu.CurrentRS <- XUnit.Update(fu.XUnits, fu.RS, fu.Compute)
+//        fu.UpdateInfoString()
+//        fu.XUnits |> Array.iter (fun xunit -> xunit.Reset())
+        
 
     member fu.Write() =
         let cdb = CDB.GetInstance
@@ -144,7 +122,7 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
                 cdb.Src <- RS(r).Name
                 Some(cdb)
             | None -> None
-//        fu.UpdateInfoString()
+        fu.UpdateInfoString()
         cdb'
 
     member fu.Dump() = fu.XUnits |> Array.map (sprintf "%O\n") |> Array.reduce (+) 
@@ -196,7 +174,6 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
             RegisterStat(rd).Qi <- Some(RS(r).Name)
 
             RS(r).A <- instruction.imm
-
             false, Some(fun _ -> fu.UpdateInfoString())
         | _ -> true, None
 
@@ -212,8 +189,8 @@ and IntegerUnit private (cfg, rsRef) =
     
     override iu.Insert instruction =
         match iu.TryInsert instruction with
-        | false, Some f -> f(); false
-        | _ -> true
+        | false, Some f -> f(); iu.UpdateInfoString(); false
+        | _ -> iu.UpdateInfoString(); true
 
     override iu.Compute r =
         let RS(r:string) = iu.RS.[r]
@@ -237,7 +214,9 @@ and IntegerUnit private (cfg, rsRef) =
                 | "movi2fp" -> fun x y -> x
                 | _ -> failwith "invalid integer unit instruction"
             | None -> failwith "tried to compute with no opcode"
-            
+        iu.UpdateInfoString()
+
+    //override iu.ToString() = iu.Dump()   
 
     static member GetInstance = instance
 
@@ -408,6 +387,9 @@ and FunctionalUnits() =
 
     member fu.UpdateInfoStrings() =
         allfu |> Array.iter (fun u -> u.UpdateInfoString())
+
+    member fu.Dump() =
+        allfu |> Array.map (fun u -> u.Dump()) |> Array.map ((+) "\n") |> Array.reduce (+)
 
     override fu.ToString() = 
         fu.All |> Array.map (sprintf "%O\n") |> Array.reduce (+)
