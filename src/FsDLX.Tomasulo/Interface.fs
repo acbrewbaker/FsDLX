@@ -5,6 +5,13 @@ namespace FsDLX.Tomasulo
 open System.Collections
 open FsDLX.Common
 
+//type Hardware =
+//    | Clock of Clock
+//    | PC of PC
+//    | Memory of Memory
+//    | RegisterFile of RegisterFile
+//    | FunctionalUnits of FunctionalUnits
+
 
 
 //type SimulatorState =

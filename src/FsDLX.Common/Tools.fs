@@ -125,7 +125,7 @@ module Convert =
 
     let intOption2str (o:int option) = o |> function
         | Some o -> int2hex o
-        | None -> sprintf "%O" o
+        | None -> sprintf "%s" (int2hex 0)
 
 
 //    module InputLine =

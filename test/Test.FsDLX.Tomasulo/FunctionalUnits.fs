@@ -4,7 +4,7 @@ open NUnit.Framework
 open FsDLX.Common
 open FsDLX.Tomasulo
 
-let lines =
+let lines() =
     [
         "00000000: 20010003      #    addi r1, r0, 3"
         "00000004: 20020006      #    addi r2, r0, 6"
@@ -13,121 +13,27 @@ let lines =
         "00000010: 44000000      #    trap r0, 0"
     ]
 
-let hex = lines |> List.map splitForHex
+let hex() = lines() |> List.map splitForHex
 
-let ints = hex |> List.map (Convert.hex2int)
+let ints() = hex() |> List.map (Convert.hex2int)
 
 let regId i s = Convert.int2bits2reg i s
 let immVal i a b = Convert.int2bits2int i a b
 
-type RS2() =
-    let kvp (r:ReservationStation) = (r.Name, r)
-    let RS = 
-        [|
-            ReservationStation.ArrayInit Config.FunctionalUnit.IntegerUnit
-            ReservationStation.ArrayInit Config.FunctionalUnit.TrapUnit
-        |] |> Array.concat |> Array.map kvp |> Map.ofArray
-
-    member rs2.Item
-        with get i = RS.[i]
- 
-let strListToStr (l:string list) = (l |> List.map (fun l -> l.Trim()) |> List.fold (fun s r -> s + r + "\n") ("")).Trim()
-
-let displayThenAssert (expected:string list) (actual:string list) =
-    let e, a = strListToStr expected, strListToStr actual
-    printfn "==== Expected ===="
-    printfn "%s\n" e
-    printfn "==== Actual ===="
-    printfn "%s\n" a
-    Assert.AreEqual(e,a)
-
-
-let expectedCycle0 =
-    [
-        "Clock cycle: 0"
-        "INTUNIT RESERVATION STATIONS"
-        "IntUnit0  True  addi  00000000  00000000  <null>  <null>  00000003"
-        "MEMORY"
-        "0000:   20010003 20020006 00221820 44600001 44000000 00000000 00000000 00000000"
-        "0020:   00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000"  
-    ]
-
-let expectedCycle1 =
-    [
-        "Clock cycle: 1"
-        "INTUNIT RESERVATION STATIONS"
-        "IntUnit0  True  addi  00000000  00000000  <null>  <null>  00000003"
-        "IntUnit1  True  addi  00000000  00000000  <null>  <null>  00000006"
-        "EXECUTING: instruction in station IntUnit0"
-    ]
-
-let expectedCycle2 =
-    [
-        "Clock cycle: 2"
-        "INTUNIT RESERVATION STATIONS"
-        "IntUnit1  True  addi  00000000  00000000  <null>  <null>  00000006"
-        "IntUnit2  True  add  00000003  00000000  <null>  IntUnit1  00000000"
-        "EXECUTING: instruction in station IntUnit1"
-        "CDB: result: 00000003 station: IntUnit0"
-        "R0-R7:  00000000 00000003 IntUnit1 IntUnit2 00000000 00000000 00000000 00000000"
-    ]
-
-let expectedCycle3 =
-    [
-        "Clock cycle: 3"
-        "TRAPUNIT RESERVATION STATIONS"
-        "TrapUnit0    true dumpGPR 00000000 00000000 IntUnit2     null 00000000"
-        "CDB: result: 00000006 station: IntUnit1"
-        "R0-R7:   00000000 00000003 00000006 IntUnit2 00000000 00000000 00000000 00000000"
-    ]
-
-let expectedCycle4 =
-    [
-        "Clock cycle: 4"
-        "TRAPUNIT RESERVATION STATIONS"
-        "TrapUnit0    true dumpGPR 00000000 00000000 IntUnit2     null 00000000"
-        "TrapUnit1    true    halt 00000000 00000000     null     null 00000000"
-        "EXECUTING: instruction in station IntUnit2"
-    ]
-
-let expectedCycle5 =
-    [
-        "Clock cycle: 5"
-        "CDB: result: 00000009 station: IntUnit2"
-        "R0-R7:   00000000 00000003 00000006 00000009 00000000 00000000 00000000 00000000"
-    ]
-
-let expectedCycle6 =
-    [
-        "Clock cycle: 6"
-        "EXECUTING: instruction in station TrapUnit0"
-    ]
-
-let expectedCycle7 =
-    [
-        "Clock cycle: 7"
-        "EXECUTING: instruction in station TrapUnit1"
-    ]
-
-let expectedCycle8 =
-    [
-        "Clock cycle: 8"
-    ]
-
 
 let getDisplayStrings (cdb:CDB option) (funits:FunctionalUnits) =
     let memStr = if Clock.GetInstance.Cycles = 0 then Memory.GetInstance.ToString() else ""
-    funits.UpdateInfoStrings()
     [
         sprintf "%O" (Clock.GetInstance)
         sprintf "%O" funits
-        memStr
-        //CDB.Opt2String cdb
-        //sprintf "%O" RegisterFile.GetInstance
-    ]
+        CDB.Opt2String cdb
+        sprintf "%O" RegisterFile.GetInstance
+        memStr        
+    ] |> List.choose (fun s -> if s.Length > 1 then Some s else None)
 
 
-let expectedOutput =
+
+let expectedOutput() =
     [
         expectedCycle0
         expectedCycle1
@@ -140,12 +46,17 @@ let expectedOutput =
         expectedCycle8
     ]
 
-let run (stopCycle:int) (getDisplayStrings: CDB option -> FunctionalUnits -> string list) =
+let run (stopCycle:int) (clock:Clock) (pc:PC) (registerFile:RegisterFile) (mem:Memory) (getDisplayStrings: CDB option -> FunctionalUnits -> string list) =
     let mutable cdb : CDB option = None
-    let Clock = Clock.GetInstance
-    let PC = PC.GetInstance
-    let RegisterFile = RegisterFile.GetInstance
-    let Mem = Memory.GetInstance
+//    let Clock = Clock.GetInstance
+//    let PC = PC.GetInstance
+//    let RegisterFile = RegisterFile.GetInstance
+//    let Mem = Memory.GetInstance
+    let Clock = clock
+    let PC = pc
+    let RegisterFile = registerFile
+    let Mem = mem
+
     let FunctionalUnits = FunctionalUnits() //FU.InitAll()
     let mutable output = List.empty<string list>
     let mutable halt = false
@@ -162,7 +73,6 @@ let run (stopCycle:int) (getDisplayStrings: CDB option -> FunctionalUnits -> str
     let update(cdb) =
         updateReservationStations(cdb)
         clearReservationStations()
-        FunctionalUnits.UpdateInfoStrings()
 
     let branchInBranchUnit() = false
 
@@ -206,8 +116,8 @@ let ``xunit 2`` () =
     let x = XUnit(cfg.maxCycles)
     let RS' = ReservationStation.ArrayInit cfg |> ref
     let RS = RS.IntegerUnit RS'
-    let x = x.Update(RS, fun _ -> ())
-    printfn "%O" x
+//    let x = x.Update(RS, fun _ -> ())
+  //  printfn "%O" x
     printfn "ready? %A" (RS.TryFindReady())
 
 
@@ -216,36 +126,69 @@ let ``integer unit`` () =
     let cfg = Config.FunctionalUnit.IntegerUnit
     let RS' = ReservationStation.ArrayInit cfg |> ref
     let iu = IntegerUnit.GetInstance RS'
+
+    let i0 = Instruction.ofInstructionInt(ints().[0])
+    let i1 = Instruction.ofInstructionInt(ints().[1])
+    let i2 = Instruction.ofInstructionInt(ints().[2])
+    
+    iu.Insert i0 |> ignore
+
     printfn "%O" iu
+    
 
 [<Test>]
 let ``cycle0`` () =
     let stopCycle = 0
-    let output = run stopCycle getDisplayStrings
+    let output = 
+        run stopCycle
+            Clock.GetInstance 
+            PC.GetInstance 
+            RegisterFile.GetInstance
+            Memory.GetInstance
+            getDisplayStrings
+
     //printfn "Output %A" output
-    (expectedOutput.[stopCycle], output.[stopCycle]) ||> displayThenAssert
+    (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
 
 [<Test>]
 let ``cycle1`` () =
     let stopCycle = 1
-    let output = run stopCycle getDisplayStrings
+    let output = 
+        run stopCycle
+            Clock.GetInstance 
+            PC.GetInstance 
+            RegisterFile.GetInstance
+            Memory.GetInstance
+            getDisplayStrings
     //printfn "Output %A" output
-    (expectedOutput.[stopCycle], output.[stopCycle]) ||> displayThenAssert
+    (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
 
 [<Test>]
 let ``cycle2`` () =
     let stopCycle = 2
-    let output = run stopCycle getDisplayStrings
+    let output = 
+        run stopCycle
+            Clock.GetInstance 
+            PC.GetInstance 
+            RegisterFile.GetInstance
+            Memory.GetInstance
+            getDisplayStrings
     //printfn "Output %A" output
-    (expectedOutput.[stopCycle], output.[stopCycle]) ||> displayThenAssert
+    (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
 
 
 [<Test>]
 let ``cycle3`` () =
     let stopCycle = 3
-    let output = run stopCycle getDisplayStrings
+    let output = 
+        run stopCycle
+            Clock.GetInstance 
+            PC.GetInstance 
+            RegisterFile.GetInstance
+            Memory.GetInstance
+            getDisplayStrings
     //printfn "Output %A" output
-    (expectedOutput.[stopCycle], output.[stopCycle]) ||> displayThenAssert
+    (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
 
 [<Test>]
 let ``cycle4`` () = ()
@@ -265,9 +208,9 @@ let ``cycle8`` () = ()
 
 [<Test>]
 let ``intUnit0``() =
-    let i0 = Instruction.ofInstructionInt(ints.[0])
-    let i1 = Instruction.ofInstructionInt(ints.[1])
-    let i2 = Instruction.ofInstructionInt(ints.[2])
+    let i0 = Instruction.ofInstructionInt(ints().[0])
+    let i1 = Instruction.ofInstructionInt(ints().[1])
+    let i2 = Instruction.ofInstructionInt(ints().[2])
 
     // for the issuing instruction:
     // rd - the destination
@@ -493,8 +436,8 @@ let ``intUnit2`` () =
     let intUnit = IntegerUnit.GetInstance rsRef
     let iuRS = [| rsRef |> RS.IntegerUnit |]
 
-    let i0 = Instruction.ofInstructionInt(ints.[0])
-    let i1 = Instruction.ofInstructionInt(ints.[1])
+    let i0 = Instruction.ofInstructionInt(ints().[0])
+    let i1 = Instruction.ofInstructionInt(ints().[1])
 
     let uid = ref 0
 

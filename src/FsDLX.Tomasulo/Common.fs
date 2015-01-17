@@ -45,13 +45,14 @@ type PC private () =
     member val Value = 0 with get, set
     member pc.Increment() = pc.Value <- pc.Value + 4
     static member GetInstance = instance
-
+    static member GetNewInstance() = PC()
 
 type Clock private () =
     static let instance = Clock()
     member val Cycles = 0 with get, set
     member c.Tic() = c.Cycles <- c.Cycles + 1
     static member GetInstance = instance
+    static member GetNewInstance() = Clock()
     
     override c.ToString() = sprintf "Clock cycle: %d" c.Cycles
 
