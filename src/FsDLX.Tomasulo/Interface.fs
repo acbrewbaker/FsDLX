@@ -92,21 +92,13 @@ type Simulator(input:string, verbose:bool) =
     // to the appropriate unit. If each reservation station in the unit is busy, the issue 
     // fails and is reattempted in the next clock cycle.
     let issue (instruction:int) = 
-        let i = Instruction(instruction)
-        let opcode = i.Info.opcode
-//        printfn "Issuing: %O" opcode
-        let stall =
-            i.Info.kind |> function
-            | Integer ->
-                printfn "Issuing: %O" opcode
-                funits.IntegerUnit.Insert i
-            | Trap -> 
-                funits.TrapUnit.Insert i
-            | Branch -> false
-            | Memory -> false
-            | FloatingPoint -> false
-        
-        stall
+        let instruction = Instruction.ofInstructionInt(instruction) 
+        instruction |> function
+        | Integer(_) -> funits.IntegerUnit.Insert instruction
+        | Trap(_) -> funits.TrapUnit.Insert instruction
+        | Branch(_) -> false
+        | Memory(_) -> false
+        | FloatingPoint(_) -> false
 
     
     let showLog() = for l in logEntries do printfn "%O" l
@@ -123,42 +115,42 @@ type Simulator(input:string, verbose:bool) =
     let runVerbose() = ()
     
 
-    let display() =
-        printfn "%s" (funits.GetStationIssued())
-        Clock.GetInstance.Cycles |> function
-        | 0 ->
-                
-            printfn "%s" (funits.IntegerUnitReservationStations.[0].ToString())
-            printfn "%O" memory
-        | 1 ->
-            printfn "%s" (funits.IntegerUnitReservationStations.[0].ToString())
-            printfn "%s" (funits.IntegerUnitReservationStations.[1].ToString())
-            printfn "%s" (funits.GetExecuting())
-        | 2 ->
-            printfn "%s" (funits.IntegerUnitReservationStations.[0].ToString())
-            printfn "%s" (funits.IntegerUnitReservationStations.[1].ToString())
-            printfn "%s" (funits.GetExecuting())
-            printfn "%O" CDB.GetInstance
-            printfn "%s" (GPR.GetInstance.Dump())
-        | 3 ->
-            printfn "%s" (funits.TrapUnitReservationStations.[0].ToString())
-            printf "%O" CDB.GetInstance
-            printfn "%s" (GPR.GetInstance.Dump())
-        | 4 ->
-            printfn "%s" (funits.TrapUnitReservationStations.[0].ToString())
-            printfn "%s" (funits.TrapUnitReservationStations.[1].ToString())
-            printfn "%s" (funits.GetExecuting())
-        | 5 ->
-            printfn "%O" CDB.GetInstance
-            printfn "%s" (GPR.GetInstance.Dump())
-        | 6 ->
-            printfn "%s" (funits.GetExecuting())
-        | 7 ->
-            printfn "%s" (funits.GetExecuting())
-        | 8 ->
-            printfn "should be done"
-        | _ -> failwith "not enough clock cycles"
-        printfn ""
+    let display() = ()
+//        //printfn "%s" (funits.GetStationIssued())
+//        Clock.GetInstance.Cycles |> function
+//        | 0 ->
+//                
+//            printfn "%s" (funits.IntegerUnitReservationStations.[0].ToString())
+//            printfn "%O" memory
+//        | 1 ->
+//            printfn "%s" (funits.IntegerUnitReservationStations.[0].ToString())
+//            printfn "%s" (funits.IntegerUnitReservationStations.[1].ToString())
+//            printfn "%s" (funits.GetExecuting())
+//        | 2 ->
+//            printfn "%s" (funits.IntegerUnitReservationStations.[0].ToString())
+//            printfn "%s" (funits.IntegerUnitReservationStations.[1].ToString())
+//            printfn "%s" (funits.GetExecuting())
+//            printfn "%O" CDB.GetInstance
+//            printfn "%s" (GPR.GetInstance.Dump())
+//        | 3 ->
+//            printfn "%s" (funits.TrapUnitReservationStations.[0].ToString())
+//            printf "%O" CDB.GetInstance
+//            printfn "%s" (GPR.GetInstance.Dump())
+//        | 4 ->
+//            printfn "%s" (funits.TrapUnitReservationStations.[0].ToString())
+//            printfn "%s" (funits.TrapUnitReservationStations.[1].ToString())
+//            printfn "%s" (funits.GetExecuting())
+//        | 5 ->
+//            printfn "%O" CDB.GetInstance
+//            printfn "%s" (GPR.GetInstance.Dump())
+//        | 6 ->
+//            printfn "%s" (funits.GetExecuting())
+//        | 7 ->
+//            printfn "%s" (funits.GetExecuting())
+//        | 8 ->
+//            printfn "should be done"
+//        | _ -> failwith "not enough clock cycles"
+//        printfn ""
 
     let runDebug() =
         initialize()

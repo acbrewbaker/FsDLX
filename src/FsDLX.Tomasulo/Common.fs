@@ -33,7 +33,7 @@ type CDB private () =
         sprintf "CDB: result: %s station: %s"
             (Convert.int2hex cdb.Result)
             cdb.Src
-
+            
     static member GetInstance = instance
 
     static member Opt2String (cdb:CDB option) = cdb |> function
@@ -43,6 +43,7 @@ type CDB private () =
 type PC private () =
     static let instance = PC()
     member val Value = 0 with get, set
+    member pc.Increment() = pc.Value <- pc.Value + 4
     static member GetInstance = instance
 
 
@@ -58,8 +59,6 @@ type Clock private () =
 module InstructionHex =
     let toOpcodeBits hex = (Convert.hex2bin hex).[0..Constants.nOpcodeBits - 1]
 
-module InstructionInt =
-    let toOpcodeBits i = InstructionHex.toOpcodeBits (Convert.int2hex i)
 
 module Config =
     module Registers = 

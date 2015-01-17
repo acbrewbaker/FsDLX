@@ -9,16 +9,16 @@ and RSGroupRef = RSGroup ref
 and RS =
     | IntegerUnit of RSGroupRef
     | TrapUnit of RSGroupRef
-//    | BranchUnit of RSGroupRef
-//    | MemoryUnit of RSGroupRef
-//    | FloatingPointUnit of RSGroupRef
+    | BranchUnit of RSGroupRef
+    | MemoryUnit of RSGroupRef
+    | FloatingPointUnit of RSGroupRef
 
     static member ApplyFunction (f:RSGroupRef -> 'T) = function
         | IntegerUnit rs -> f rs
         | TrapUnit rs -> f rs
-//        | BranchUnit rs -> f rs
-//        | MemoryUnit rs -> f rs
-//        | FloatingPointUnit rs -> f rs
+        | BranchUnit rs -> f rs
+        | MemoryUnit rs -> f rs
+        | FloatingPointUnit rs -> f rs
 
     member rs.Contents = rs |> RS.ApplyFunction (!)
 
@@ -49,21 +49,12 @@ and RS =
                 | None, None -> () )
         | None -> ()
 
-    member rs.Clear() = rs.Contents |> Array.iter (fun r -> r.ClearIfResultWritten())
+    member rs.Clear() = rs.Contents |> Array.iter (fun r -> r.Clear())
 
     member rs.TryFindReady() = rs.Contents |> Array.tryFindIndex (fun r -> r.OperandsAvailable())
     member rs.TryFindResultReady() = rs.Contents |> Array.tryFindIndex (fun r -> r.ResultReady)
     member rs.TryFindEmpty() = rs.Contents |> Array.tryFindIndex (fun r -> r.IsEmpty())
 
-//        let tryFindReady (rsGroupRef:RSGroupRef) = !rsGroupRef |> Array.tryFindIndex (fun r -> r.IsReady())
-//        RS.ApplyFunction rs tryFindReady
-
-//        rs |> function
-//        | IntegerUnit rs -> update rs
-//        | TrapUnit rs -> update rs
-//        | BranchUnit rs -> update rs
-//        | MemoryUnit rs -> update rs
-//        | FloatingPointUnit rs -> update rs
     member rs.TryFindNotBusy() = rs.Contents |> Array.tryFindIndex (fun r -> not(r.Busy))
 
     member rs.Filter(f:ReservationStation -> bool) = rs.Contents |> Array.filter f
@@ -78,6 +69,7 @@ and RS =
         if onlyBusy.Length <> 0 
         then (onlyBusy |> Array.map (sprintf "%O\n") |> Array.reduce (+)).Trim()
         else ""
+
 
     static member Filter(rs:RS[], f) =
         rs |> Array.map (fun r -> r.Filter f) |> Array.concat
@@ -96,22 +88,21 @@ and ReservationStation =
         mutable Vk              : int
         mutable Qj              : string option
         mutable Qk              : string option
-        mutable A               : int
+        mutable A               : int option
         mutable ResultReady     : bool
         mutable ResultWritten   : bool
         mutable Result          : int
     }
 
     member rs.Clear() =
-        rs.Busy <- false
-        rs.Op <- None
-        rs.Vj <- 0; rs.Vk <- 0
-        rs.Qj <- None; rs.Qk <- None
-        rs.A <- 0
-        rs.ResultReady <- false
-        rs.ResultWritten <- false
-
-    member rs.ClearIfResultWritten() = if rs.ResultWritten then rs.Clear()
+        if rs.ResultWritten then
+            rs.Busy <- false
+            rs.Op <- None
+            rs.Vj <- 0; rs.Vk <- 0
+            rs.Qj <- None; rs.Qk <- None
+            rs.A <- None
+            rs.ResultReady <- false
+            rs.ResultWritten <- false
 
     member rs.OperandsAvailable() =
         rs.Busy                 &&
@@ -126,7 +117,7 @@ and ReservationStation =
         rs.Vk   = 0             &&
         rs.Qj   = None          &&
         rs.Qk   = None          &&
-        rs.A    = 0
+        rs.A    = None
 
     member rs.Dump() =
         sprintf "%s  %O  %O  %s  %s  %O  %O  %O  %O  %O  %s"
@@ -144,29 +135,11 @@ and ReservationStation =
             (Convert.int2hex rs.Vj)
             (Convert.int2hex rs.Vk) 
             (Convert.strOption2str(rs.Qj)) (Convert.strOption2str(rs.Qk))
-            (Convert.int2hex rs.A)
-
-//    override rs.ToString() =
-//        sprintf "%s  %O  %O  %s  %s  %O  %O  %s"
-//            rs.Name rs.Busy rs.Op 
-//            (Convert.int2hex rs.Vj)
-//            (Convert.int2hex rs.Vk) 
-//            rs.Qj rs.Qk 
-//            (Convert.int2hex rs.Result)
-
-//    override rs.ToString() =
-//        sprintf "%s  %O  %O  %s  %s  %O  %O  %O  %O  %O  %s"
-//            rs.Name rs.Busy rs.Op 
-//            (Convert.int2hex rs.Vj)
-//            (Convert.int2hex rs.Vk) 
-//            rs.Qj rs.Qk 
-//            rs.A
-//            rs.ResultReady rs.ResultWritten 
-//            (Convert.int2hex rs.Result)
+            (Convert.intOption2str rs.A)
 
     static member Init name =
         {   Name = name; Busy = false; Op = None; 
-            Vj = 0; Vk = 0; Qj = None; Qk = None; A = 0
+            Vj = 0; Vk = 0; Qj = None; Qk = None; A = None
             ResultReady = false;
             ResultWritten = false;
             Result = 0 }
@@ -177,12 +150,10 @@ and ReservationStation =
     static member ArrayInit(cfg:Config.FunctionalUnit) =
         Array.init cfg.rsCount (fun i -> ReservationStation.Init (cfg.rsPrefix + string i))
 
-
     static member IntUnitInit() = ReservationStation.ArrayInit Config.FunctionalUnit.IntegerUnit
     static member TrapUnitInit() = ReservationStation.ArrayInit Config.FunctionalUnit.TrapUnit
 
-
     static member Clear (r:ReservationStation) = r.Clear()
-    static member ClearIfResultWritten (r:ReservationStation) = r.ClearIfResultWritten()
+ //   static member ClearIfResultWritten (r:ReservationStation) = r.ClearIfResultWritten()
 
 

@@ -11,17 +11,11 @@ type RegisterFile private () =
         with    get i = regs.[i]
         and     set i v = regs.[i].Contents <- v
     
-//    member rf.Item
-//        with get(i, idx) =
-//            let r = (Convert.int2bin i).[idx..idx+5] |> Convert.bin2int
-//            regs.[r]
-
     member rf.Update(cdb) = regs |> Array.iter (fun reg -> reg.Update(cdb))
 
-    static member GetInstance = instance
+    override rf.ToString() = sprintf "%O\n%O" (GPR.GetInstance) (FPR.GetInstance)
 
-    static member HasContent (regs:Register[]) =
-        not(regs |> Array.forall (fun reg -> (reg.Contents = 0) && (reg.Qi.IsNone)))
+    static member GetInstance = instance
 
 and GPR private () =
     
@@ -93,9 +87,6 @@ and RegisterStat private (instruction:int) =
             | OperandReg.GPR s -> GPR.GetInstance.[reg s]
             | OperandReg.FPR s -> FPR.GetInstance.[reg s]
 
-//    member rstat.Item
-//        with get (i:int) = RegisterFile.GetInstance.[i]
-
     static member GetInstance = instance
 
 and Regs private (instruction:int) =
@@ -108,9 +99,6 @@ and Regs private (instruction:int) =
             | OperandReg.NONE -> Register.Init(0).Contents
             | OperandReg.GPR s -> GPR.GetInstance.[reg s].Contents
             | OperandReg.FPR s -> FPR.GetInstance.[reg s].Contents
-
-//    member regs.Item
-//        with get i = RegisterFile.GetInstance.[i]
 
     static member GetInstance = instance
       
@@ -127,11 +115,15 @@ and Register =
         | Some cdb, Some Qi -> if Qi = cdb.Src then r.Contents <- cdb.Result; r.Qi <- None
         | _ -> ()
 
-    override r.ToString() = sprintf "%s" (Convert.int2hex r.Contents)
+    override r.ToString() = (r.Qi, r.Contents) |> function
+        | Some _, 0 -> sprintf "%s" (Convert.strOption2str r.Qi)
+        | _ -> sprintf "%s" (Convert.int2hex r.Contents)
     
     static member Init _ = { Qi = None; Contents = 0 }
     static member ArrayInit n = Array.init n Register.Init
 
+    static member HasContent (regs:Register[]) =
+        regs |> Array.forall (fun r -> r.Contents = 0 && r.Qi.IsNone) |> not
 
 and RegisterSet(heading:string, regs:Register[]) =
     do if regs.Length <> 8 then failwith "register set must be length 8"
@@ -143,15 +135,10 @@ and RegisterSet(heading:string, regs:Register[]) =
         |> Array.fold (fun s r -> s + " " + r) (sprintf "%s: " heading)
 
     override rs.ToString() =
-//        regs
-//        |> Array.map (sprintf "%O")
-//        |> Array.fold (fun s r -> s + " " + r) (sprintf "%s: " heading)
-        if RegisterFile.HasContent rs.Regs then
-            rs.Regs
-            |> Array.map (sprintf "%O")
+        if Register.HasContent rs.Regs then
+            rs.Regs |> Array.map (sprintf "%O")
             |> Array.fold (fun s r -> s + " " + r) (sprintf "%s: " heading)
         else ""
-
 
 //type GPR private () =
 //    static let instance = 
