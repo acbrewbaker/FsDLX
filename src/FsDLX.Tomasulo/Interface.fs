@@ -57,7 +57,7 @@ type Simulator(input:string, verbose:bool) =
     
 
     let finished() = 
-        if Clock.GetInstance.Cycles = 0 then false else funits.AllFinished()
+        if Clock.GetInstance.Value.Cycles = 0 then false else funits.AllFinished()
         
 
     let updateReservationStations() = 
@@ -186,7 +186,7 @@ type Simulator(input:string, verbose:bool) =
             //clearReservationStations()
             
             display()
-            Clock.GetInstance.Tic()
+            Clock.GetInstance.Value.Tic()
             
             
             

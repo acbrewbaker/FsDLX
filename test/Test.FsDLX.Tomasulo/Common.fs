@@ -67,17 +67,17 @@ let expectedCycle3 =
     [
         "Clock cycle: 3"
         "TRAPUNIT RESERVATION STATIONS"
-        "TrapUnit0    true dumpGPR 00000000 00000000 IntUnit2     null 00000000"
+        "TrapUnit0  True  dumpGPR  00000000  00000000  IntUnit2  <null>  00000000"
         "CDB: result: 00000006 station: IntUnit1"
-        "R0-R7:   00000000 00000003 00000006 IntUnit2 00000000 00000000 00000000 00000000"
+        "R0-R7:  00000000 00000003 00000006 IntUnit2 00000000 00000000 00000000 00000000"
     ]
 
 let expectedCycle4 =
     [
         "Clock cycle: 4"
         "TRAPUNIT RESERVATION STATIONS"
-        "TrapUnit0    true dumpGPR 00000000 00000000 IntUnit2     null 00000000"
-        "TrapUnit1    true    halt 00000000 00000000     null     null 00000000"
+        "TrapUnit0  True  dumpGPR  00000000  00000000  IntUnit2  <null>  00000000"
+        "TrapUnit1  True  halt  00000000  00000000  <null>  <null>  00000000"
         "EXECUTING: instruction in station IntUnit2"
     ]
 

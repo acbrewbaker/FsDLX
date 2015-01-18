@@ -22,7 +22,7 @@ let immVal i a b = Convert.int2bits2int i a b
 
 
 let getDisplayStrings (cdb:CDB option) (funits:FunctionalUnits) =
-    let memStr = if Clock.GetInstance.Cycles = 0 then Memory.GetInstance.ToString() else ""
+    let memStr = if Clock.GetInstance.Value.Cycles = 0 then Memory.GetInstance.ToString() else ""
     [
         sprintf "%O" (Clock.GetInstance)
         sprintf "%O" funits
@@ -46,18 +46,15 @@ let expectedOutput() =
         expectedCycle8
     ]
 
-let run (stopCycle:int) (clock:Clock) (pc:PC) (registerFile:RegisterFile) (mem:Memory) (getDisplayStrings: CDB option -> FunctionalUnits -> string list) =
+//let run (stopCycle:int) (clock:Clock) (pc:PC) (registerFile:RegisterFile) (mem:Memory) (getDisplayStrings: CDB option -> FunctionalUnits -> string list) =
+let run (stopCycle:int) (getDisplayStrings: CDB option -> FunctionalUnits -> string list) =
     let mutable cdb : CDB option = None
-//    let Clock = Clock.GetInstance
-//    let PC = PC.GetInstance
-//    let RegisterFile = RegisterFile.GetInstance
-//    let Mem = Memory.GetInstance
-    let Clock = clock
-    let PC = pc
-    let RegisterFile = registerFile
-    let Mem = mem
-
-    let FunctionalUnits = FunctionalUnits() //FU.InitAll()
+    let Clock = Clock.GetInstance.Value
+    let PC = PC.GetInstance
+    let RegisterFile = RegisterFile.GetInstance
+    let Mem = Memory.GetInstance
+    let FunctionalUnits = FunctionalUnits.GetInstance
+    
     let mutable output = List.empty<string list>
     let mutable halt = false
 
@@ -80,13 +77,7 @@ let run (stopCycle:int) (clock:Clock) (pc:PC) (registerFile:RegisterFile) (mem:M
     
     let execute() = FunctionalUnits.All |> Array.iter (fun u -> u.Execute())
 
-    let issue i = 
-        match i with
-        | Integer(_) -> FunctionalUnits.IntegerUnit.Insert i
-        | Trap(_) -> FunctionalUnits.TrapUnit.Insert i
-        | Branch(_) -> false
-        | Memory(_) -> false
-        | FloatingPoint(_) -> false
+    let issue = FunctionalUnits.Issue
 
     Mem.Load(inputdir @@ "add.hex")
     while not(halt) do //&& not(finished()) do
@@ -141,7 +132,7 @@ let ``cycle0`` () =
     let stopCycle = 0
     let output = 
         run stopCycle
-            Clock.GetInstance 
+            Clock.GetInstance.Value 
             PC.GetInstance 
             RegisterFile.GetInstance
             Memory.GetInstance
@@ -155,7 +146,7 @@ let ``cycle1`` () =
     let stopCycle = 1
     let output = 
         run stopCycle
-            Clock.GetInstance 
+            Clock.GetInstance.Value
             PC.GetInstance 
             RegisterFile.GetInstance
             Memory.GetInstance
@@ -168,7 +159,7 @@ let ``cycle2`` () =
     let stopCycle = 2
     let output = 
         run stopCycle
-            Clock.GetInstance 
+            Clock.GetInstance.Value
             PC.GetInstance 
             RegisterFile.GetInstance
             Memory.GetInstance
@@ -179,19 +170,30 @@ let ``cycle2`` () =
 
 [<Test>]
 let ``cycle3`` () =
+    let expectedOutput = expectedOutput()
     let stopCycle = 3
     let output = 
         run stopCycle
-            Clock.GetInstance 
+            Clock.GetInstance.Value
+            PC.GetInstance 
+            RegisterFile.GetInstance
+            Memory.GetInstance
+            getDisplayStrings
+    //printfn "Output %A" output
+    (expectedOutput.[stopCycle], output.[stopCycle]) ||> displayThenAssert
+
+[<Test>]
+let ``cycle4`` () =
+    let stopCycle = 4
+    let output = 
+        run stopCycle
+            Clock.GetInstance.Value
             PC.GetInstance 
             RegisterFile.GetInstance
             Memory.GetInstance
             getDisplayStrings
     //printfn "Output %A" output
     (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
-
-[<Test>]
-let ``cycle4`` () = ()
 
 [<Test>]
 let ``cycle5`` () = ()

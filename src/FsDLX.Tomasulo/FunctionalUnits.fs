@@ -108,7 +108,9 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
         | _ -> ()
         fu.XUnits |> Array.iter (fun xunit -> 
             if      xunit.Busy && xunit.RemainingCycles > 0 
-            then    xunit.Cycle fu.RS fu.Compute)    
+            then    xunit.Cycle fu.RS fu.Compute
+            elif    xunit.Busy && xunit.RemainingCycles <= 0
+            then    xunit.Reset(); fu.CurrentRS <- None)    
 
     member fu.Write() =
         let cdb = CDB.GetInstance
@@ -120,6 +122,7 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
                 RS(r).ResultWritten <- true
                 cdb.Result <- RS(r).Result
                 cdb.Src <- RS(r).Name
+                //fu.CurrentRS <- None
                 Some(cdb)
             | None -> None
         cdb'
@@ -169,7 +172,7 @@ and IntegerUnit private (cfg, rsRef) =
 
     override iu.Compute r =
         let RS(r:string) = iu.RS.[r]
-       
+        iu.CurrentRS <- Some(RS(r).Name)
         RS(r).Result <- 
             match RS(r).Op with
             | Some op -> 
@@ -192,7 +195,6 @@ and IntegerUnit private (cfg, rsRef) =
 
     static member GetInstance = instance
 
-
 and TrapUnit private (cfg, rsRef) =
     inherit FunctionalUnit(cfg, rsRef)
 
@@ -204,16 +206,24 @@ and TrapUnit private (cfg, rsRef) =
         let Regs(i) = (Regs.GetInstance instruction.asInt).[i]
         let RegisterStat(i) = (RegisterStat.GetInstance instruction.asInt).[i]
 
-        let opcode, funcCode, rs =
+        let opcode, funcCode, rd, rs, rt =
             instruction.Opcode,
             instruction.FuncCode,
-            instruction.S1Reg
+            instruction.DstReg,
+            instruction.S1Reg,
+            instruction.S2Reg
         
         tu.RS.TryFindNotBusy() |> function
         | Some r -> 
-            if      RegisterStat(rs).Qi.IsSome 
-            then    RS(r).Qj <- RegisterStat(rs).Qi
-            else    RS(r).Vj <- Regs(rs); RS(r).Qj <- None
+            if rs <> S1Reg.NONE then
+                if      RegisterStat(rs).Qi.IsSome 
+                then    RS(r).Qj <- RegisterStat(rs).Qi
+                else    RS(r).Vj <- Regs(rs); RS(r).Qj <- None
+            
+            if rt <> S2Reg.NONE then
+                if      RegisterStat(rt).Qi.IsSome
+                then    RS(r).Qk <- RegisterStat(rt).Qi
+                else    RS(r).Vk <- Regs(rt); RS(r).Qk <- None
             
             opcode.Name <-
                 match funcCode with
@@ -225,21 +235,21 @@ and TrapUnit private (cfg, rsRef) =
             
             RS(r).Op <- Some opcode
             RS(r).Busy <- true
-            
+            tu.CurrentRS <- Some(RS(r).Name)
             false
 
         | None -> true
 
     override tu.Compute r =
         let RS(r:string) = tu.RS.[r]
-        
+        tu.CurrentRS <- Some(RS(r).Name)
         let halt, result = RS(r).Op |> function
             | Some op -> 
                 match op.Name, RS(r).A with
                 | "halt", _ -> true, 0
-                | "dumpgpr", _ -> false, RS(r).Vj
-                | "dumpfpr", _ -> false, RS(r).Vj
-                | "dumpstr", Some A' -> false, Memory.GetInstance.[A']
+                | "dumpGPR", _ -> false, RS(r).Vj
+                | "dumpFPR", _ -> false, RS(r).Vj
+                | "dumpSTR", Some A' -> false, Memory.GetInstance.[A']
                 | _ -> failwith "invalid trap unit instruction"
             | None -> false, 0
         printfn "trap Result:  %A" result
@@ -289,7 +299,9 @@ and FloatingPointUnit private (cfg, rsRef) =
 
     static member GetInstance = instance
     
-and FunctionalUnits() =
+and FunctionalUnits private () =
+    static let instance = FunctionalUnits()
+
     let iuCfg, tuCfg, buCfg, muCfg, fpuCfg = 
         Config.FunctionalUnit.IntegerUnit,
         Config.FunctionalUnit.TrapUnit,
@@ -325,12 +337,16 @@ and FunctionalUnits() =
 
     member val IntegerUnit = iu with get
     member val IntegerUnitReservationStations = !iuRS with get
+    
     member val TrapUnit = tu with get
     member val TrapUnitReservationStations = !tuRS with get
+    
     member val BranchUnit = bu with get
     member val BranchUnitReservationStations = !buRS with get
+    
     member val MemoryUnit = mu with get
     member val MemoryUnitReservationStations = !muRS with get
+    
     member val FloatingPointUnit = fpu with get
     member val FloatingPointUnitReservationStations = !fpuRS with get
 
@@ -338,12 +354,13 @@ and FunctionalUnits() =
 
     member val ReservationStations = allrs with get
 
-    member fu.Issue = function
-        | Integer(_) -> fu.IntegerUnit.Insert
-        | Trap(_) -> fu.TrapUnit.Insert
-        | Branch(_) -> fu.BranchUnit.Insert
-        | Memory(_) -> fu.MemoryUnit.Insert
-        | FloatingPoint(_) -> fu.FloatingPointUnit.Insert
+    member fu.Issue i = 
+        match i with
+        | Integer(_) -> fu.IntegerUnit.Insert i
+        | Trap(_) -> fu.TrapUnit.Insert i
+        | Branch(_) -> fu.BranchUnit.Insert i
+        | Memory(_) -> fu.MemoryUnit.Insert i
+        | FloatingPoint(_) -> fu.FloatingPointUnit.Insert i
 
     member fu.AllFinished() = allfu |> Array.forall (fun u -> u.Finished())
 
@@ -365,24 +382,28 @@ and FunctionalUnits() =
 
     override fu.ToString() =
         fu.All |> Array.tryPick (fun funit ->
-            let s1 = 
-                sprintf "%sUNIT RESERVATION STATIONS"
-                        (   funit |> function
-                            | :? IntegerUnit -> "INT"
-                            | :? TrapUnit -> "TRAP"
-                            | :? BranchUnit -> "BRANCH"
-                            | :? MemoryUnit -> "MEM"
-                            | :? FloatingPointUnit -> "FP"
-                            | _ -> "FunctionalUnit")
+            match funit.CurrentRS with
+            | Some _ ->
+                let s1 = 
+                    sprintf "%sUNIT RESERVATION STATIONS"
+                            (   funit |> function
+                                | :? IntegerUnit -> "INT"
+                                | :? TrapUnit -> "TRAP"
+                                | :? BranchUnit -> "BRANCH"
+                                | :? MemoryUnit -> "MEM"
+                                | :? FloatingPointUnit -> "FP"
+                                | _ -> "FunctionalUnit")
 
 
-            let s2 = 
-                if      funit.IsExecuting()
-                then    sprintf "\nEXECUTING: instruction in station %O" (Convert.strOption2str funit.CurrentRS) 
-                else    ""
+                let s2 = 
+                    if      funit.IsExecuting()
+                    then    sprintf "\nEXECUTING: instruction in station %O" (Convert.strOption2str funit.CurrentRS) 
+                    else    ""
 
-            Some(sprintf "%s\n%O%s" s1 funit.RS s2 ))
+                Some(sprintf "%s\n%O%s" s1 funit.RS s2 )
+            | None -> None)
         |> function
         | Some s -> s
         | None -> ""
-        
+    
+    static member GetInstance = instance
