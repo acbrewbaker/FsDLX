@@ -128,17 +128,4 @@ module Convert =
         | None -> sprintf "%s" (int2hex 0)
 
 
-//    module InputLine =
-//        let toInstructionHex line = splitForHex line
-//        let toInstructionInt line = line |> splitForHex |> hex2int
-
-//    module InstructionHex =
-//        let toOpcodeBits hex = (hex2bin hex).[0..Constants.nOpcodeBits - 1]
-//        let toOpcodeInt hex = hex |> toOpcodeBits |> bin2int
-//
-//    module InstructionInt =
-//        let toOpcodeBits i = InstructionHex.toOpcodeBits (int2hex i)
-//        let toOpcodeInt i = InstructionHex.toOpcodeInt (int2hex i)
-
-
 

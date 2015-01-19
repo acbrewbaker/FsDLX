@@ -22,7 +22,7 @@ let immVal i a b = Convert.int2bits2int i a b
 
 
 let getDisplayStrings (cdb:CDB option) (funits:FunctionalUnits) =
-    let memStr = if Clock.GetInstance.Value.Cycles = 0 then Memory.GetInstance.ToString() else ""
+    let memStr = if Clock.GetInstance.Cycles = 0 then Memory.GetInstance.ToString() else ""
     [
         sprintf "%O" (Clock.GetInstance)
         sprintf "%O" funits
@@ -49,8 +49,8 @@ let expectedOutput() =
 //let run (stopCycle:int) (clock:Clock) (pc:PC) (registerFile:RegisterFile) (mem:Memory) (getDisplayStrings: CDB option -> FunctionalUnits -> string list) =
 let run (stopCycle:int) (getDisplayStrings: CDB option -> FunctionalUnits -> string list) =
     let mutable cdb : CDB option = None
-    let Clock = Clock.GetInstance.Value
-    let PC = PC.GetInstance
+    let Clock = Clock.GetInstance
+    let PC = PC.GetInstance.Value
     let RegisterFile = RegisterFile.GetInstance
     let Mem = Memory.GetInstance
     let FunctionalUnits = FunctionalUnits.GetInstance
@@ -132,10 +132,6 @@ let ``cycle0`` () =
     let stopCycle = 0
     let output = 
         run stopCycle
-            Clock.GetInstance.Value 
-            PC.GetInstance 
-            RegisterFile.GetInstance
-            Memory.GetInstance
             getDisplayStrings
 
     //printfn "Output %A" output
@@ -146,10 +142,6 @@ let ``cycle1`` () =
     let stopCycle = 1
     let output = 
         run stopCycle
-            Clock.GetInstance.Value
-            PC.GetInstance 
-            RegisterFile.GetInstance
-            Memory.GetInstance
             getDisplayStrings
     //printfn "Output %A" output
     (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
@@ -159,10 +151,6 @@ let ``cycle2`` () =
     let stopCycle = 2
     let output = 
         run stopCycle
-            Clock.GetInstance.Value
-            PC.GetInstance 
-            RegisterFile.GetInstance
-            Memory.GetInstance
             getDisplayStrings
     //printfn "Output %A" output
     (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
@@ -174,10 +162,6 @@ let ``cycle3`` () =
     let stopCycle = 3
     let output = 
         run stopCycle
-            Clock.GetInstance.Value
-            PC.GetInstance 
-            RegisterFile.GetInstance
-            Memory.GetInstance
             getDisplayStrings
     //printfn "Output %A" output
     (expectedOutput.[stopCycle], output.[stopCycle]) ||> displayThenAssert
@@ -187,10 +171,6 @@ let ``cycle4`` () =
     let stopCycle = 4
     let output = 
         run stopCycle
-            Clock.GetInstance.Value
-            PC.GetInstance 
-            RegisterFile.GetInstance
-            Memory.GetInstance
             getDisplayStrings
     //printfn "Output %A" output
     (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert

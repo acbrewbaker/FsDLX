@@ -49,7 +49,7 @@ type Simulator(input:string, verbose:bool) =
     let memory = Memory.GetInstance
 //    let gpr = GPR.GetInstance
 //    let fpr = FPR.GetInstance
-    let funits = FunctionalUnits() //FU.InitAll()
+    let funits = FunctionalUnits.GetInstance //FU.InitAll()
     
 //    let mutable logEntries = List.empty<SimulatorState>
     
@@ -57,7 +57,7 @@ type Simulator(input:string, verbose:bool) =
     
 
     let finished() = 
-        if Clock.GetInstance.Value.Cycles = 0 then false else funits.AllFinished()
+        if Clock.GetInstance.Cycles = 0 then false else funits.AllFinished()
         
 
     let updateReservationStations() = 
@@ -186,7 +186,7 @@ type Simulator(input:string, verbose:bool) =
             //clearReservationStations()
             
             display()
-            Clock.GetInstance.Value.Tic()
+            Clock.GetInstance.Tic()
             
             
             

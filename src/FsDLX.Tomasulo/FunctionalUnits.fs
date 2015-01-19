@@ -394,7 +394,6 @@ and FunctionalUnits private () =
                                 | :? FloatingPointUnit -> "FP"
                                 | _ -> "FunctionalUnit")
 
-
                 let s2 = 
                     if      funit.IsExecuting()
                     then    sprintf "\nEXECUTING: instruction in station %O" (Convert.strOption2str funit.CurrentRS) 
