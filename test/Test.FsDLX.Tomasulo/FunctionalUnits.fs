@@ -27,6 +27,7 @@ let getDisplayStrings (cdb:CDB option) (funits:FunctionalUnits) =
         sprintf "%O" (Clock.GetInstance)
         sprintf "%O" funits
         CDB.Opt2String cdb
+        
         sprintf "%O" RegisterFile.GetInstance
         memStr        
     ] |> List.choose (fun s -> if s.Length > 1 then Some s else None)
@@ -168,6 +169,15 @@ let ``cycle3`` () =
 
 [<Test>]
 let ``cycle4`` () =
+    let stopCycle = 4
+    let output = 
+        run stopCycle
+            getDisplayStrings
+    //printfn "Output %A" output
+    (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
+
+[<Test>]
+let ``cycle4 debug``() =
     let stopCycle = 4
     let output = 
         run stopCycle

@@ -15,9 +15,11 @@ type RegisterFile private () =
     
     member rf.UpdateInfo() = info <- sprintf "%O%O" (GPR.GetInstance) (FPR.GetInstance) |> Some
 
-    member rf.Update(cdb) = 
+    member rf.Update(cdb:CDB option) =
         regs |> Array.iter (fun reg -> reg.Update(cdb))
-        rf.UpdateInfo()
+        match cdb with
+        | Some _    -> rf.UpdateInfo()
+        | None      -> info <- None
 
     override rf.ToString() =
         match info with
