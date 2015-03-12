@@ -5,18 +5,6 @@ namespace FsDLX.Tomasulo
 open System.Collections
 open FsDLX.Common
 
-//// This design includes container classes that contain a group of the same time of 
-//// functional units (for example, integer units) and the reservation stations that 
-//// feed them.  Thus, there is a int unit container, floating point unit container, 
-//// memory unit container, trap unit container, and a branch unit container.  Each 
-//// of these classes inherit from the FunctionalUnitnitContainer class that contains functionality 
-//// common to all subclasses.  For example, each container class contains a FunctionalUnitManager 
-//// and a RStationManager and methods that for executing, issuing, writing, updating 
-//// the reservation stations, clearing the reservation stations, etc. This can be 
-//// inherited from the FunctionalUnitnitContainer class. Code that is unique to a specific 
-//// functional unit type can be placed in the descendent class.  For example, the 
-//// IntUnitContainer class contains the method that computes the result of an 
-//// instruction handled by the integer functional unit.
 type XUnit(maxCycles:int) =
     member val MaxCycles = maxCycles with get
     member val RemainingCycles = maxCycles with get, set
