@@ -102,8 +102,8 @@ type Simulator(input:string, verbose:bool) =
     let issue (instruction:int) = 
         let instruction = Instruction.ofInstructionInt(instruction) 
         instruction |> function
-        | Integer(_) -> funits.IntegerUnit.Insert instruction
-        | Trap(_) -> funits.TrapUnit.Insert instruction
+        | Integer(_) -> false //funits.IntegerUnit.Insert instruction
+        | Trap(_) -> false //funits.TrapUnit.Insert instruction
         | Branch(_) -> false
         | Memory(_) -> false
         | FloatingPoint(_) -> false
@@ -168,12 +168,12 @@ type Simulator(input:string, verbose:bool) =
 //            funits.IntegerUnits |> Array.iter (fun iu -> iu.RS |> Array.iter (printfn "%O"))
             printfn "%O" Clock.GetInstance
             // get name of RS writing to CDB and the value to be written
-            cdb <- write()
+           // cdb <- write().Value.Value
             execute()
             if not(halt) && not(branchInBranchUnit()) then
                 let instruction = memory.[PC]
                 // stall set to true if issue fails
-                let stall = issue(instruction)
+                let stall = issue(instruction)//; funits.Stall
                 
                 if not(halt) && not(stall) then PC <- PC + 4
                 
@@ -186,7 +186,7 @@ type Simulator(input:string, verbose:bool) =
             //clearReservationStations()
             
             display()
-            Clock.GetInstance.Tic()
+            //Clock.GetInstance.Tic()
             
             
             

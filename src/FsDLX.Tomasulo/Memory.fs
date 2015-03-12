@@ -1,10 +1,11 @@
 ﻿namespace FsDLX.Tomasulo
 
+open System
 open System.IO
 open FsDLX.Common
 
 type Memory private () =
-    static let instance = Memory()
+    static let instance = new Memory()
     
     let size = Config.Memory.DefaultMemorySize
 
@@ -84,7 +85,6 @@ type Memory private () =
 
 
     static member GetInstance = instance
-    
-    
+    interface IDisposable with member this.Dispose() = ()    
 
     

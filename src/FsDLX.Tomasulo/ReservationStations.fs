@@ -65,6 +65,7 @@ and RS =
 
 
     override rs.ToString() =
+        //rs.Contents |> Array.map (sprintf "%O\n") |> Array.reduce (+)
         let onlyBusy = rs.Contents |> Array.filter (fun r -> r.Busy)
         if onlyBusy.Length <> 0 
         then (onlyBusy |> Array.map (sprintf "%O\n") |> Array.reduce (+)).Trim()
@@ -155,5 +156,7 @@ and ReservationStation =
 
     static member Clear (r:ReservationStation) = r.Clear()
  //   static member ClearIfResultWritten (r:ReservationStation) = r.ClearIfResultWritten()
+
+and RSId = RSId of string option
 
 

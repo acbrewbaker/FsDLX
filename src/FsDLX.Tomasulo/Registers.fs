@@ -1,10 +1,11 @@
 ﻿namespace FsDLX.Tomasulo
 
+open System
 open FsDLX.Common
 
 
 type RegisterFile private () =
-    static let instance = RegisterFile()
+    static let instance = new RegisterFile()
     let regs = Array.init Config.Registers.RegCount Register.Init //Register.ArrayInit 64
 
     let mutable info : string option = None
@@ -25,19 +26,18 @@ type RegisterFile private () =
         match info with
         | Some info -> info
         | None -> ""
-
+    
     static member GetInstance = instance
+    interface IDisposable with member this.Dispose() = ()
 
 and GPR private () =
-    
-    static let instance = GPR()
+    static let instance = new GPR()
 
     member gpr.Item
         with get i = 
             if i > 31 then failwith "invalid GPR index"
             else RegisterFile.GetInstance.[i]
       
-
     member gpr.Regs() = [| for i = 0 to 31 do yield gpr.[i] |]
 
     member gpr.R0toR7() = RegisterSet("R0-R7", [| for i = 0 to 7 do yield gpr.[i] |])
@@ -59,10 +59,10 @@ and GPR private () =
             //.Trim()       
 
     static member GetInstance = instance
+    interface IDisposable with member this.Dispose() = ()
 
 and FPR private () =
-
-    static let instance = FPR()
+    static let instance = new FPR()
 
     member fpr.Item
         with get i = 
@@ -87,9 +87,10 @@ and FPR private () =
             .Trim()
 
     static member GetInstance = instance
-    
+    interface IDisposable with member this.Dispose() = ()
+
 and RegisterStat private (instruction:int) =
-    static let instance i = RegisterStat i
+    static let instance i = new RegisterStat(i)
     let reg s = Convert.int2bits2reg instruction s
 
     member rstat.Item
@@ -99,9 +100,10 @@ and RegisterStat private (instruction:int) =
             | OperandReg.FPR s -> FPR.GetInstance.[reg s]
 
     static member GetInstance = instance
+    interface IDisposable with member this.Dispose() = ()
 
 and Regs private (instruction:int) =
-    static let instance i = Regs i
+    static let instance i = new Regs(i)
 
     let reg s = Convert.int2bits2reg instruction s
 
@@ -112,6 +114,7 @@ and Regs private (instruction:int) =
             | OperandReg.FPR s -> FPR.GetInstance.[reg s].Contents
 
     static member GetInstance = instance
+    interface IDisposable with member this.Dispose() = ()
       
 and Register =
     {

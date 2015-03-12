@@ -21,16 +21,16 @@ let regId i s = Convert.int2bits2reg i s
 let immVal i a b = Convert.int2bits2int i a b
 
 
-let getDisplayStrings (cdb:CDB option) (funits:FunctionalUnits) =
-    let memStr = if Clock.GetInstance.Cycles = 0 then Memory.GetInstance.ToString() else ""
-    [
-        sprintf "%O" (Clock.GetInstance)
-        sprintf "%O" funits
-        CDB.Opt2String cdb
-        
-        sprintf "%O" RegisterFile.GetInstance
-        memStr        
-    ] |> List.choose (fun s -> if s.Length > 1 then Some s else None)
+//let getDisplayStrings (cdb:CDB option) (funits:FunctionalUnits) =
+//    let memStr = if Clock.GetInstance.Cycles = 0 then Memory.GetInstance.ToString() else ""
+//    [
+//        sprintf "%O" (Clock.GetInstance)
+//        sprintf "%O" funits
+//        CDB.Opt2String cdb
+//        
+//        sprintf "%O" RegisterFile.GetInstance
+//        memStr        
+//    ] |> List.choose (fun s -> if s.Length > 1 then Some s else None)
 
 
 
@@ -48,15 +48,28 @@ let expectedOutput() =
     ]
 
 //let run (stopCycle:int) (clock:Clock) (pc:PC) (registerFile:RegisterFile) (mem:Memory) (getDisplayStrings: CDB option -> FunctionalUnits -> string list) =
-let run (stopCycle:int) (getDisplayStrings: CDB option -> FunctionalUnits -> string list) =
-    let mutable cdb : CDB option = None
-    let Clock = Clock.GetInstance
-    let PC = PC.GetInstance.Value
-    let RegisterFile = RegisterFile.GetInstance
-    let Mem = Memory.GetInstance
-    let FunctionalUnits = FunctionalUnits.GetInstance
+let run (stopCycle:int) = // (getDisplayStrings: CDB option -> FunctionalUnits -> string list) =
+    let cdb : CDB option ref = ref None
+    use Clock = Clock.GetInstance
+    use PC = PC.GetInstance
+    use RegisterFile = RegisterFile.GetInstance
+    use Mem = Memory.GetInstance
+    use FunctionalUnits = FunctionalUnits.GetInstance
+ 
+
+
+    let getDisplayStrings () =
+        let memStr = if Clock.Cycles = 0 then Mem.ToString() else ""
+        [[
+            sprintf "%O" Clock
+            sprintf "%O" FunctionalUnits
+            CDB.Opt2String !cdb
+        
+            sprintf "%O" RegisterFile
+            memStr        
+        ] |> List.choose (fun s -> if s.Length > 1 then Some s else None) ]
     
-    let mutable output = List.empty<string list>
+    let output = ref List.empty<string list>
     let mutable halt = false
 
     let finished() = 
@@ -70,31 +83,36 @@ let run (stopCycle:int) (getDisplayStrings: CDB option -> FunctionalUnits -> str
     
     let update(cdb) =
         updateReservationStations(cdb)
+        //output := !output @ getDisplayStrings()
         clearReservationStations()
+        output := !output @ getDisplayStrings()
 
     let branchInBranchUnit() = false
 
     let write() = FunctionalUnits.All |> Array.tryPick (fun u -> u.Write())
     
-    let execute() = FunctionalUnits.All |> Array.iter (fun u -> u.Execute())
+    let execute() = FunctionalUnits.All |> Array.iter (fun u -> u.Execute()); FunctionalUnits.Halt
 
-    let issue = FunctionalUnits.Issue
+    let issue instruction = FunctionalUnits.Issue instruction; FunctionalUnits.Stall
 
     Mem.Load(inputdir @@ "add.hex")
     while not(halt) do //&& not(finished()) do
-        cdb <- write()
-        execute()
+        cdb := write()
+        //printfn "HALT: %A" halt
+        halt <- execute()
+        //printfn "HALT: %A" halt
+        //output <- output @ [getDisplayStrings cdb FunctionalUnits]
         if not(halt) && not(branchInBranchUnit()) then
+//            printfn "Issuing: %A" (lines().[PC.Value])
             let instruction = Mem.[PC.Value] |> Instruction.ofInstructionInt
             let stall = issue(instruction)
             if not(halt) && not(stall) then PC.Increment()
                 
-        update(cdb)
-        output <- output @ [getDisplayStrings cdb FunctionalUnits]
+        update(!cdb)
         halt <- Clock.Cycles = stopCycle
         Clock.Tic()
         
-    output
+    !output
 
 [<Test>]
 let ``xunit`` () =
@@ -112,7 +130,6 @@ let ``xunit 2`` () =
   //  printfn "%O" x
     printfn "ready? %A" (RS.TryFindReady())
 
-
 [<Test>]
 let ``integer unit`` () =
     let cfg = Config.FunctionalUnit.IntegerUnit
@@ -126,14 +143,14 @@ let ``integer unit`` () =
     iu.Insert i0 |> ignore
 
     printfn "%O" iu
-    
 
 [<Test>]
 let ``cycle0`` () =
     let stopCycle = 0
     let output = 
         run stopCycle
-            getDisplayStrings
+            //getDisplayStrings
+        
 
     //printfn "Output %A" output
     (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
@@ -143,7 +160,7 @@ let ``cycle1`` () =
     let stopCycle = 1
     let output = 
         run stopCycle
-            getDisplayStrings
+            //getDisplayStrings
     //printfn "Output %A" output
     (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
 
@@ -152,7 +169,7 @@ let ``cycle2`` () =
     let stopCycle = 2
     let output = 
         run stopCycle
-            getDisplayStrings
+            //getDisplayStrings
     //printfn "Output %A" output
     (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
 
@@ -163,7 +180,7 @@ let ``cycle3`` () =
     let stopCycle = 3
     let output = 
         run stopCycle
-            getDisplayStrings
+            //getDisplayStrings
     //printfn "Output %A" output
     (expectedOutput.[stopCycle], output.[stopCycle]) ||> displayThenAssert
 
@@ -172,7 +189,7 @@ let ``cycle4`` () =
     let stopCycle = 4
     let output = 
         run stopCycle
-            getDisplayStrings
+            //getDisplayStrings
     //printfn "Output %A" output
     (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
 
@@ -181,15 +198,27 @@ let ``cycle4 debug``() =
     let stopCycle = 4
     let output = 
         run stopCycle
-            getDisplayStrings
+            //getDisplayStrings
     //printfn "Output %A" output
     (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
 
 [<Test>]
-let ``cycle5`` () = ()
+let ``cycle5`` () =
+    let stopCycle = 5
+    let output = 
+        run stopCycle
+            //getDisplayStrings
+    //printfn "Output %A" output
+    (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
 
 [<Test>]
-let ``cycle6`` () = ()
+let ``cycle6`` () =
+    let stopCycle = 6
+    let output = 
+        run stopCycle
+            //getDisplayStrings
+    //printfn "Output %A" output
+    (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
 
 [<Test>]
 let ``cycle7`` () = ()
@@ -445,12 +474,12 @@ let ``intUnit2`` () =
         intUnit.IsBusy() |> function
         | false ->
             intUnit.Insert i0
-        | _ -> true
+        | _ -> ()
         
 
     cdb <- write()
     printfn "cdb: %O" cdb
-    execute()
+    let halt = execute()
     printfn "%s" (intUnit.Dump())
     let stall = issue(i0)
     printfn "stall?? : %A" stall
@@ -459,7 +488,7 @@ let ``intUnit2`` () =
 
     cdb <- write()
     printfn "cdb: %O" cdb
-    execute()
+    let halt = execute()
     printfn "%s" (intUnit.Dump())
     let stall = issue(i1)
     printfn "stall?? : %A" stall
