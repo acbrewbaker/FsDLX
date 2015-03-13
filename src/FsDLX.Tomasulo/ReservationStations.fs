@@ -26,12 +26,11 @@ and RS =
         let kvp (r:ReservationStation) = (r.Name, r)
         rs.Contents |> Array.map kvp |> Map.ofArray
 
-    member rs.Item
+    member private rs.Item
         with get(i) = rs.Contents.[i]            
         and set i value = rs.Contents.[i] <- value
 
-    member rs.Item
-        with get(i) = rs.GetMap().[i]
+    member rs.Item with get(r:ReservationStation) = rs.GetMap().[r.Name]
     
     member rs.Length = rs.Contents.Length
 
@@ -49,12 +48,14 @@ and RS =
 
     member rs.Clear() = rs.Contents |> Array.iter (fun r -> r.Clear())
 
-    member rs.TryFindReady() = rs.Contents |> Array.tryFindIndex (fun r -> r.OperandsAvailable())
-    
-    member rs.TryFindResultReady() = rs.Contents |> Array.tryFindIndex (fun r -> r.ResultReady)
-    member rs.TryFindEmpty() = rs.Contents |> Array.tryFindIndex (fun r -> r.IsEmpty())
+    member rs.AllBusy() = rs.Contents |> ReservationStation.AllBusy
+    member rs.AllNotBusy() = rs.Contents |> ReservationStation.AllNotBusy
 
-    member rs.TryFindNotBusy() = rs.Contents |> Array.tryFindIndex (fun r -> not(r.Busy))
+    member rs.TryFindReady() = rs.Contents |> Array.tryFind (fun r -> r.OperandsAvailable())
+    member rs.TryFindResultReady() = rs.Contents |> Array.tryFind (fun r -> r.ResultReady)
+    member rs.TryFindEmpty() = rs.Contents |> Array.tryFind (fun r -> r.IsEmpty())
+
+    member rs.TryFindNotBusy() = rs.Contents |> Array.tryFind (fun r -> not(r.Busy))
 
     member rs.Filter(f:ReservationStation -> bool) = rs.Contents |> Array.filter f
 
@@ -69,6 +70,7 @@ and RS =
         if onlyBusy.Length <> 0 
         then (onlyBusy |> Array.map (sprintf "%O\n") |> Array.reduce (+)).Trim()
         else ""
+
 
 
     static member Filter(rs:RS[], f) =
@@ -155,7 +157,9 @@ and ReservationStation =
     static member TrapUnitInit() = ReservationStation.ArrayInit Config.FunctionalUnit.TrapUnit
 
     static member Clear (r:ReservationStation) = r.Clear()
- //   static member ClearIfResultWritten (r:ReservationStation) = r.ClearIfResultWritten()
+
+    static member AllBusy (RS:RSGroup) = RS |> Array.forall (fun r -> r.Busy)
+    static member AllNotBusy (RS:RSGroup) = RS |> Array.forall (fun r -> not(r.Busy))
 
 and RSId = RSId of string option
 
