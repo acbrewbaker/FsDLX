@@ -49,12 +49,13 @@ let expectedOutput() =
 
 //let run (stopCycle:int) (clock:Clock) (pc:PC) (registerFile:RegisterFile) (mem:Memory) (getDisplayStrings: CDB option -> FunctionalUnits -> string list) =
 let run (stopCycle:int) = // (getDisplayStrings: CDB option -> FunctionalUnits -> string list) =
+    resetSingletons()
     let cdb : CDB option ref = ref None
-    use Clock = Clock.GetInstance
-    use PC = PC.GetInstance
-    use RegisterFile = RegisterFile.GetInstance
-    use Mem = Memory.GetInstance
-    use FunctionalUnits = FunctionalUnits.GetInstance
+    let Clock = Clock.GetInstance
+    let PC = PC.GetInstance
+    let RegisterFile = RegisterFile.GetInstance
+    let Mem = Memory.GetInstance
+    let FunctionalUnits = FunctionalUnits.GetInstance
  
 
 
@@ -63,8 +64,7 @@ let run (stopCycle:int) = // (getDisplayStrings: CDB option -> FunctionalUnits -
         [[
             sprintf "%O" Clock
             sprintf "%O" FunctionalUnits
-            CDB.Opt2String !cdb
-        
+            CDB.Opt2String !cdb        
             sprintf "%O" RegisterFile
             memStr        
         ] |> List.choose (fun s -> if s.Length > 1 then Some s else None) ]
@@ -76,7 +76,7 @@ let run (stopCycle:int) = // (getDisplayStrings: CDB option -> FunctionalUnits -
         if Clock.Cycles = 0 then false else FunctionalUnits.AllFinished()
 
     let updateReservationStations(cdb) = 
-        FunctionalUnits.UpdateReservationStations(cdb)
+        FunctionalUnits.UpdateReservationStations()
         RegisterFile.Update(cdb)
 
     let clearReservationStations() = FunctionalUnits.ClearReservationStations()
@@ -96,9 +96,10 @@ let run (stopCycle:int) = // (getDisplayStrings: CDB option -> FunctionalUnits -
     let issue instruction = FunctionalUnits.Issue instruction; FunctionalUnits.Stall
 
     Mem.Load(inputdir @@ "add.hex")
-    while not(halt) do //&& not(finished()) do
+    while not(halt) && not(finished()) do
         cdb := write()
         //printfn "HALT: %A" halt
+        
         halt <- execute()
         //printfn "HALT: %A" halt
         //output <- output @ [getDisplayStrings cdb FunctionalUnits]
@@ -107,7 +108,8 @@ let run (stopCycle:int) = // (getDisplayStrings: CDB option -> FunctionalUnits -
             let instruction = Mem.[PC.Value] |> Instruction.ofInstructionInt
             let stall = issue(instruction)
             if not(halt) && not(stall) then PC.Increment()
-                
+        //FunctionalUnits.DumpLastInsert()        
+        FunctionalUnits.Dump()
         update(!cdb)
         halt <- Clock.Cycles = stopCycle
         Clock.Tic()
@@ -194,15 +196,6 @@ let ``cycle4`` () =
     (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
 
 [<Test>]
-let ``cycle4 debug``() =
-    let stopCycle = 4
-    let output = 
-        run stopCycle
-            //getDisplayStrings
-    //printfn "Output %A" output
-    (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
-
-[<Test>]
 let ``cycle5`` () =
     let stopCycle = 5
     let output = 
@@ -221,10 +214,22 @@ let ``cycle6`` () =
     (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
 
 [<Test>]
-let ``cycle7`` () = ()
+let ``cycle7`` () =
+    let stopCycle = 7
+    let output = 
+        run stopCycle
+            //getDisplayStrings
+    //printfn "Output %A" output
+    (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
 
 [<Test>]
-let ``cycle8`` () = ()
+let ``cycle8`` () =
+    let stopCycle = 8
+    let output = 
+        run stopCycle
+            //getDisplayStrings
+    //printfn "Output %A" output
+    (expectedOutput().[stopCycle], output.[stopCycle]) ||> displayThenAssert
 
 
 [<Test>]
@@ -450,48 +455,48 @@ let ``intUnit0``() =
 //    stall := cycle i2
     
 
-[<Test>]
-let ``intUnit2`` () =
-    let RS' = ReservationStation.ArrayInit Config.FunctionalUnit.IntegerUnit
-    let rsRef = ref RS'
-    let intUnit = IntegerUnit.GetInstance rsRef
-    let iuRS = [| rsRef |> RS.IntegerUnit |]
-
-    let i0 = Instruction.ofInstructionInt(ints().[0])
-    let i1 = Instruction.ofInstructionInt(ints().[1])
-
-    let uid = ref 0
-
-    let mutable cdb : CDB option = None
-
-    let updateReservationStations cdb = RS.Update(iuRS, cdb)
-
-    let write() = intUnit.Write() // |> Array.tryPick (fun u -> u.Write())
-
-    let execute() = intUnit.Execute() //|> Array.iter (fun u -> u.Execute())
-
-    let issue (instruction:Instruction) =
-        intUnit.IsBusy() |> function
-        | false ->
-            intUnit.Insert i0
-        | _ -> ()
-        
-
-    cdb <- write()
-    printfn "cdb: %O" cdb
-    let halt = execute()
-    printfn "%s" (intUnit.Dump())
-    let stall = issue(i0)
-    printfn "stall?? : %A" stall
-
-
-
-    cdb <- write()
-    printfn "cdb: %O" cdb
-    let halt = execute()
-    printfn "%s" (intUnit.Dump())
-    let stall = issue(i1)
-    printfn "stall?? : %A" stall
+//[<Test>]
+//let ``intUnit2`` () =
+//    let RS' = ReservationStation.ArrayInit Config.FunctionalUnit.IntegerUnit
+//    let rsRef = ref RS'
+//    let intUnit = IntegerUnit.GetInstance rsRef
+//    let iuRS = [| rsRef |> RS.IntegerUnit |]
+//
+//    let i0 = Instruction.ofInstructionInt(ints().[0])
+//    let i1 = Instruction.ofInstructionInt(ints().[1])
+//
+//    let uid = ref 0
+//
+//    let mutable cdb : CDB option = None
+//
+//    let updateReservationStations cdb = RS.Update(iuRS)
+//
+//    let write() = intUnit.Write() // |> Array.tryPick (fun u -> u.Write())
+//
+//    let execute() = intUnit.Execute() //|> Array.iter (fun u -> u.Execute())
+//
+//    let issue (instruction:Instruction) =
+//        intUnit.IsBusy() |> function
+//        | false ->
+//            intUnit.Insert i0
+//        | _ -> ()
+//        
+//
+//    cdb <- write()
+//    printfn "cdb: %O" cdb
+//    let halt = execute()
+//    //printfn "%s" (intUnit.Dump())
+//    let stall = issue(i0)
+//    printfn "stall?? : %A" stall
+//
+//
+//
+//    cdb <- write()
+//    printfn "cdb: %O" cdb
+//    let halt = execute()
+//    //printfn "%s" (intUnit.Dump())
+//    let stall = issue(i1)
+//    printfn "stall?? : %A" stall
 
 
 

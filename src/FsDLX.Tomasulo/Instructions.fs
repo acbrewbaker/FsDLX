@@ -43,23 +43,23 @@ type Instruction =
     member ins.DstReg = let _,_,rd,_,_,_ = ins.asInfo in rd
     member ins.S1Reg = let _,_,_,rs,_,_ = ins.asInfo in rs
     member ins.S2Reg = let _,_,_,_,rt,_ = ins.asInfo in rt
-    member ins.Immediate = let _,_,_,_,_,imm = ins.asInfo in imm
+    member ins.Immediate = let _,_,_,_,_,imm = ins.asInfo in imm.GetImmVal ins
 
-    member private ins.Reg = function
-        | OperandReg.NONE -> None
-        | OperandReg.GPR s -> 
-            GPR.GetInstance.[Convert.int2bits2reg (ins.asInt) s] |> Some
-        | OperandReg.FPR s ->
-            FPR.GetInstance.[Convert.int2bits2reg (ins.asInt) s] |> Some
+//    member private ins.Reg = function
+//        | OperandReg.NONE -> None
+//        | OperandReg.GPR s -> 
+//            GPR.GetInstance.[Convert.int2bits2reg (ins.asInt) s] |> Some
+//        | OperandReg.FPR s ->
+//            FPR.GetInstance.[Convert.int2bits2reg (ins.asInt) s] |> Some
 
-    member private ins.ImmVal = function
-        | Imm.NONE -> None
-        | Imm.A imm -> imm ||> Convert.int2bits2int (ins.asInt) |> Some
+//    member private ins.ImmVal = function
+//        | Imm.NONE -> None
+//        | Imm.A imm -> imm ||> Convert.int2bits2int (ins.asInt) |> Some
 
-    member ins.rd = ins.DstReg |> ins.Reg
-    member ins.rs = ins.S1Reg |> ins.Reg
-    member ins.rt = ins.S2Reg |> ins.Reg
-    member ins.imm = ins.Immediate |> ins.ImmVal
+//    member ins.rd = ins.DstReg |> ins.Reg
+//    member ins.rs = ins.S1Reg |> ins.Reg
+//    member ins.rt = ins.S2Reg |> ins.Reg
+//    member ins.imm = ins.Immediate.GetImmVal ins
 
     static member threeGpr opcode = (Opcode.ofName opcode, FuncCode.NONE, DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11, Imm.NONE)
     static member threeFpr opcode = (Opcode.ofName opcode, FuncCode.NONE, DstReg.FPR 16, S1Reg.FPR 6, S2Reg.FPR 11, Imm.NONE)
@@ -161,4 +161,8 @@ and FuncCode =
 and DstReg  = OperandReg
 and S1Reg   = OperandReg
 and S2Reg   = OperandReg
-and Imm     = | NONE  | A of (int * int)
+and Imm     = | NONE  | A of (int * int) with
+    member this.GetImmVal(i:Instruction) =
+        match this with
+        | NONE -> None
+        | A imm -> imm ||> Convert.int2bits2int (i.asInt) |> Some

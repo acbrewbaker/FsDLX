@@ -12,7 +12,7 @@ type XUnit(maxCycles:int) =
     member val CurrentRS : string option = None with get, set
 
     member xu.Reset() =
-        if xu.RemainingCycles = 0 then
+        if xu.RemainingCycles <= 0 then
             xu.RemainingCycles <- xu.MaxCycles
             xu.Busy <- false
             xu.CurrentRS <- None
@@ -20,7 +20,7 @@ type XUnit(maxCycles:int) =
     member xu.Cycle (RS:RS) (compute:string -> bool) =  
         let mutable halt = false
         match xu.CurrentRS with
-        | Some r ->
+        | Some r ->            
             xu.RemainingCycles <- xu.RemainingCycles - 1
             if  xu.RemainingCycles = 0 &&
                 not(RS.[r].ResultReady)
@@ -29,6 +29,12 @@ type XUnit(maxCycles:int) =
                 RS.[r].ResultReady <- true
         | None -> ()
         halt
+
+    override xu.ToString() =
+        sprintf "-MaxCycles:         %d\n" xu.MaxCycles +
+        sprintf "-RemainingCycles:   %d\n" xu.RemainingCycles +
+        sprintf "-Busy:              %A\n" xu.Busy +
+        sprintf "-CurrentRS:         %O\n" xu.CurrentRS
 
     static member Reset(xunits:XUnit[]) =
         xunits |> Array.iter (fun xunit -> xunit.Reset())
@@ -54,7 +60,7 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
     member val XUnits = xunits with get
     member val Stall = false with get, set
     member val Halt = false with get, set
-
+    
     member fu.IsBusy() = fu.XUnits |> Array.forall (fun xunit -> xunit.Busy)
     member fu.IsExecuting() = not(fu.XUnits |> Array.forall (fun u -> not u.Busy))
 
@@ -77,36 +83,52 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
             let rsId = Some(fu.RS.[r].Name)
             XUnits(x).Busy <- true
             XUnits(x).CurrentRS <- rsId
-            fu.ExecRS <- rsId
+            //fu.ExecRS <- rsId
             fu.Halt <- XUnits(x).Cycle fu.RS fu.Compute
         | _ -> ()
         fu.XUnits |> Array.iter (fun xunit -> 
             match xunit.Busy, xunit.RemainingCycles with
             | true, rc when rc > 0 -> 
                 fu.Halt <- xunit.Cycle fu.RS fu.Compute
-                fu.ExecRS <- xunit.CurrentRS
+                //fu.ExecRS <- xunit.CurrentRS
                 
             | true, rc when rc <= 0 -> 
+                //printfn "Reset"
                 //fu.ExecRS <- None
                 xunit.Reset()       
             | _ -> ())
+        
 
     member fu.Write() =
         let cdb = CDB.GetInstance
         let RS(r:int) = fu.RS.[r]
         let RegisterStat(x) = RegisterFile.GetInstance.[x]
         let Regs(x) = RegisterFile.GetInstance.[x]
-        let cdb' = fu.RS.TryFindResultReady() |> function
-            | Some r ->
-                RS(r).ResultWritten <- true
-                cdb.Result <- RS(r).Result
-                cdb.Src <- RS(r).Name
-                Some(cdb)
-            | None -> None
-        cdb'
+        match fu.RS.TryFindResultReady() with
+        | Some r ->
+            RS(r).ResultWritten <- true
+            cdb.Result <- RS(r).Result
+            cdb.Src <- RS(r).Name
+            Some(cdb)
+        | None -> None
 
-    member fu.Dump() = fu.XUnits |> Array.map (sprintf "%O\n") |> Array.reduce (+) 
+    member fu.Name() =
+        sprintf "%sUNIT"
+            (match fu with
+            | :? IntegerUnit -> "INT"
+            | :? TrapUnit -> "TRAP"
+            | :? BranchUnit -> "BRANCH"
+            | :? MemoryUnit -> "MEM"
+            | :? FloatingPointUnit -> "FP"
+            | _ -> "Functional ")
+
+//    member private fu.Dump() =
+//        fu.State <- fu.State +
+//            let name = fu.Name()
+//            sprintf "====== %s ======\n" name +
+//            (fu.XUnits |> Array.mapi (sprintf "XUnit(%d)\n%O\n") |> Array.reduce (+))
     
+
     abstract member Insert   : Instruction -> unit
     abstract member Compute  : string -> bool
 
@@ -114,7 +136,7 @@ and IntegerUnit private (cfg, rsRef) =
     inherit FunctionalUnit(cfg, rsRef)
     
     static let cfg = Config.FunctionalUnit.IntegerUnit
-    static let instance rsRef = IntegerUnit(cfg, rsRef)
+    static let mutable instance = fun rsRef -> IntegerUnit(cfg, rsRef)
     
     override iu.Insert instruction =
         let opcode, rd, rs, rt, imm = 
@@ -122,13 +144,13 @@ and IntegerUnit private (cfg, rsRef) =
             instruction.DstReg, 
             instruction.S1Reg, 
             instruction.S2Reg,
-            instruction.imm
+            instruction.Immediate
             
         let RS(r:int) = iu.RS.[r]
         let Regs(i) = (Regs.GetInstance instruction.asInt).[i]
         let RegisterStat(i) = (RegisterStat.GetInstance instruction.asInt).[i]
         
-        match iu.RS.TryFindNotBusy() with
+        match iu.RS.TryFindEmpty() with
         | Some r ->
             if rs <> S1Reg.NONE then
                 if      RegisterStat(rs).Qi.IsSome 
@@ -154,6 +176,7 @@ and IntegerUnit private (cfg, rsRef) =
     override iu.Compute r =
         let halt = false
         let RS(r:string) = iu.RS.[r]
+        iu.ExecRS <- Some(RS(r).Name)
         RS(r).Result <- 
             match RS(r).Op with
             | Some op -> 
@@ -177,24 +200,28 @@ and IntegerUnit private (cfg, rsRef) =
         halt
 
     static member GetInstance = instance
+    static member Reset() = instance <- fun rsRef -> IntegerUnit(cfg, rsRef)
 
 and TrapUnit private (cfg, rsRef) =
     inherit FunctionalUnit(cfg, rsRef)
 
     static let cfg = Config.FunctionalUnit.TrapUnit
-    static let instance rsRef = TrapUnit(cfg, rsRef) 
+    static let mutable instance = fun rsRef -> TrapUnit(cfg, rsRef) 
+
+    let queue = Queue()
 
     override tu.Insert instruction = 
         let RS(r:int) = tu.RS.[r]
         let Regs(i) = (Regs.GetInstance instruction.asInt).[i]
         let RegisterStat(i) = (RegisterStat.GetInstance instruction.asInt).[i]
 
-        let opcode, funcCode, rd, rs, rt =
+        let opcode, funcCode, rd, rs, rt, imm =
             instruction.Opcode,
             instruction.FuncCode,
             instruction.DstReg,
             instruction.S1Reg,
-            instruction.S2Reg
+            instruction.S2Reg,
+            instruction.Immediate
         
         tu.RS.TryFindNotBusy() |> function
         | Some r -> 
@@ -218,12 +245,21 @@ and TrapUnit private (cfg, rsRef) =
             
             RS(r).Op <- Some opcode
             RS(r).Busy <- true
-            tu.LastInsert <- Some(RS(r).Name)
+            let rsId = Some(RS(r).Name)
+            RegisterStat(rd).Qi <- rsId
+            tu.LastInsert <- rsId; //printfn "did insert"
+
+            RS(r).A <- imm
+            queue.Enqueue(RS(r).Name)
 
         | None -> tu.LastInsert <- None; tu.Stall <- true
+        
 
-    override tu.Compute r =
+    override tu.Compute _ =
         let RS(r:string) = tu.RS.[r]
+        let r = queue.Dequeue() |> sprintf "%O"
+        printfn "r ===> %A" r
+        //printfn "Compute Trap, RS(r).Vj, RS(r).Vk ==>  %A, %A" (RS(r).Vj) (RS(r).Vk)
         let halt, result = RS(r).Op |> function
             | Some op -> 
                 match op.Name, RS(r).A with
@@ -233,29 +269,31 @@ and TrapUnit private (cfg, rsRef) =
                 | "dumpSTR", Some A' -> false, Memory.GetInstance.[A']
                 | _ -> failwith "invalid trap unit instruction"
             | None -> false, 0
-        //printfn "trap Result:  %A" result
+        printfn "trap Result:  %A" result
         RS(r).Result <- result
         halt
 
     static member GetInstance = instance
-    
+    static member Reset() = instance <- fun rsRef -> TrapUnit(cfg, rsRef)
+
 and BranchUnit private (cfg, rsRef) =
     inherit FunctionalUnit(cfg, rsRef)
 
     static let cfg = Config.FunctionalUnit.BranchUnit
-    static let instance rsRef = BranchUnit(cfg, rsRef)
+    static let mutable instance = fun rsRef -> BranchUnit(cfg, rsRef)
 
     override bu.Insert instruction = ()
 
     override bu.Compute r = false
 
     static member GetInstance = instance
+    static member Reset() = instance <- fun rsRef -> BranchUnit(cfg, rsRef)
 
 and MemoryUnit private (cfg, rsRef) =
     inherit FunctionalUnit(cfg, rsRef)
 
     static let cfg = Config.FunctionalUnit.MemoryUnit
-    static let instance rsRef = MemoryUnit(cfg, rsRef)
+    static let mutable instance = fun rsRef -> MemoryUnit(cfg, rsRef)
     let mutable xQueue = List.empty<int>
     let mutable wQueue = List.empty<int>
 
@@ -268,20 +306,22 @@ and MemoryUnit private (cfg, rsRef) =
     override mu.Compute r = false
 
     static member GetInstance = instance
+    static member Reset() = instance <- fun rsRef -> MemoryUnit(cfg, rsRef)
     
 and FloatingPointUnit private (cfg, rsRef) =
     inherit FunctionalUnit(cfg, rsRef)
 
     static let cfg = Config.FunctionalUnit.FloatingPointUnit
-    static let instance rsRef = FloatingPointUnit(cfg, rsRef)
+    static let mutable instance = fun rsRef -> FloatingPointUnit(cfg, rsRef)
 
     override fpu.Insert i = ()
     override fpu.Compute r = false
 
     static member GetInstance = instance
+    static member Reset() = instance <- fun rsRef -> FloatingPointUnit(cfg, rsRef)
     
 and FunctionalUnits private () =
-    static let instance = new FunctionalUnits()
+    static let mutable instance = FunctionalUnits()
 
     let iuCfg, tuCfg, buCfg, muCfg, fpuCfg = 
         Config.FunctionalUnit.IntegerUnit,
@@ -349,33 +389,48 @@ and FunctionalUnits private () =
 
     member fu.Execute() = allfu |> Array.iter (fun u -> u.Execute())
 
-    member fu.Issue i =
+    member fu.Issue (i:Instruction) =
         fu.All |> Array.iter (fun u -> u.LastInsert <- None) 
-        //printfn "Issue ==> %O" i
-        match i with
-        | Integer(_) -> iu.Insert i
-        | Trap(_) -> tu.Insert i
-        | Branch(_) -> bu.Insert i
-        | Memory(_) -> mu.Insert i
-        | FloatingPoint(_) -> fpu.Insert i
+        //printfn "Issue ==> %A" (i.Opcode)
+        if i.Opcode.Name <> "nop" then
+            match i with
+            | Integer(_) -> iu.Insert i
+            | Trap(_) -> tu.Insert i
+            | Branch(_) -> bu.Insert i
+            | Memory(_) -> mu.Insert i
+            | FloatingPoint(_) -> fpu.Insert i
 
     member fu.Halt = allfu |> Array.forall (fun u -> u.Halt)
     member fu.Stall = allfu |> Array.forall (fun u -> u.Stall)
 
     member fu.AllFinished() = allfu |> Array.forall (fun u -> u.Finished())
 
-    member fu.UpdateReservationStations cdb = RS.Update(fu.ReservationStations, cdb)
+    member fu.UpdateReservationStations() = RS.Update(fu.ReservationStations)
 
     member fu.ClearReservationStations() =
         allfu |> Array.iter (fun u -> u.Clear())
 
-    member fu.Dump() =
-        allfu |> Array.map (fun u -> u.Dump()) |> Array.map ((+) "\n") |> Array.reduce (+)
+    member fu.Dump() = ()
+//        sprintf "---------------------------------- %O" Clock.GetInstance +
+//        (allfu.[0..1] |> Array.map (fun u -> u.State) |> Array.map ((+) "\n") |> Array.reduce (+)) 
+//        |> printfn "%s"
+
+    member fu.DumpLastInsert() = allfu |> Array.iter (fun u -> printfn "%A" u.LastInsert)
 
     override fu.ToString() = 
        match allfu |> Array.tryFindIndex (fun u -> u.ExecRS.IsSome) with
-       | Some idx -> sprintf "%s%s" (getRSInfo()) (getExecInfo allfu.[idx])
-       | None -> getRSInfo()
+       | Some idx -> 
+        //printfn "rs & exec"
+        sprintf "%s%s" (getRSInfo()) (getExecInfo allfu.[idx])
+       | None -> 
+        //printfn "rs only"; 
+        getRSInfo()
     
     static member GetInstance = instance
-    interface IDisposable with member this.Dispose() = ()
+    static member Reset() = 
+        IntegerUnit.Reset()
+        TrapUnit.Reset()
+        BranchUnit.Reset()
+        MemoryUnit.Reset()
+        FloatingPointUnit.Reset()
+        instance <- FunctionalUnits()

@@ -12,5 +12,5 @@ let main argv =
 //    let simulator = Simulator(input, verbose)
 //
 //    simulator.Run()
-    FunctionalUnits.``intUnit2``()
+//    FunctionalUnits.``intUnit2``()
     0 // return an integer exit code

@@ -35,23 +35,22 @@ and RS =
     
     member rs.Length = rs.Contents.Length
 
-    member rs.Update(cdb:CDB option) = 
-        match cdb with
-        | Some cdb ->
-            rs.Contents |> Array.iteri (fun i r ->
-                (r.Qj, r.Qk) |> function
-                | Some Qj, _ ->
-                    if r.Busy && cdb.Src = Qj then 
-                        r.Qj <- None; r.Vj <- cdb.Result
-                | _, Some Qk ->
-                    if r.Busy && cdb.Src = Qk then
-                        r.Qk <- None; r.Vk <- cdb.Result
-                | None, None -> () )
-        | None -> ()
+    member rs.Update() = 
+        let cdb = CDB.GetInstance
+        rs.Contents |> Array.iteri (fun i r ->
+            (r.Qj, r.Qk) |> function
+            | Some Qj, _ ->
+                if r.Busy && cdb.Src = Qj then 
+                    r.Qj <- None; r.Vj <- cdb.Result
+            | _, Some Qk ->
+                if r.Busy && cdb.Src = Qk then
+                    r.Qk <- None; r.Vk <- cdb.Result
+            | None, None -> () )
 
     member rs.Clear() = rs.Contents |> Array.iter (fun r -> r.Clear())
 
     member rs.TryFindReady() = rs.Contents |> Array.tryFindIndex (fun r -> r.OperandsAvailable())
+    
     member rs.TryFindResultReady() = rs.Contents |> Array.tryFindIndex (fun r -> r.ResultReady)
     member rs.TryFindEmpty() = rs.Contents |> Array.tryFindIndex (fun r -> r.IsEmpty())
 
@@ -75,7 +74,7 @@ and RS =
     static member Filter(rs:RS[], f) =
         rs |> Array.map (fun r -> r.Filter f) |> Array.concat
 
-    static member Update(rs:RS[], cdb:CDB option) = rs |> Array.iter (fun r -> r.Update(cdb))
+    static member Update(rs:RS[]) = rs |> Array.iter (fun r -> r.Update())
 
 // The ReservationStation class contains the fields of an individual reservation station: 
 // name, busy, opcode, Vj, Vk, Qj, Qk, A, result, resultReady, resultWritten.  It also 
@@ -104,6 +103,7 @@ and ReservationStation =
             rs.A <- None
             rs.ResultReady <- false
             rs.ResultWritten <- false
+            rs.Result <- 0
 
     member rs.OperandsAvailable() =
         rs.Busy                 &&

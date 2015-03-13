@@ -5,7 +5,7 @@ open FsDLX.Common
 
 
 type RegisterFile private () =
-    static let instance = new RegisterFile()
+    static let mutable instance = RegisterFile()
     let regs = Array.init Config.Registers.RegCount Register.Init //Register.ArrayInit 64
 
     let mutable info : string option = None
@@ -16,8 +16,8 @@ type RegisterFile private () =
     
     member rf.UpdateInfo() = info <- sprintf "%O%O" (GPR.GetInstance) (FPR.GetInstance) |> Some
 
-    member rf.Update(cdb:CDB option) =
-        regs |> Array.iter (fun reg -> reg.Update(cdb))
+    member rf.Update(cdb) =
+        regs |> Array.iter (fun reg -> reg.Update())
         match cdb with
         | Some _    -> rf.UpdateInfo()
         | None      -> info <- None
@@ -28,10 +28,10 @@ type RegisterFile private () =
         | None -> ""
     
     static member GetInstance = instance
-    interface IDisposable with member this.Dispose() = ()
+    static member Reset() = instance <- RegisterFile()
 
 and GPR private () =
-    static let instance = new GPR()
+    static let mutable instance = GPR()
 
     member gpr.Item
         with get i = 
@@ -59,10 +59,10 @@ and GPR private () =
             //.Trim()       
 
     static member GetInstance = instance
-    interface IDisposable with member this.Dispose() = ()
+    static member Reset() = instance <- GPR()
 
 and FPR private () =
-    static let instance = new FPR()
+    static let mutable instance = FPR()
 
     member fpr.Item
         with get i = 
@@ -87,10 +87,10 @@ and FPR private () =
             .Trim()
 
     static member GetInstance = instance
-    interface IDisposable with member this.Dispose() = ()
+    static member Reset() = instance <- FPR()
 
 and RegisterStat private (instruction:int) =
-    static let instance i = new RegisterStat(i)
+    static let mutable instance = fun i -> RegisterStat(i)
     let reg s = Convert.int2bits2reg instruction s
 
     member rstat.Item
@@ -100,10 +100,10 @@ and RegisterStat private (instruction:int) =
             | OperandReg.FPR s -> FPR.GetInstance.[reg s]
 
     static member GetInstance = instance
-    interface IDisposable with member this.Dispose() = ()
+    static member Reset() = instance <- fun i -> RegisterStat(i)
 
 and Regs private (instruction:int) =
-    static let instance i = new Regs(i)
+    static let mutable instance = fun i -> Regs(i)
 
     let reg s = Convert.int2bits2reg instruction s
 
@@ -114,7 +114,7 @@ and Regs private (instruction:int) =
             | OperandReg.FPR s -> FPR.GetInstance.[reg s].Contents
 
     static member GetInstance = instance
-    interface IDisposable with member this.Dispose() = ()
+    static member Reset() = instance <- fun i -> Regs(i)
       
 and Register =
     {
@@ -125,8 +125,10 @@ and Register =
     member r.IsAvailable() = 
         r.Qi |> function | Some _ -> false | _ -> true
 
-    member r.Update(cdb:CDB option) = (cdb, r.Qi) |> function
-        | Some cdb, Some Qi -> if Qi = cdb.Src then r.Contents <- cdb.Result; r.Qi <- None
+    member r.Update() = 
+        let cdb = CDB.GetInstance
+        match r.Qi with
+        | Some Qi -> if Qi = cdb.Src then r.Contents <- cdb.Result; r.Qi <- None
         | _ -> ()
 
     override r.ToString() = (r.Qi, r.Contents) |> function

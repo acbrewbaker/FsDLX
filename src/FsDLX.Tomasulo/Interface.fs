@@ -61,7 +61,7 @@ type Simulator(input:string, verbose:bool) =
         
 
     let updateReservationStations() = 
-        funits.UpdateReservationStations(cdb)
+        funits.UpdateReservationStations()
 //            GPR.GetInstance.Update()
 //            FPR.GetInstance.Update()
 

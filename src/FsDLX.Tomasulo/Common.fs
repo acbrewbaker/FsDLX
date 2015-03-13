@@ -19,7 +19,7 @@ type OperandReg = | NONE | GPR of int | FPR of int
 
 
 type CDB private () =
-    static let instance = new CDB()
+    static let mutable instance = CDB()
 
     let mutable src, result = "", 0
     member cdb.Src
@@ -36,25 +36,25 @@ type CDB private () =
             cdb.Src
             
     static member GetInstance = instance
-    interface IDisposable with member this.Dispose() = ()
+    static member Reset() = instance <- CDB()
 
     static member Opt2String (cdb:CDB option) = cdb |> function
         | Some cdb -> sprintf "%O" cdb
         | None -> ""
 
 type PC private () =
-    static let instance = new PC()
+    static let mutable instance = PC()
     member val Value = 0 with get, set
     member pc.Increment() = pc.Value <- pc.Value + 4
     static member GetInstance = instance
-    interface IDisposable with member this.Dispose() = ()
+    static member Reset() = instance <- PC()
 
 type Clock private () =
-    static let instance = new Clock()
+    static let mutable instance = Clock()
     member val Cycles = 0 with get, set
     member c.Tic() = c.Cycles <- c.Cycles + 1
     static member GetInstance = instance
-    interface IDisposable with member this.Dispose() = ()
+    static member Reset() = instance <- Clock()
     override c.ToString() = sprintf "Clock cycle: %d" c.Cycles
 
 

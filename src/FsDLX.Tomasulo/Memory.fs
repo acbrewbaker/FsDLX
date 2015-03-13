@@ -5,8 +5,8 @@ open System.IO
 open FsDLX.Common
 
 type Memory private () =
-    static let instance = new Memory()
-    
+    static let mutable instance = Memory()
+
     let size = Config.Memory.DefaultMemorySize
 
     let dumpBy (by:int) (mem:int[]) =
@@ -85,6 +85,5 @@ type Memory private () =
 
 
     static member GetInstance = instance
-    interface IDisposable with member this.Dispose() = ()    
-
+    static member Reset() = instance <- Memory()
     

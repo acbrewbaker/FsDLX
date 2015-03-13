@@ -5,6 +5,7 @@ open System
 open System.IO
 open NUnit.Framework
 open NCrunch.Framework
+open FsDLX.Tomasulo
 
 
 let inline (@@) (a:string) (b:string) = Path.Combine(a,b)
@@ -20,6 +21,17 @@ let inputdir =
         srcdir @@ "../../Project2/Inputs"
     else
         srcdir @@ "../../../../Project2/Inputs"
+
+let resetSingletons() =
+    CDB.Reset()
+    Clock.Reset()
+    PC.Reset()
+    Memory.Reset()
+    RegisterFile.Reset()
+    FPR.Reset()
+    GPR.Reset()
+    FunctionalUnits.Reset()
+
 
 
 let strListToStr (l:string list) = (l |> List.map (fun l -> l.Trim()) |> List.fold (fun s r -> s + r + "\n") ("")).Trim()
