@@ -8,6 +8,8 @@ open System.Linq
 
 open FsDLX.Common
 
+
+
 type SimulatorOutputLevel =
     | Regular
     | Verbose
@@ -38,9 +40,11 @@ type CDB private () =
     static member GetInstance = instance
     static member Reset() = instance <- CDB()
 
-    static member Opt2String (cdb:CDB option) = cdb |> function
+    static member Opt2String (cdb:CDB option) = 
+        match cdb with
         | Some cdb -> sprintf "%O" cdb
         | None -> ""
+        //sprintf "%O" cdb
 
 type PC private () =
     static let mutable instance = PC()

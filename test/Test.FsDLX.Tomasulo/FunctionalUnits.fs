@@ -89,27 +89,29 @@ let run (stopCycle:int) = // (getDisplayStrings: CDB option -> FunctionalUnits -
 
     let branchInBranchUnit() = false
 
-    let write() = FunctionalUnits.All |> Array.tryPick (fun u -> u.Write())
+    let write() = FunctionalUnits.Write() //.All |> Array.tryPick (fun u -> u.Write())
     
-    let execute() = FunctionalUnits.All |> Array.iter (fun u -> u.Execute()); FunctionalUnits.Halt
+    let execute() = FunctionalUnits.Execute(); FunctionalUnits.Halt
+        //FunctionalUnits.All |> Array.iter (fun u -> u.Execute()); FunctionalUnits.Halt
 
     let issue instruction = FunctionalUnits.Issue instruction; FunctionalUnits.Stall
 
     Mem.Load(inputdir @@ "add.hex")
+    let mutable stall = false
     while not(halt) && not(finished()) do
         cdb := write()
         //printfn "HALT: %A" halt
-        
+        printfn "\n---------------------------------------------- %O" Clock
         halt <- execute()
         //printfn "HALT: %A" halt
         //output <- output @ [getDisplayStrings cdb FunctionalUnits]
         if not(halt) && not(branchInBranchUnit()) then
 //            printfn "Issuing: %A" (lines().[PC.Value])
             let instruction = Mem.[PC.Value] |> Instruction.ofInstructionInt
-            let stall = issue(instruction)
-            if not(halt) && not(stall) then PC.Increment()
+            stall <- issue(instruction)
+            if not(stall) then PC.Increment()
         //FunctionalUnits.DumpLastInsert()        
-        FunctionalUnits.Dump()
+        //FunctionalUnits.Dump()
         update(!cdb)
         halt <- Clock.Cycles = stopCycle
         Clock.Tic()
@@ -122,15 +124,6 @@ let ``xunit`` () =
     let x = XUnit(cfg.maxCycles)
     printfn "%O" x
 
-[<Test>]
-let ``xunit 2`` () =
-    let cfg = Config.FunctionalUnit.IntegerUnit
-    let x = XUnit(cfg.maxCycles)
-    let RS' = ReservationStation.ArrayInit cfg |> ref
-    let RS = RS.IntegerUnit RS'
-//    let x = x.Update(RS, fun _ -> ())
-  //  printfn "%O" x
-    printfn "ready? %A" (RS.TryFindReady())
 
 [<Test>]
 let ``integer unit`` () =

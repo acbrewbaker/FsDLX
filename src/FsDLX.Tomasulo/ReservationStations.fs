@@ -51,7 +51,9 @@ and RS =
     member rs.AllBusy() = rs.Contents |> ReservationStation.AllBusy
     member rs.AllNotBusy() = rs.Contents |> ReservationStation.AllNotBusy
 
-    member rs.TryFindReady() = rs.Contents |> Array.tryFind (fun r -> r.OperandsAvailable())
+    member rs.TryFind f = rs.Contents |> Array.tryFind f
+
+    member rs.TryFindOperandsAvailable() = rs.Contents |> Array.tryFind (fun r -> r.OperandsAvailable())
     member rs.TryFindResultReady() = rs.Contents |> Array.tryFind (fun r -> r.ResultReady)
     member rs.TryFindEmpty() = rs.Contents |> Array.tryFind (fun r -> r.IsEmpty())
 

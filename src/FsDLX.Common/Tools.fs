@@ -13,6 +13,8 @@ module Tools =
     let inline (++) (a:string) (b:string) = a + " " + b
     let inline (+|+) (a:string) (b:string) = a + "|" + b
 
+    let inline (>=>) (description:string) (x:'T) = printfn "%s%O" description x; x
+
     let revstr (s:string) = s.ToCharArray() |> Array.rev |> Array.fold(fun s c -> s + string c) ("")
 
     let concatLines lines = lines |> List.fold (fun s l -> s + l + "\n") ("")

@@ -8,8 +8,12 @@ type RegisterFile private () =
     static let mutable instance = RegisterFile()
     let regs = Array.init Config.Registers.RegCount Register.Init //Register.ArrayInit 64
 
+    let mutable gprChanged, fprChanged = false, false
+    
+
     let mutable info : string option = None
 
+    
     member rf.Item
         with    get i = regs.[i]
         and     set i v = regs.[i].Contents <- v
@@ -19,7 +23,7 @@ type RegisterFile private () =
     member rf.Update(cdb) =
         regs |> Array.iter (fun reg -> reg.Update())
         match cdb with
-        | Some _    -> rf.UpdateInfo()
+        | Some _ -> rf.UpdateInfo()
         | None      -> info <- None
 
     override rf.ToString() =
@@ -32,6 +36,13 @@ type RegisterFile private () =
 
 and GPR private () =
     static let mutable instance = GPR()
+    
+    let regs() = [| for i = 0 to 31 do yield RegisterFile.GetInstance.[i] |]
+    let mutable old = regs() |> Array.copy
+    let regsChanged() = 
+        match (regs(),old) ||> Array.forall2 (=) with
+        | true -> false
+        | false -> old <- regs() |> Array.copy; true
 
     member gpr.Item
         with get i = 
