@@ -1,13 +1,10 @@
-﻿//[<AutoOpen>]
-//module FsDLX.Tomasulo.Common
-namespace FsDLX.Tomasulo
+﻿namespace FsDLX.Tomasulo
 
 open System
 open System.Threading
 open System.Linq
 
 open FsDLX.Common
-
 
 
 type SimulatorOutputLevel =
@@ -18,7 +15,6 @@ type SimulatorOutputLevel =
 type InsertFunc = Opcode -> int * int * int * int -> bool
 
 type OperandReg = | NONE | GPR of int | FPR of int
-
 
 type CDB private () =
     static let mutable instance = CDB()

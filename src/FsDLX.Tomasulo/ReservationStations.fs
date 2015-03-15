@@ -2,10 +2,8 @@
 
 open FsDLX.Common
 
-
 type RSGroup = ReservationStation[]
 and RSGroupRef = RSGroup ref
-
 and RS =
     | IntegerUnit of RSGroupRef
     | TrapUnit of RSGroupRef
@@ -37,6 +35,9 @@ and RS =
     member rs.Update() = 
         let cdb = CDB.GetInstance
         rs.Contents |> Array.iteri (fun i r ->
+            match r.Qj with | Some Qj -> if r.Busy && cdb.Src = Qj then r.Qj <- None; r.Vj <- cdb.Result
+                            | None -> ()
+            
             (r.Qj, r.Qk) |> function
             | Some Qj, _ ->
                 if r.Busy && cdb.Src = Qj then 
@@ -45,7 +46,7 @@ and RS =
                 if r.Busy && cdb.Src = Qk then
                     r.Qk <- None; r.Vk <- cdb.Result
             | None, None -> () )
-
+    
     member rs.Clear() = rs.Contents |> Array.iter (fun r -> r.Clear())
 
     member rs.AllBusy() = rs.Contents |> ReservationStation.AllBusy
@@ -64,8 +65,7 @@ and RS =
     member rs.Dump() =
         rs.Contents |> Array.fold (fun s r -> s + "\n" + (r.Dump()))
             ("Name  Busy  Opcode   Vj  Vk  Qj  Qk  A  ResultReady  ResultWritten  Result")
-
-
+    
     override rs.ToString() =
         //rs.Contents |> Array.map (sprintf "%O\n") |> Array.reduce (+)
         let onlyBusy = rs.Contents |> Array.filter (fun r -> r.Busy)
@@ -73,7 +73,8 @@ and RS =
         then (onlyBusy |> Array.map (sprintf "%O\n") |> Array.reduce (+)).Trim()
         else ""
 
-
+    static member AllNotBusy (rs:RS[]) =
+        rs |> Array.forall (fun r -> r.AllNotBusy())
 
     static member Filter(rs:RS[], f) =
         rs |> Array.map (fun r -> r.Filter f) |> Array.concat
@@ -165,5 +166,3 @@ and ReservationStation =
     static member AllNotBusy (RS:RSGroup) = RS |> Array.forall (fun r -> not(r.Busy))
 
 and RSId = RSId of string option
-
-

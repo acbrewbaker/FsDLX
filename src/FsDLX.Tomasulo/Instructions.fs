@@ -1,21 +1,7 @@
-﻿//module FsDLX.Tomasulo.Instructions
-namespace FsDLX.Tomasulo
+﻿namespace FsDLX.Tomasulo
 
 open System.Collections
 open FsDLX.Common
-
-
-// In addition, it is helpful to create an Instruction class that contains information 
-// that can be used to issue an instruction to a reservation station and set the Qi field 
-// of a register in the register file.  The Vj (Qj) and Vk (Qk) fields are initialized via 
-// source registers in the instruction.  An instruction may not have a source register.  
-// If it does have a source register then it might refer to a general purpose register 
-// (r0-r31) or a floating point register (f0-f31).   Similarly the A field is initialized 
-// by the immediate value in an instruction.  An instruction may have an immediate value 
-// or may not, and the size and starting bit of the immediate value vary depending upon the 
-// instruction. The fields of an instruction object can be accessed to get this information 
-// and used to initialize the reservation station.  In this way, it is possible to write 
-// issuing code that can be placed in the FUContainer class and used to issue any instruction.  For example, the fields of the Instruction class could be:
 
 type Instruction =
     | Integer of InstructionInt * InstructionInfo
@@ -44,22 +30,6 @@ type Instruction =
     member ins.S1Reg = let _,_,_,rs,_,_ = ins.asInfo in rs
     member ins.S2Reg = let _,_,_,_,rt,_ = ins.asInfo in rt
     member ins.Immediate = let _,_,_,_,_,imm = ins.asInfo in imm.GetImmVal ins
-
-//    member private ins.Reg = function
-//        | OperandReg.NONE -> None
-//        | OperandReg.GPR s -> 
-//            GPR.GetInstance.[Convert.int2bits2reg (ins.asInt) s] |> Some
-//        | OperandReg.FPR s ->
-//            FPR.GetInstance.[Convert.int2bits2reg (ins.asInt) s] |> Some
-
-//    member private ins.ImmVal = function
-//        | Imm.NONE -> None
-//        | Imm.A imm -> imm ||> Convert.int2bits2int (ins.asInt) |> Some
-
-//    member ins.rd = ins.DstReg |> ins.Reg
-//    member ins.rs = ins.S1Reg |> ins.Reg
-//    member ins.rt = ins.S2Reg |> ins.Reg
-//    member ins.imm = ins.Immediate.GetImmVal ins
 
     static member threeGpr opcode = (Opcode.ofName opcode, FuncCode.NONE, DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11, Imm.NONE)
     static member threeFpr opcode = (Opcode.ofName opcode, FuncCode.NONE, DstReg.FPR 16, S1Reg.FPR 6, S2Reg.FPR 11, Imm.NONE)

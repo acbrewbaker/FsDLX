@@ -27,18 +27,13 @@ type Memory private () =
             | i when i = content.Length - 1 -> fun s -> s
             | _                         -> fun s -> s + "\n")
         |> List.reduce (+)
-        //|> List.fold (fun s l -> s + l + "\n") ("")
         |> sprintf "MEMORY\n%s"
-            
 
     let mutable M = Array.zeroCreate<int> size
-//    let mutable M' = Array.init<Instruction> size
-
     
     let checkAddr = function
         | a when a % 4 <> 0 -> failwith "Invalid PC"
         | a -> a / 4 
-
 
     let loadRegular input = 
         input |> File.ReadAllLines
@@ -63,13 +58,11 @@ type Memory private () =
         ints |> Array.iteri (fun i b -> M.[i] <- b)
 
     member val Size = M.Length with get, set
-        
-
+    
     member m.Load input = Config.Memory.outputLevel |> function
         | Regular -> loadRegular input
         | Verbose -> loadVerbose input
         | Debug -> loadDebug input
-
 
     member m.Item
         with get(address)     = M.[checkAddr address]
@@ -79,10 +72,6 @@ type Memory private () =
     member m.Dump()     = m.Dump(8)
 
     override m.ToString() = m.Dump().Trim()
-//        M
-//        |> Array.map Convert.int2hex
-//        |> Array.fold (fun s h -> s + h + "\n") ("")
-
 
     static member GetInstance = instance
     static member Reset() = instance <- Memory()

@@ -6,17 +6,9 @@ open FsDLX.Common
 
 type RegisterFile private () =
     static let mutable instance = RegisterFile()
-    let regs = Array.init Config.Registers.RegCount Register.Init //Register.ArrayInit 64
-    let mutable old = Array.copy regs
-    
-    let regsChanged() =
-        let current = [| for i = 0 to Config.Registers.RegCount - 1 do yield regs.[i] |]
-        match (old, current) ||> Array.forall2 (<=>) with
-        | true -> printfn "no change"; false
-        | false -> old <- Array.copy current; true
+    let regs = Array.init Config.Registers.RegCount Register.Init
     
     let mutable info : string option = None
-
     
     member rf.Item
         with    get i = regs.[i]
@@ -26,11 +18,9 @@ type RegisterFile private () =
 
     member rf.Update(cdb) =
         regs |> Array.iter (fun reg -> reg.Update())
-        match cdb, regsChanged() with
-        | Some _, _ -> rf.UpdateInfo()
-        | None _, true -> rf.UpdateInfo()
-        | _, false -> info <- None //rf.UpdateInfo()
-        //| _ -> info <- None
+        match cdb with
+        | Some _-> rf.UpdateInfo()
+        | None -> info <- None
 
     override rf.ToString() =
         match info with
@@ -42,13 +32,6 @@ type RegisterFile private () =
 
 and GPR private () =
     static let mutable instance = GPR()
-    
-    let regs() = [| for i = 0 to 31 do yield RegisterFile.GetInstance.[i] |]
-    let mutable old = regs() |> Array.copy
-    let regsChanged() = 
-        match (regs(),old) ||> Array.forall2 (=) with
-        | true -> false
-        | false -> old <- regs() |> Array.copy; true
 
     member gpr.Item
         with get i = 
@@ -165,14 +148,7 @@ and Register =
         regs |> Array.forall (fun r -> r.Contents = 0 && r.Qi.IsNone) |> not
 
 and RegisterSet(heading:string, regs:Register[]) =
-    let mutable old = Array.init Config.Registers.RegCount Register.Init
     do if regs.Length <> 8 then failwith "register set must be length 8"
-    
-    let regsChanged() =
-        let current = [| for i = 0 to Config.Registers.RegCount - 1 do yield RegisterFile.GetInstance.[i] |]
-        match (old, current) ||> Array.forall2 (fun o c -> o.Contents = c.Contents) with
-        | true -> printfn "no change"; false
-        | false -> old <- Array.copy current; true
     
     member val Regs = regs with get, set
 
