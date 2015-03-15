@@ -85,16 +85,15 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
 //            printfn "%A" (reservationStations.Dump())
             match tryFindResultReady() with
             | Some r ->
-                printfn "Result Ready ===> %O" r
                 RS(r).ResultWritten <- true
                 cdb.Result <- RS(r).Result
                 cdb.Src <- RS(r).Name
 //                printfn "------ Stations (after) -------"
 //                printfn "%A" (reservationStations.Dump())
-            | None ->   match tryFindBusyStation() with
-                        | Some r -> printfn "Still busy: %O" r
-                        | None -> ()
-            
+            | None -> ()
+//                        match tryFindBusyStation() with
+//                        | Some r -> printfn "Still busy: %O" r
+//                        | None -> ()            
             None
         | _ ->
             match tryFindResultReady() with
