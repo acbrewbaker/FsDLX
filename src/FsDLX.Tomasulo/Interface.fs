@@ -23,8 +23,7 @@ type Simulator(input:string, verbose:bool) =
         ] |> List.choose (fun s -> if s.Length > 1 then Some s else None) ]
     
     let output = ref List.empty<string list>
-    let mutable halt = false
-
+    
     let finished() = 
         if Clock.Cycles = 0 then false else FunctionalUnits.Finished()
 
@@ -49,7 +48,7 @@ type Simulator(input:string, verbose:bool) =
     //Mem.Load(inputdir @@ "add.hex")
         
     let runRegular() =
-        let mutable stall = false
+        let mutable halt, stall = false, false
         while not(halt) && not(finished()) do
             cdb := write()
             halt <- execute()
