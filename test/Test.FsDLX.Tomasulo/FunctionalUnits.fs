@@ -91,16 +91,16 @@ let run (stopCycle:int) = // (getDisplayStrings: CDB option -> FunctionalUnits -
 
     let write() = FunctionalUnits.Write() //.All |> Array.tryPick (fun u -> u.Write())
     
-    let execute() = FunctionalUnits.Execute(); FunctionalUnits.Halt
+    let execute() = FunctionalUnits.Execute(); FunctionalUnits.Halt()
         //FunctionalUnits.All |> Array.iter (fun u -> u.Execute()); FunctionalUnits.Halt
 
-    let issue instruction = FunctionalUnits.Issue instruction; FunctionalUnits.Stall
+    let issue instruction = FunctionalUnits.Issue instruction; FunctionalUnits.Stall()
 
     Mem.Load(inputdir @@ "add.hex")
     let mutable stall = false
     while not(halt) && not(finished()) do
         cdb := write()
-        //printfn "HALT: %A" halt
+        printfn "HALT: %A; STALL: %A" halt stall
         printfn "\n---------------------------------------------- %O" Clock
         halt <- execute()
         //printfn "HALT: %A" halt
@@ -108,8 +108,9 @@ let run (stopCycle:int) = // (getDisplayStrings: CDB option -> FunctionalUnits -
         if not(halt) && not(branchInBranchUnit()) then
 //            printfn "Issuing: %A" (lines().[PC.Value])
             let instruction = Mem.[PC.Value] |> Instruction.ofInstructionInt
+            //printfn "Instruction ====> %O" instruction
             stall <- issue(instruction)
-            if not(stall) then PC.Increment()
+            if not(halt) && not(stall) then PC.Increment()
         //FunctionalUnits.DumpLastInsert()        
         //FunctionalUnits.Dump()
         update(!cdb)

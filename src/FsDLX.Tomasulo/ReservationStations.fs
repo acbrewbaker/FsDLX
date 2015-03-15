@@ -99,15 +99,16 @@ and ReservationStation =
     }
 
     member rs.Clear() =
-        if rs.ResultWritten then
-            rs.Busy <- false
-            rs.Op <- None
-            rs.Vj <- 0; rs.Vk <- 0
-            rs.Qj <- None; rs.Qk <- None
-            rs.A <- None
-            rs.ResultReady <- false
-            rs.ResultWritten <- false
-            rs.Result <- 0
+        if rs.Busy then
+            if rs.ResultWritten then
+                rs.Busy <- false
+                rs.Op <- None
+                rs.Vj <- 0; rs.Vk <- 0
+                rs.Qj <- None; rs.Qk <- None
+                rs.A <- None
+                rs.ResultReady <- false
+                rs.ResultWritten <- false
+                rs.Result <- 0
 
     member rs.OperandsAvailable() =
         rs.Busy                 &&
