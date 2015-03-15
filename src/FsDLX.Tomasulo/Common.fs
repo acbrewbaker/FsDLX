@@ -76,7 +76,7 @@ module Config =
         let outputLevel = SimulatorOutputLevel.Debug
 
     module Simulator =
-        let outputLevel = SimulatorOutputLevel.Debug
+        let outputLevel = SimulatorOutputLevel.Regular
 
 
     let nCharsInHexInstruction = 8

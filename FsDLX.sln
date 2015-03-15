@@ -96,7 +96,37 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Inputs", "Inputs", "{FE3D70
 		Project1\Inputs\word2.hex = Project1\Inputs\word2.hex
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Inputs", "Inputs", "{9ADAA4E1-9E55-49DC-8734-1BA7839B7569}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{49388BF1-28A4-4441-A622-91ED6DD763E4}"
+	ProjectSection(SolutionItems) = preProject
+		.nuget\NuGet.Config = .nuget\NuGet.Config
+		.nuget\NuGet.exe = .nuget\NuGet.exe
+		.nuget\NuGet.targets = .nuget\NuGet.targets
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{D230C028-8AB9-40B9-9CEE-2FCD08B21FC2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{8CD8319E-52DC-403D-931E-E67EAE60BC9F}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Assembler", "src\FsDLX.Assembler\FsDLX.Assembler.fsproj", "{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Tomasulo", "src\FsDLX.Tomasulo\FsDLX.Tomasulo.fsproj", "{49572F7C-4FF3-4448-9A23-8067BE0E733E}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Assembler", "test\Test.FsDLX.Assembler\Test.FsDLX.Assembler.fsproj", "{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Tomasulo", "test\Test.FsDLX.Tomasulo\Test.FsDLX.Tomasulo.fsproj", "{A82780E0-376C-4A04-8D66-3EC7F8191FF5}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Common", "src\FsDLX.Common\FsDLX.Common.fsproj", "{3548B64C-D96E-4033-88EE-99C87BBA4793}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "info", "info", "{3CEC9686-1DF6-4B89-BA84-16888D458C13}"
+	ProjectSection(SolutionItems) = preProject
+		info\Itypes = info\Itypes
+		info\Jtypes = info\Jtypes
+		info\Rtypes = info\Rtypes
+	EndProjectSection
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Common", "test\Test.FsDLX.Common\Test.FsDLX.Common.fsproj", "{34FFBEC1-B7A7-4CC1-B620-D4EA2220520F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Inputs", "Inputs", "{D404A0AC-A4DF-4A98-AF43-57EF6B4E155B}"
 	ProjectSection(SolutionItems) = preProject
 		Project2\Inputs\add.hex = Project2\Inputs\add.hex
 		Project2\Inputs\brUnit1.dlx = Project2\Inputs\brUnit1.dlx
@@ -186,36 +216,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Inputs", "Inputs", "{9ADAA4
 		Project2\Inputs\run.pl = Project2\Inputs\run.pl
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{49388BF1-28A4-4441-A622-91ED6DD763E4}"
-	ProjectSection(SolutionItems) = preProject
-		.nuget\NuGet.Config = .nuget\NuGet.Config
-		.nuget\NuGet.exe = .nuget\NuGet.exe
-		.nuget\NuGet.targets = .nuget\NuGet.targets
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{D230C028-8AB9-40B9-9CEE-2FCD08B21FC2}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{8CD8319E-52DC-403D-931E-E67EAE60BC9F}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Assembler", "src\FsDLX.Assembler\FsDLX.Assembler.fsproj", "{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Tomasulo", "src\FsDLX.Tomasulo\FsDLX.Tomasulo.fsproj", "{49572F7C-4FF3-4448-9A23-8067BE0E733E}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Assembler", "test\Test.FsDLX.Assembler\Test.FsDLX.Assembler.fsproj", "{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Tomasulo", "test\Test.FsDLX.Tomasulo\Test.FsDLX.Tomasulo.fsproj", "{A82780E0-376C-4A04-8D66-3EC7F8191FF5}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsDLX.Common", "src\FsDLX.Common\FsDLX.Common.fsproj", "{3548B64C-D96E-4033-88EE-99C87BBA4793}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "info", "info", "{3CEC9686-1DF6-4B89-BA84-16888D458C13}"
-	ProjectSection(SolutionItems) = preProject
-		info\Itypes = info\Itypes
-		info\Jtypes = info\Jtypes
-		info\Rtypes = info\Rtypes
-	EndProjectSection
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test.FsDLX.Common", "test\Test.FsDLX.Common\Test.FsDLX.Common.fsproj", "{34FFBEC1-B7A7-4CC1-B620-D4EA2220520F}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -252,12 +252,12 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{FE3D70F6-8BCC-4DA0-A7AD-41451955CB62} = {DACEB980-8600-477F-86A3-B8905B385D31}
-		{9ADAA4E1-9E55-49DC-8734-1BA7839B7569} = {5739E74D-24F9-4A64-933B-8186663411A0}
 		{DC1F9D91-B4E6-4471-9810-5CE92B50B4FC} = {D230C028-8AB9-40B9-9CEE-2FCD08B21FC2}
 		{49572F7C-4FF3-4448-9A23-8067BE0E733E} = {D230C028-8AB9-40B9-9CEE-2FCD08B21FC2}
 		{5C42BB9A-DAFF-4A79-9281-B254EB9CC1E1} = {8CD8319E-52DC-403D-931E-E67EAE60BC9F}
 		{A82780E0-376C-4A04-8D66-3EC7F8191FF5} = {8CD8319E-52DC-403D-931E-E67EAE60BC9F}
 		{3548B64C-D96E-4033-88EE-99C87BBA4793} = {D230C028-8AB9-40B9-9CEE-2FCD08B21FC2}
 		{34FFBEC1-B7A7-4CC1-B620-D4EA2220520F} = {8CD8319E-52DC-403D-931E-E67EAE60BC9F}
+		{D404A0AC-A4DF-4A98-AF43-57EF6B4E155B} = {5739E74D-24F9-4A64-933B-8186663411A0}
 	EndGlobalSection
 EndGlobal

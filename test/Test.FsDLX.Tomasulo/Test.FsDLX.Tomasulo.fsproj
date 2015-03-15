@@ -69,8 +69,9 @@
     <Compile Include="ReservationStations.fs" />
     <Compile Include="FunctionalUnits.fs" />
     <Compile Include="Memory.fs" />
-    <Compile Include="Interface.fs" />
+    <Compile Include="Interface.IntUnit.fs" />
     <Compile Include="Program.fs" />
+    <None Include="TestGen.fsx" />
     <None Include="App.config" />
     <Content Include="packages.config" />
   </ItemGroup>

@@ -251,9 +251,13 @@ and TrapUnit private (cfg, rsRef) =
                 | Some op -> 
                     match op.Name, RS(r).A with
                     | "halt", _         -> true, 0
-                    | "dumpGPR", _      -> false, RS(r).Vj
+                    | "dumpGPR", _      -> 
+                        printfn "===> %A" (GPR.GetInstance.[RS(r).Vj])
+                        false, RS(r).Vj
                     | "dumpFPR", _      -> false, RS(r).Vj
-                    | "dumpSTR", Some A'-> false, Memory.GetInstance.[A']
+                    | "dumpSTR", Some A'-> 
+                        printfn "===> %A" (Memory.GetInstance.[A'])
+                        false, Memory.GetInstance.[A']
                     | _ -> failwith "invalid trap unit instruction"
                 | None -> false, 0
             RS(r).Result <- result
