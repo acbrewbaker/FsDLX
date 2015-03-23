@@ -29,7 +29,7 @@ type Memory private () =
         |> List.reduce (+)
         |> sprintf "MEMORY\n%s"
 
-    let mutable M = Array.zeroCreate<int> size
+    let mutable M = Array.zeroCreate<byte> size
     
     let checkAddr = function
         | a when a % 4 <> 0 -> failwith "Invalid PC"
@@ -37,7 +37,8 @@ type Memory private () =
 
     let loadRegular input = 
         input |> File.ReadAllLines
-        |> Array.map (splitForHex >> Convert.hex2int)
+        |> Array.map (splitForHex >> Convert.hex2bytes)
+        |> Array.concat
         |> Array.iteri (fun i b -> M.[i] <- b)
 
     let loadVerbose = loadRegular
@@ -55,7 +56,13 @@ type Memory private () =
         printfn "int instructions"
         for i in ints do printfn "%d" i
 
-        ints |> Array.iteri (fun i b -> M.[i] <- b)
+//        ints |> Array.iteri (fun i b -> M.[i] <- b)
+        ()
+
+    let bytes2ints (bytes:byte[]) =
+        [| for i = 0 to bytes.Length / 4 do
+            yield BitConverter.ToInt32(M, i) |]
+                
 
     member val Size = M.Length with get, set
     
@@ -65,10 +72,10 @@ type Memory private () =
         | Debug -> loadDebug input
 
     member m.Item
-        with get(address)     = M.[checkAddr address]
+        with get(address)     = BitConverter.ToInt32(M, address)
         and set address value = M.[checkAddr address] <- value
 
-    member m.Dump(cols) = M |> dumpBy cols |> sprintf "%s"
+    member m.Dump(cols) = M |> bytes2ints |> dumpBy cols |> sprintf "%s"
     member m.Dump()     = m.Dump(8)
 
     override m.ToString() = m.Dump().Trim()
