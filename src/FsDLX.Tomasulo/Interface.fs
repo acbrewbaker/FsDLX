@@ -45,7 +45,7 @@ type Simulator(input:string, verbose:bool) =
         FunctionalUnits.Execute,
         FunctionalUnits.Issue
 
-    
+    //Mem.Load(inputdir @@ "add.hex")
         
     let runRegular() =
         Mem.Load(input)
@@ -54,10 +54,8 @@ type Simulator(input:string, verbose:bool) =
             cdb := write()
             halt <- execute()
             if not(halt) && not(branchInBranchUnit()) then
-                let instruction = 
-                    let i = Mem.[PC.Value]
-                    printfn "Instruction: %A" i
-                    i |> Instruction.ofInstructionInt
+                let instruction = Mem.[PC.Value] |> Instruction.ofInstructionInt
+                printfn "Instruction: %O\n" instruction
                 stall <- issue(instruction)
                 if not(halt) && not(stall) then PC.Increment()
             update(!cdb)

@@ -37,9 +37,11 @@ let hex2bytes (hex:string) =
 let bytes = hex |> Array.map hex2bytes |> Array.concat
 
 let str = "0a5468652073756d206f662000"
-
+let str2 = "20010003"
 let strbytes = str |> hex2bytes
 
-let x = strbytes |> Seq.takeWhile (fun e -> e <> 0uy)
+//printfn "%A" strbytes
+
+//let x = strbytes |> Seq.takeWhile (fun e -> e <> 0uy)
 
 strbytes |> Array.map char |> Array.fold (fun s r -> s + string r ) ("") |> printfn "String: %s"

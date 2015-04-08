@@ -10,26 +10,30 @@ type Instruction =
     | Memory of InstructionInt * InstructionInfo
     | FloatingPoint of InstructionInt * InstructionInfo
 
-    member ins.asInt = ins |> function
+    member ins.AsInt = ins |> function
         | Integer(i,info) -> i
         | Trap(i,info) -> i
         | Branch(i,info) -> i
         | Memory(i,info) -> i
         | FloatingPoint(i,info) -> i
 
-    member ins.asInfo = ins |> function
+    member ins.AsHex = ins.AsInt |> Convert.int2hex
+
+    member ins.AsInfo = ins |> function
         | Integer(i,info) -> info
         | Trap(i,info) -> info
         | Branch(i,info) -> info
         | Memory(i,info) -> info
         | FloatingPoint(i,info) -> info
 
-    member ins.Opcode = let op,_,_,_,_,_ = ins.asInfo in op
-    member ins.FuncCode = let _,fc,_,_,_,_ = ins.asInfo in fc
-    member ins.DstReg = let _,_,rd,_,_,_ = ins.asInfo in rd
-    member ins.S1Reg = let _,_,_,rs,_,_ = ins.asInfo in rs
-    member ins.S2Reg = let _,_,_,_,rt,_ = ins.asInfo in rt
-    member ins.Immediate = let _,_,_,_,_,imm = ins.asInfo in imm.GetImmVal ins
+    member ins.Opcode = let op,_,_,_,_,_ = ins.AsInfo in op
+    member ins.FuncCode = let _,fc,_,_,_,_ = ins.AsInfo in fc
+    member ins.DstReg = let _,_,rd,_,_,_ = ins.AsInfo in rd
+    member ins.S1Reg = let _,_,_,rs,_,_ = ins.AsInfo in rs
+    member ins.S2Reg = let _,_,_,_,rt,_ = ins.AsInfo in rt
+    member ins.Immediate = let _,_,_,_,_,imm = ins.AsInfo in imm.GetImmVal ins
+
+    override ins.ToString() = sprintf "%s" ins.AsHex
 
     static member threeGpr opcode = (Opcode.ofName opcode, FuncCode.NONE, DstReg.GPR 16, S1Reg.GPR 6, S2Reg.GPR 11, Imm.NONE)
     static member threeFpr opcode = (Opcode.ofName opcode, FuncCode.NONE, DstReg.FPR 16, S1Reg.FPR 6, S2Reg.FPR 11, Imm.NONE)
@@ -76,6 +80,7 @@ type Instruction =
     static member CVTI2F = (Opcode.ofName "cvti2f", FuncCode.NONE, DstReg.FPR 16, S1Reg.FPR 6, S2Reg.NONE, Imm.NONE)
 
     static member ofInstructionInt(i:int) =
+        //printfn "OfInstructionInt: %A\n" i
         let opcode = Opcode.ofInstructionInt i
         let funcCode = 
             if      opcode.Name = "trap" 
@@ -135,4 +140,4 @@ and Imm     = | NONE  | A of (int * int) with
     member this.GetImmVal(i:Instruction) =
         match this with
         | NONE -> None
-        | A imm -> imm ||> Convert.int2bits2int (i.asInt) |> Some
+        | A imm -> imm ||> Convert.int2bits2int (i.AsInt) |> Some

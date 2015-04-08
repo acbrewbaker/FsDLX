@@ -9,7 +9,8 @@ type Memory private () =
 
     let size = Config.Memory.DefaultMemorySize
 
-    let dumpBy (by:int) (mem:int[]) =
+    let dumpBy (by:int) (mem:byte[]) =
+        let mem = [|0..4..size-4|] |> Array.map (fun e -> BitConverter.ToInt32(mem, e))
         let content = 
             [for i = 0 to mem.Length / (by*4) do 
                 let m = mem.[i*by..(i*by + by) - 1]
@@ -56,13 +57,7 @@ type Memory private () =
         printfn "int instructions"
         for i in ints do printfn "%d" i
 
-//        ints |> Array.iteri (fun i b -> M.[i] <- b)
-        ()
-
-    let bytes2ints (bytes:byte[]) =
-        [| for i = 0 to bytes.Length / 4 do
-            yield BitConverter.ToInt32(M, i) |]
-                
+        //ints |> Array.iteri (fun i b -> M.[i] <- b)
 
     member val Size = M.Length with get, set
     
@@ -72,10 +67,19 @@ type Memory private () =
         | Debug -> loadDebug input
 
     member m.Item
-        with get(address)     = BitConverter.ToInt32(M, address)
-        and set address value = M.[checkAddr address] <- value
+        with get(address) = let a = address in BitConverter.ToInt32(M.[a..a+3] |> Array.rev, 0)
+        and set address (value:int) = 
+            let a = address //checkAddr address 
+            let b = BitConverter.GetBytes value
+            M.[a] <- b.[3]; M.[a+1] <- b.[2]; M.[a+2] <- b.[1]; M.[a+3] <- b.[0]
 
-    member m.Dump(cols) = M |> bytes2ints |> dumpBy cols |> sprintf "%s"
+    member m.Byte
+        with get i = M.[i]
+        and set i v = M.[i] <- v
+
+    member m.AsBytes = M
+
+    member m.Dump(cols) = M |> dumpBy cols |> sprintf "%s"
     member m.Dump()     = m.Dump(8)
 
     override m.ToString() = m.Dump().Trim()

@@ -131,8 +131,9 @@ and IntegerUnit private (cfg, rsRef) =
     let RS(r) = RS'.[r]
 
     override iu.Insert instruction =
-        let Regs(i) = (Regs.GetInstance instruction.asInt).[i]
-        let RegisterStat(i) = (RegisterStat.GetInstance instruction.asInt).[i]
+        //printfn "Insert Int."
+        let Regs(i) = (Regs.GetInstance instruction.AsInt).[i]
+        let RegisterStat(i) = (RegisterStat.GetInstance instruction.AsInt).[i]
         
         let opcode, rd, rs, rt, imm = 
             instruction.Opcode,
@@ -204,8 +205,9 @@ and TrapUnit private (cfg, rsRef) =
     let RS(r) = RS'.[r]
 
     override tu.Insert instruction = 
-        let Regs(i) = (Regs.GetInstance instruction.asInt).[i]
-        let RegisterStat(i) = (RegisterStat.GetInstance instruction.asInt).[i]
+        //printfn "Insert Trap"
+        let Regs(i) = (Regs.GetInstance instruction.AsInt).[i]
+        let RegisterStat(i) = (RegisterStat.GetInstance instruction.AsInt).[i]
 
         let opcode, funcCode, rd, rs, rt, imm =
             instruction.Opcode,
@@ -221,8 +223,8 @@ and TrapUnit private (cfg, rsRef) =
             match RegisterStat(rs).Qi with  | Some _->  RS(r).Qj <- RegisterStat(rs).Qi
                                             | None  ->  RS(r).Vj <- Regs(rs); RS(r).Qj <- None
   
-            match RegisterStat(rt).Qi with  | Some _->  RS(r).Qk <- RegisterStat(rt).Qi
-                                            | None  ->  RS(r).Vk <- Regs(rt); RS(r).Qk <- None
+//            match RegisterStat(rt).Qi with  | Some _->  RS(r).Qk <- RegisterStat(rt).Qi
+//                                            | None  ->  RS(r).Vk <- Regs(rt); RS(r).Qk <- None
 
             opcode.Name <-
                 match funcCode with
@@ -237,6 +239,7 @@ and TrapUnit private (cfg, rsRef) =
             RegisterStat(rd).Qi <- rsId
             tu.LastInsert <- rsId
 
+            //printfn "Trap immediate: %A" imm
             RS(r).A <- imm
 
             queue.Enqueue(r)
@@ -249,16 +252,21 @@ and TrapUnit private (cfg, rsRef) =
             tu.ExecRS <- Some(RS(r).Name)
             let halt, result = RS(r).Op |> function
                 | Some op -> 
-                    match op.Name, RS(r).A with
-                    | "halt", _         -> true, 0
-                    | "dumpGPR", _      -> 
-                        printfn "===> %A" (GPR.GetInstance.[RS(r).Vj])
+                    match op.Name with
+                    | "halt" -> true, 0
+                    | "dumpGPR" -> 
+                        printf "%A" (GPR.GetInstance.[RS(r).Vj].Contents)
                         false, RS(r).Vj
-                    | "dumpFPR", _      -> false, RS(r).Vj
-                    | "dumpSTR", Some A'-> 
-                        printfn "===> %A" (Memory.GetInstance.[A'])
-                        false, Memory.GetInstance.[A']
-                    | _ -> failwith "invalid trap unit instruction"
+                    | "dumpFPR" -> false, RS(r).Vj
+                    | "dumpSTR" -> 
+                        let bytes = let a = RS(r).Vj in Memory.GetInstance.AsBytes.[a..] |> Seq.takeWhile (fun b -> b <> 0uy) |> Seq.toArray
+                        printf "%s" 
+                            (BitConverter.ToString(bytes).Replace("-","")
+                            |> Convert.hex2bytes
+                            |> Array.map char
+                            |> Array.fold (fun s r -> s + string r) (""))
+                        false, Memory.GetInstance.[RS(r).Vj]
+                    | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
                 | None -> false, 0
             RS(r).Result <- result
             RS(r).ResultReady <- true

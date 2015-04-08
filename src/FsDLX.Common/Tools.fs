@@ -97,13 +97,15 @@ module Convert =
         | _ -> failwith (sprintf "failed binary to hex conversion of: %A, of length %d\nbinary string must be length 32!" s s.Length)
 
 
-    let hex2bytes (hex:string) =
+    let hex2bytes (hex:string) = 
         Enumerable.Range(0, hex.Length)
                     .Where(fun x -> x % 2 = 0)
                     .Select(fun x -> Convert.ToByte(hex.Substring(x,2), 16))
                     .ToArray()
 
-    let hex2int hex = Convert.ToInt32(hex, 16)
+    let hex2int hex = 
+        printfn "hex2int, hex: %A\n" hex
+        Convert.ToInt32(hex, 16)
 
     let hex2bits hex a b = (hex2bin hex).[a..b]
 

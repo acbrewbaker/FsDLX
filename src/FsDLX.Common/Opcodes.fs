@@ -258,7 +258,7 @@ module OpcodeUtil =
 type Opcode(op:string, enc:int) =
 
     static let isRType (hex:string) =
-        Convert.hex2bits2int hex 0 Constants.nOpcodeBits |> function
+        Convert.hex2bits2int hex 0 (Constants.nOpcodeBits - 1) |> function
             | rru when rru = 0 -> true, rru
             | rru when rru = 1 -> true, rru 
             | _ -> false, 2
