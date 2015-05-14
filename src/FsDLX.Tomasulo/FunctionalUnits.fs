@@ -56,8 +56,7 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
     member val ExecRS : string option = None with get,set
     member val LastInsert : string option = None with get, set
     member val Stall = false with get, set
-    member val Halt = false with get, set
-
+    
     member fu.Finished() = reservationStations.AllNotBusy()
 
     member fu.Clear() = fu |> function
@@ -68,7 +67,7 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
             | Some station -> 
                 if xunit.Busy then xunit.Cycle()
                 if xunit.RemainingCycles = 0 && not(station.ResultReady) then
-                    fu.Halt <- fu.Compute station; xunit.Reset();
+                    fu.Compute station; xunit.Reset();
             | None -> ()
 
         match tryFindReadyStation(), tryFindAvailableXUnit() with
@@ -117,7 +116,7 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
     member fu.GetRSInfo() = sprintf "%s RESERVATION STATIONS\n%O" (fu.Name()) reservationStations
 
     abstract member Insert   : Instruction -> unit
-    abstract member Compute  : ReservationStation -> bool
+    abstract member Compute  : ReservationStation -> unit
 
 and IntegerUnit private (cfg, rsRef) =
     inherit FunctionalUnit(cfg, rsRef)
@@ -162,7 +161,6 @@ and IntegerUnit private (cfg, rsRef) =
         | _ -> iu.Stall <- true
 
     override iu.Compute r =
-        let halt = false
         iu.ExecRS <- Some(RS(r).Name)
         RS(r).Result <- 
             match RS(r).Op with
@@ -185,7 +183,7 @@ and IntegerUnit private (cfg, rsRef) =
                 | op -> printfn "%A" op; failwith "invalid integer unit instruction"
             | None -> failwith "tried to compute with no opcode"
         RS(r).ResultReady <- true
-        halt
+        
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsRef -> IntegerUnit(cfg, rsRef)
@@ -204,6 +202,8 @@ and TrapUnit private (cfg, rsRef) =
     let tryFindEmptyStation() = RS'.TryFindEmpty()
     let RS(r) = RS'.[r]
 
+    member val Halt = false with get, set
+
     override tu.Insert instruction = 
         //printfn "Insert Trap"
         let Regs(i) = (Regs.GetInstance instruction.AsInt).[i]
@@ -217,6 +217,35 @@ and TrapUnit private (cfg, rsRef) =
             instruction.S2Reg,
             instruction.Immediate
         
+        printfn "FUNC CODE -----------> %A" funcCode
+
+        opcode.Name <-
+            match funcCode with
+            | FuncCode.HALT     -> "halt"
+            | FuncCode.DUMPGPR  -> "dumpGPR"
+            | FuncCode.DUMPFPR  -> "dumpFPR"
+            | FuncCode.DUMPSTR  -> "dumpSTR"
+            | _ -> failwith "invalid trap instruction"
+
+        let result =
+            match opcode.Name with
+            | "halt" -> 
+                printfn "HALT!!!!!!!!!!"
+                tu.Halt <- false; 0
+            | "dumpGPR" -> 
+                printf "%A" (GPR.GetInstance.[Regs(rs)].Contents)
+                Regs(rs)
+            | "dumpFPR" -> Regs(rs)
+            | "dumpSTR" -> 
+                let bytes = let a = Regs(rs) in Memory.GetInstance.AsBytes.[a..] |> Seq.takeWhile (fun b -> b <> 0uy) |> Seq.toArray
+                printf "%s" 
+                    (BitConverter.ToString(bytes).Replace("-","")
+                    |> Convert.hex2bytes
+                    |> Array.map char
+                    |> Array.fold (fun s r -> s + string r) (""))
+                Memory.GetInstance.[Regs(rs)]
+            | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
+
         match tryFindEmptyStation() with
         | Some r -> 
             
@@ -226,13 +255,13 @@ and TrapUnit private (cfg, rsRef) =
 //            match RegisterStat(rt).Qi with  | Some _->  RS(r).Qk <- RegisterStat(rt).Qi
 //                                            | None  ->  RS(r).Vk <- Regs(rt); RS(r).Qk <- None
 
-            opcode.Name <-
-                match funcCode with
-                | FuncCode.HALT     -> "halt"
-                | FuncCode.DUMPGPR  -> "dumpGPR"
-                | FuncCode.DUMPFPR  -> "dumpFPR"
-                | FuncCode.DUMPSTR  -> "dumpSTR"
-                | _ -> failwith "invalid trap instruction"
+//            opcode.Name <-
+//                match funcCode with
+//                | FuncCode.HALT     -> "halt"
+//                | FuncCode.DUMPGPR  -> "dumpGPR"
+//                | FuncCode.DUMPFPR  -> "dumpFPR"
+//                | FuncCode.DUMPSTR  -> "dumpSTR"
+//                | _ -> failwith "invalid trap instruction"
             
             RS(r).Op <- Some opcode; RS(r).Busy <- true
             let rsId = Some(RS(r).Name)
@@ -250,14 +279,16 @@ and TrapUnit private (cfg, rsRef) =
         if r.Name = (queue.Peek() :?> ReservationStation).Name then
             let r : ReservationStation = queue.Dequeue() :?> ReservationStation
             tu.ExecRS <- Some(RS(r).Name)
-            let halt, result = RS(r).Op |> function
+            let result = RS(r).Op |> function
                 | Some op -> 
                     match op.Name with
-                    | "halt" -> true, 0
+                    | "halt" -> 
+                        printfn "HALT!!!!!!!!!!"
+                        tu.Halt <- true; 0
                     | "dumpGPR" -> 
                         printf "%A" (GPR.GetInstance.[RS(r).Vj].Contents)
-                        false, RS(r).Vj
-                    | "dumpFPR" -> false, RS(r).Vj
+                        RS(r).Vj
+                    | "dumpFPR" -> RS(r).Vj
                     | "dumpSTR" -> 
                         let bytes = let a = RS(r).Vj in Memory.GetInstance.AsBytes.[a..] |> Seq.takeWhile (fun b -> b <> 0uy) |> Seq.toArray
                         printf "%s" 
@@ -265,14 +296,11 @@ and TrapUnit private (cfg, rsRef) =
                             |> Convert.hex2bytes
                             |> Array.map char
                             |> Array.fold (fun s r -> s + string r) (""))
-                        false, Memory.GetInstance.[RS(r).Vj]
+                        Memory.GetInstance.[RS(r).Vj]
                     | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
-                | None -> false, 0
+                | None -> 0
             RS(r).Result <- result
             RS(r).ResultReady <- true
-            halt
-        else
-            false
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsRef -> TrapUnit(cfg, rsRef)
@@ -285,7 +313,7 @@ and BranchUnit private (cfg, rsRef) =
 
     override bu.Insert instruction = ()
 
-    override bu.Compute r = false
+    override bu.Compute r = ()
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsRef -> BranchUnit(cfg, rsRef)
@@ -304,7 +332,7 @@ and MemoryUnit private (cfg, rsRef) =
 
     override mu.Insert instruction = ()
 
-    override mu.Compute r = false
+    override mu.Compute r = ()
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsRef -> MemoryUnit(cfg, rsRef)
@@ -316,7 +344,7 @@ and FloatingPointUnit private (cfg, rsRef) =
     static let mutable instance = fun rsRef -> FloatingPointUnit(cfg, rsRef)
 
     override fpu.Insert i = ()
-    override fpu.Compute r = false
+    override fpu.Compute r = ()
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsRef -> FloatingPointUnit(cfg, rsRef)
@@ -376,7 +404,7 @@ and FunctionalUnits private () =
 
     member val InfoString = "" with get,set
 
-    member fu.Halt() = allfu |> Array.forall (fun u -> u.Halt)
+    member fu.Halt() = tu.Halt //allfu |> Array.forall (fun u -> u.Halt)
     member fu.Stall() = allfu |> Array.forall (fun u -> u.Stall)
 
     member fu.Write() = allfu |> Array.tryPick (fun u -> u.Write())
