@@ -3,6 +3,7 @@ namespace FsDLX.Tomasulo
 
 open System
 open System.Collections
+open System.Linq
 open FsDLX.Common
 
 type XUnit(maxCycles:int) =
@@ -78,6 +79,14 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
 
     member fu.Write() =
         let cdb = CDB.GetInstance
+//        match tryFindResultReady() with
+//        | Some r ->
+//            RS(r).ResultWritten <- true
+//            cdb.Result <- RS(r).Result
+//            cdb.Src <- RS(r).Name
+//            Some(cdb)
+//        | None -> None
+
         match fu with
         | :? TrapUnit ->
 //            printfn "------ Stations (before) -------"
@@ -206,6 +215,7 @@ and TrapUnit private (cfg, rsRef) =
 
     override tu.Insert instruction = 
         //printfn "Insert Trap"
+        //let rr = Regs.GetInstance instruction.AsInt
         let Regs(i) = (Regs.GetInstance instruction.AsInt).[i]
         let RegisterStat(i) = (RegisterStat.GetInstance instruction.AsInt).[i]
 
@@ -217,34 +227,13 @@ and TrapUnit private (cfg, rsRef) =
             instruction.S2Reg,
             instruction.Immediate
         
-        printfn "FUNC CODE -----------> %A" funcCode
-
         opcode.Name <-
             match funcCode with
-            | FuncCode.HALT     -> "halt"
+            | FuncCode.HALT     -> tu.Stall <- true; "halt"
             | FuncCode.DUMPGPR  -> "dumpGPR"
             | FuncCode.DUMPFPR  -> "dumpFPR"
             | FuncCode.DUMPSTR  -> "dumpSTR"
             | _ -> failwith "invalid trap instruction"
-
-        let result =
-            match opcode.Name with
-            | "halt" -> 
-                printfn "HALT!!!!!!!!!!"
-                tu.Halt <- false; 0
-            | "dumpGPR" -> 
-                printf "%A" (GPR.GetInstance.[Regs(rs)].Contents)
-                Regs(rs)
-            | "dumpFPR" -> Regs(rs)
-            | "dumpSTR" -> 
-                let bytes = let a = Regs(rs) in Memory.GetInstance.AsBytes.[a..] |> Seq.takeWhile (fun b -> b <> 0uy) |> Seq.toArray
-                printf "%s" 
-                    (BitConverter.ToString(bytes).Replace("-","")
-                    |> Convert.hex2bytes
-                    |> Array.map char
-                    |> Array.fold (fun s r -> s + string r) (""))
-                Memory.GetInstance.[Regs(rs)]
-            | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
 
         match tryFindEmptyStation() with
         | Some r -> 
@@ -252,17 +241,6 @@ and TrapUnit private (cfg, rsRef) =
             match RegisterStat(rs).Qi with  | Some _->  RS(r).Qj <- RegisterStat(rs).Qi
                                             | None  ->  RS(r).Vj <- Regs(rs); RS(r).Qj <- None
   
-//            match RegisterStat(rt).Qi with  | Some _->  RS(r).Qk <- RegisterStat(rt).Qi
-//                                            | None  ->  RS(r).Vk <- Regs(rt); RS(r).Qk <- None
-
-//            opcode.Name <-
-//                match funcCode with
-//                | FuncCode.HALT     -> "halt"
-//                | FuncCode.DUMPGPR  -> "dumpGPR"
-//                | FuncCode.DUMPFPR  -> "dumpFPR"
-//                | FuncCode.DUMPSTR  -> "dumpSTR"
-//                | _ -> failwith "invalid trap instruction"
-            
             RS(r).Op <- Some opcode; RS(r).Busy <- true
             let rsId = Some(RS(r).Name)
             RegisterStat(rd).Qi <- rsId
@@ -279,28 +257,21 @@ and TrapUnit private (cfg, rsRef) =
         if r.Name = (queue.Peek() :?> ReservationStation).Name then
             let r : ReservationStation = queue.Dequeue() :?> ReservationStation
             tu.ExecRS <- Some(RS(r).Name)
-            let result = RS(r).Op |> function
+            printf "%s" 
+                (match RS(r).Op with
                 | Some op -> 
                     match op.Name with
-                    | "halt" -> 
-                        printfn "HALT!!!!!!!!!!"
-                        tu.Halt <- true; 0
-                    | "dumpGPR" -> 
-                        printf "%A" (GPR.GetInstance.[RS(r).Vj].Contents)
-                        RS(r).Vj
-                    | "dumpFPR" -> RS(r).Vj
+                    | "halt" -> tu.Halt <- true; ""
+                    | "dumpGPR" -> RS(r).Vj.ToString() //+ " "
+                    | "dumpFPR" -> RS(r).Vj.ToString() //+ " "
                     | "dumpSTR" -> 
-                        let bytes = let a = RS(r).Vj in Memory.GetInstance.AsBytes.[a..] |> Seq.takeWhile (fun b -> b <> 0uy) |> Seq.toArray
-                        printf "%s" 
-                            (BitConverter.ToString(bytes).Replace("-","")
-                            |> Convert.hex2bytes
-                            |> Array.map char
-                            |> Array.fold (fun s r -> s + string r) (""))
-                        Memory.GetInstance.[RS(r).Vj]
+                        Memory.GetInstance.AsBytes.[RS(r).Vj..].TakeWhile((<>) 0uy).ToArray() 
+                        |> Convert.bytes2string 
                     | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
-                | None -> 0
-            RS(r).Result <- result
+                | None -> "")
+            RS(r).Result <- RS(r).Vj
             RS(r).ResultReady <- true
+//            if not tu.Halt then printfn "%A" result
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsRef -> TrapUnit(cfg, rsRef)

@@ -5,11 +5,19 @@ open FsUnit
 
 open FsDLX.Tomasulo
 
+let [<Test>] ``add.hex`` () =
+    let simulator = Simulator(inputdir @@ @"add.hex",false)
+    simulator.Run()
 
 ///<IntUnitTests>
 let [<Test>] ``intUnit1.hex`` () =
     let simulator = Simulator(inputdir @@ @"intUnit1.hex",false)
+    //let sw = new System.IO.StringWriter()
+    //System.Console.SetOut(sw)
     simulator.Run()
+    //NUnit.Framework.StringAssert.Contains(System.IO.File.ReadAllText(inputdir @@ "intUnit1.out"), sw.ToString())
+    //System.IO.File.WriteAllText(@"C:\Users\User\Desktop\out.txt", sw.ToString())
+    //printfn "====> %A" (sw..ToString())
 
 let [<Test>] ``intUnit2.hex`` () =
     let simulator = Simulator(inputdir @@ @"intUnit2.hex",false)

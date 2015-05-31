@@ -67,11 +67,12 @@ type Memory private () =
         | Debug -> loadDebug input
 
     member m.Item
-        with get(address) = let a = address in BitConverter.ToInt32(M.[a..a+3] |> Array.rev, 0)
+        with get(address) = let a = address in BitConverter.ToInt32(M, a)
         and set address (value:int) = 
             let a = address //checkAddr address 
             let b = BitConverter.GetBytes value
-            M.[a] <- b.[3]; M.[a+1] <- b.[2]; M.[a+2] <- b.[1]; M.[a+3] <- b.[0]
+            Array.blit (value |> BitConverter.GetBytes |> Array.rev) 0 M a 4
+            //M.[a] <- b.[3]; M.[a+1] <- b.[2]; M.[a+2] <- b.[1]; M.[a+3] <- b.[0]
 
     member m.Byte
         with get i = M.[i]

@@ -50,15 +50,20 @@ type Simulator(input:string, verbose:bool) =
     let runRegular() =
         Mem.Load(input)
         let mutable halt, stall = false, false
+        let fetch() = if not(halt) then Mem.[PC.Value] |> Instruction.OfInstructionInt
         while not(halt) && not(finished()) do
+            let gpr = GPR.GetInstance.Regs().[0..15]
+            let rs = FunctionalUnits.ReservationStations
             cdb := write()
             halt <- execute()
             if not(halt) && not(branchInBranchUnit()) then
-                let instruction = Mem.[PC.Value] |> Instruction.ofInstructionInt
-                printfn "Instruction: %O\n" instruction
+                let instruction = Mem.[PC.Value] |> Instruction.OfInstructionInt
+                let h = instruction.AsHex
+                printfn "\n*****  Instruction: %O  *****\n" instruction
                 stall <- issue(instruction)
                 if not(halt) && not(stall) then PC.Increment()
             update(!cdb)
+            
             Clock.Tic()
                     
     let runVerbose() = ()

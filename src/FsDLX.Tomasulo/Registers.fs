@@ -110,7 +110,10 @@ and Regs private (instruction:int) =
     member regs.Item
         with get oreg = oreg |> function
             | OperandReg.NONE -> Register.Init(0).Contents
-            | OperandReg.GPR s -> GPR.GetInstance.[reg s].Contents
+            | OperandReg.GPR s -> 
+                let x = reg s
+                let y = GPR.GetInstance.[x]
+                GPR.GetInstance.[reg s].Contents
             | OperandReg.FPR s -> FPR.GetInstance.[reg s].Contents
 
     static member GetInstance = instance

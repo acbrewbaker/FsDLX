@@ -24,12 +24,12 @@ let ``opcodes`` () =
     let i   = Convert.hex2int hex
     printfn "Int: %A" i 
 
-    let op1 = Opcode.ofInstructionHex hex
-    printfn "Opcode.ofInstructionHex: %A" op1
+    let op1 = Opcode.OfInstructionHex hex
+    printfn "Opcode.OfInstructionHex: %A" op1
 
 
 
-    let op = Opcode.ofName "addi"
+    let op = Opcode.OfName "addi"
     printfn "ToString: %O" op
     printfn "op.Name: %A" op.Name
 
@@ -85,6 +85,6 @@ let ``opcode of instruction hex`` () =
     let lookups = rruAndenc |> List.map lookup
     lookups |> List.iter (printfn "%A")
 
-    let opcodesOfName = lookups |> List.map (Opcode.ofName)
+    let opcodesOfName = lookups |> List.map (Opcode.OfName)
     opcodesOfName |> List.iter (printfn "%A")
     //printfn "lookup: %A" (lookup rru enc)

@@ -19,11 +19,11 @@ let ``instruction init`` () =
     let hex = lines |> List.map splitForHex
     let h0 = hex.[0]
     
-    let op0 = hex.[0] |> Opcode.ofInstructionHex
-    let op1 = hex.[1] |> Opcode.ofInstructionHex
-    let op2 = hex.[2] |> Opcode.ofInstructionHex
-    let op3 = hex.[3] |> Opcode.ofInstructionHex
-    let op4 = hex.[4] |> Opcode.ofInstructionHex
+    let op0 = hex.[0] |> Opcode.OfInstructionHex
+    let op1 = hex.[1] |> Opcode.OfInstructionHex
+    let op2 = hex.[2] |> Opcode.OfInstructionHex
+    let op3 = hex.[3] |> Opcode.OfInstructionHex
+    let op4 = hex.[4] |> Opcode.OfInstructionHex
     
     
     printfn "Op0 Name: %A" op0.Name

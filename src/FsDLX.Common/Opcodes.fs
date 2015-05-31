@@ -287,21 +287,24 @@ type Opcode(op:string, enc:int) =
 
     override o.ToString() = o.Name
 
-    static member ofName name = Opcode(name, OpcodeUtil.Lookup.byName.[name])
+    static member OfName name = Opcode(name, OpcodeUtil.Lookup.byName.[name])
     
-    static member ofInstructionHex hex = 
+    static member OfInstructionHex hex = 
+        printfn "opcode of instruction hex ==> %A" hex
         let bits, rru = getOpcodeBits hex
+        printfn "bits, rru ===> %A, %A" bits rru
         let enc = Convert.bin2int(bits)
+        printfn "ENCODING ====> %A" enc
         if rru <> 2 then
-            Opcode.ofName(OpcodeUtil.Lookup.rtypeByEnc.[rru].[enc])
+            Opcode.OfName(OpcodeUtil.Lookup.rtypeByEnc.[rru].[enc])
         elif OpcodeUtil.Lookup.itypeByEnc.ContainsKey(enc) then
-            Opcode.ofName(OpcodeUtil.Lookup.itypeByEnc.[enc])
+            Opcode.OfName(OpcodeUtil.Lookup.itypeByEnc.[enc])
         elif OpcodeUtil.Lookup.jtypeByEnc.ContainsKey(enc) then
-            Opcode.ofName(OpcodeUtil.Lookup.jtypeByEnc.[enc])
+            Opcode.OfName(OpcodeUtil.Lookup.jtypeByEnc.[enc])
         else
             failwith "opcode lookup failure"
     
-    static member ofInstructionInt i = Opcode.ofInstructionHex(Convert.int2hex i)
+    static member OfInstructionInt i = Opcode.OfInstructionHex(Convert.int2hex i)
 
     static member Opt2String (o:Opcode option) = o |> function
         | Some o -> sprintf "%s" o.Name

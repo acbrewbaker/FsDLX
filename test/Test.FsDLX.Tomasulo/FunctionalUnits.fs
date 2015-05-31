@@ -75,7 +75,7 @@ let run (stopCycle:int) =
         cdb := write()
         halt <- execute()
         if not(halt) && not(branchInBranchUnit()) then
-            let instruction = Mem.[PC.Value] |> Instruction.ofInstructionInt
+            let instruction = Mem.[PC.Value] |> Instruction.OfInstructionInt
             stall <- issue(instruction)
             if not(halt) && not(stall) then PC.Increment()
         update(!cdb)

@@ -101,15 +101,18 @@ module Convert =
         Enumerable.Range(0, hex.Length)
                     .Where(fun x -> x % 2 = 0)
                     .Select(fun x -> Convert.ToByte(hex.Substring(x,2), 16))
-                    .ToArray()
+                    .ToArray() |> Array.rev
 
-    let hex2int hex = 
-        printfn "hex2int, hex: %A\n" hex
-        Convert.ToInt32(hex, 16)
+    let hex2int hex = BitConverter.ToInt32(hex2bytes hex, 0)
 
     let hex2bits hex a b = (hex2bin hex).[a..b]
 
     let hex2bits2int hex a b = bin2int(hex2bits hex a b)
+
+    let bytes2string = 
+        let b2s : byte -> string = char >> string
+        let concatByte s r = s + (b2s r)
+        Array.rev >> Array.fold concatByte ("")
 
     let int2hex (i:int) = i.ToString("x8")
 
