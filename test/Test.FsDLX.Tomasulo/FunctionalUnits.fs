@@ -73,10 +73,10 @@ let run (stopCycle:int) =
     let mutable stall = false
     while not(halt) && not(finished()) do
         cdb := write()
-        halt <- execute()
+        execute()
         if not(halt) && not(branchInBranchUnit()) then
             let instruction = Mem.[PC.Value] |> Instruction.OfInstructionInt
-            stall <- issue(instruction)
+            //stall <- issue(instruction)
             if not(halt) && not(stall) then PC.Increment()
         update(!cdb)
         halt <- Clock.Cycles = stopCycle

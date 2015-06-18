@@ -57,7 +57,8 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
     member val ExecRS : string option = None with get,set
     member val LastInsert : string option = None with get, set
     member val Stall = false with get, set
-    
+    member val Halt = false with get, set
+
     member fu.Finished() = reservationStations.AllNotBusy()
 
     member fu.Clear() = fu |> function
@@ -211,11 +212,7 @@ and TrapUnit private (cfg, rsRef) =
     let tryFindEmptyStation() = RS'.TryFindEmpty()
     let RS(r) = RS'.[r]
 
-    member val Halt = false with get, set
-
     override tu.Insert instruction = 
-        //printfn "Insert Trap"
-        //let rr = Regs.GetInstance instruction.AsInt
         let Regs(i) = (Regs.GetInstance instruction.AsInt).[i]
         let RegisterStat(i) = (RegisterStat.GetInstance instruction.AsInt).[i]
 
@@ -229,7 +226,7 @@ and TrapUnit private (cfg, rsRef) =
         
         opcode.Name <-
             match funcCode with
-            | FuncCode.HALT     -> tu.Stall <- true; "halt"
+            | FuncCode.HALT     -> tu.Halt <- true; "halt"
             | FuncCode.DUMPGPR  -> "dumpGPR"
             | FuncCode.DUMPFPR  -> "dumpFPR"
             | FuncCode.DUMPSTR  -> "dumpSTR"
@@ -246,7 +243,6 @@ and TrapUnit private (cfg, rsRef) =
             RegisterStat(rd).Qi <- rsId
             tu.LastInsert <- rsId
 
-            //printfn "Trap immediate: %A" imm
             RS(r).A <- imm
 
             queue.Enqueue(r)
@@ -264,14 +260,13 @@ and TrapUnit private (cfg, rsRef) =
                     | "halt" -> tu.Halt <- true; ""
                     | "dumpGPR" -> RS(r).Vj.ToString() //+ " "
                     | "dumpFPR" -> RS(r).Vj.ToString() //+ " "
-                    | "dumpSTR" -> 
+                    | "dumpSTR" ->
                         Memory.GetInstance.AsBytes.[RS(r).Vj..].TakeWhile((<>) 0uy).ToArray() 
-                        |> Convert.bytes2string 
+                        |> Convert.bytes2string |> (+) "..."
                     | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
                 | None -> "")
             RS(r).Result <- RS(r).Vj
             RS(r).ResultReady <- true
-//            if not tu.Halt then printfn "%A" result
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsRef -> TrapUnit(cfg, rsRef)
@@ -375,12 +370,12 @@ and FunctionalUnits private () =
 
     member val InfoString = "" with get,set
 
-    member fu.Halt() = tu.Halt //allfu |> Array.forall (fun u -> u.Halt)
+    member fu.Halt() = allfu |> Array.forall (fun u -> u.Halt)
     member fu.Stall() = allfu |> Array.forall (fun u -> u.Stall)
 
     member fu.Write() = allfu |> Array.tryPick (fun u -> u.Write())
 
-    member fu.Execute() = allfu |> Array.iter (fun u -> u.Execute()); fu.Halt()
+    member fu.Execute() = allfu |> Array.iter (fun u -> u.Execute())
 
     member fu.Issue (i:Instruction) =
         fu.All |> Array.iter (fun u -> u.LastInsert <- None) 

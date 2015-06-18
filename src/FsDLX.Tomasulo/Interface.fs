@@ -3,6 +3,9 @@
 open System.Collections
 open FsDLX.Common
 
+type HALT() =
+    member val Issued = false with get,set
+    member val Fetched = false with get,set
 
 type Simulator(input:string, verbose:bool) =
     let cdb : CDB option ref = ref None
@@ -40,35 +43,37 @@ type Simulator(input:string, verbose:bool) =
 
     let branchInBranchUnit() = false
 
-    let write, execute, issue =
-        FunctionalUnits.Write,
-        FunctionalUnits.Execute,
-        FunctionalUnits.Issue
+    let halt = HALT()
 
-    //Mem.Load(inputdir @@ "add.hex")
+    let write = FunctionalUnits.Write
+
+    let execute = FunctionalUnits.Execute
+
+    let issue i =
+        let stall = FunctionalUnits.Issue i
+        halt.Issued <- FunctionalUnits.Halt()
+        stall
+
+    let fetch i = 
+        let instruction = Instruction.OfInstructionInt i
+        if instruction.FuncCode = FuncCode.HALT then halt.Fetched <- true
+        printfn "\n*****  Instruction: %O, %O  *****" instruction Clock
+        instruction
         
     let runRegular() =
         Mem.Load(input)
-        let mutable halt, stall = false, false
+        let mutable stall = false
         
-        let fetch halt = 
-            let __HALT__ = Instruction.Trap(Convert.hex2int "44000000", Instruction.HALT)
-            if not(halt) then Mem.[PC.Value] |> Instruction.OfInstructionInt else __HALT__
-        
-        while not(halt) && not(finished()) do
-            let gpr = GPR.GetInstance.Regs().[0..15]
-            let rs = FunctionalUnits.ReservationStations
+        while not(halt.Issued) || not(finished()) do
             cdb := write()
-            halt <- execute()
-            if not(halt) && not(branchInBranchUnit()) then
-                let instruction = fetch halt //Mem.[PC.Value] |> Instruction.OfInstructionInt
-                let h = instruction.AsHex
-                printfn "\n*****  Instruction: %O  *****\n" instruction
-                stall <- issue(instruction)
-                if not(halt) && not(stall) then PC.Increment()
+            execute()
+            if not(halt.Issued) && not(branchInBranchUnit()) then
+                stall <- Mem.[PC.Value] |> fetch |> issue
+                if not(halt.Fetched) && not(stall) then PC.Increment()
             update(!cdb)
             
             Clock.Tic()
+        
                     
     let runVerbose() = ()
     

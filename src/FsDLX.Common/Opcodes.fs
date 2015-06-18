@@ -292,9 +292,9 @@ type Opcode(op:string, enc:int) =
     static member OfInstructionHex hex = 
         printfn "opcode of instruction hex ==> %A" hex
         let bits, rru = getOpcodeBits hex
-        printfn "bits, rru ===> %A, %A" bits rru
+        //printfn "bits, rru ===> %A, %A" bits rru
         let enc = Convert.bin2int(bits)
-        printfn "ENCODING ====> %A" enc
+        //printfn "ENCODING ====> %A" enc
         if rru <> 2 then
             Opcode.OfName(OpcodeUtil.Lookup.rtypeByEnc.[rru].[enc])
         elif OpcodeUtil.Lookup.itypeByEnc.ContainsKey(enc) then

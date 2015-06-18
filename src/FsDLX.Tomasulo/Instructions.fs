@@ -90,7 +90,7 @@ type Instruction =
             then    Convert.int2bits2int i 27 31
             else    -1
         (opcode.Name, funcCode) |> function
-        | "addi", _ -> printfn "match addi"; Instruction.Integer(i, Instruction.ADDI)
+        | "addi", _ -> Instruction.Integer(i, Instruction.ADDI)
         | "nop", _ -> Instruction.Integer(i, Instruction.NOP)
         | "add", _ -> Instruction.Integer(i, Instruction.ADD)
         | "sub", _ -> Instruction.Integer(i, Instruction.SUB)
@@ -126,7 +126,7 @@ type Instruction =
         | "cvtf2i", _ -> Instruction.FloatingPoint(i, Instruction.CVTF2I)
         | "cvti2f", _ -> Instruction.FloatingPoint(i, Instruction.CVTI2F)
         
-        | op, _ -> failwith (sprintf "opcode <%s> not supported" op)
+        | op, _ -> Instruction.Trap(Convert.hex2int "44000000", Instruction.HALT)//failwith (sprintf "opcode <%s> not supported" op)
 
     //static member _HALT_ = Instruction.Trap(Convert.hex2int "44000000", Instruction.HALT)
 
