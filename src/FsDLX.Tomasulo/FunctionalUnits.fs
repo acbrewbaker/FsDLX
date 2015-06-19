@@ -250,23 +250,23 @@ and TrapUnit private (cfg, rsRef) =
         | None -> tu.LastInsert <- None; tu.Stall <- true
 
     override tu.Compute r =
-        if r.Name = (queue.Peek() :?> ReservationStation).Name then
-            let r : ReservationStation = queue.Dequeue() :?> ReservationStation
-            tu.ExecRS <- Some(RS(r).Name)
-            printf "%s" 
-                (match RS(r).Op with
-                | Some op -> 
-                    match op.Name with
-                    | "halt" -> tu.Halt <- true; ""
-                    | "dumpGPR" -> RS(r).Vj.ToString() //+ " "
-                    | "dumpFPR" -> RS(r).Vj.ToString() //+ " "
-                    | "dumpSTR" ->
-                        Memory.GetInstance.AsBytes.[RS(r).Vj..].TakeWhile((<>) 0uy).ToArray() 
-                        |> Convert.bytes2string |> (+) "..."
-                    | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
-                | None -> "")
-            RS(r).Result <- RS(r).Vj
-            RS(r).ResultReady <- true
+        //if r.Name = (queue.Peek() :?> ReservationStation).Name then
+        let r : ReservationStation = queue.Dequeue() :?> ReservationStation
+        tu.ExecRS <- Some(RS(r).Name)
+        printf "%s" 
+            (match RS(r).Op with
+            | Some op -> 
+                match op.Name with
+                | "halt" -> tu.Halt <- true; ""
+                | "dumpGPR" -> RS(r).Vj.ToString()
+                | "dumpFPR" -> RS(r).Vj.ToString()
+                | "dumpSTR" ->
+                    Memory.GetInstance.AsBytes.Skip(RS(r).Vj).TakeWhile((<>) 0uy).ToArray() 
+                    |> Convert.bytes2string
+                | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
+            | None -> "")
+        RS(r).Result <- RS(r).Vj
+        RS(r).ResultReady <- true
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsRef -> TrapUnit(cfg, rsRef)
@@ -317,7 +317,7 @@ and FloatingPointUnit private (cfg, rsRef) =
     
 and FunctionalUnits private () =
     static let mutable instance = FunctionalUnits()
-
+        
     let iuCfg, tuCfg, buCfg, muCfg, fpuCfg = 
         Config.FunctionalUnit.IntegerUnit,
         Config.FunctionalUnit.TrapUnit,
@@ -370,7 +370,7 @@ and FunctionalUnits private () =
 
     member val InfoString = "" with get,set
 
-    member fu.Halt() = allfu |> Array.forall (fun u -> u.Halt)
+    member fu.Halt() = allfu |> Array.forall (fun u -> u.Halt = false) |> not
     member fu.Stall() = allfu |> Array.forall (fun u -> u.Stall)
 
     member fu.Write() = allfu |> Array.tryPick (fun u -> u.Write())

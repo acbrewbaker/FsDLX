@@ -290,7 +290,7 @@ type Opcode(op:string, enc:int) =
     static member OfName name = Opcode(name, OpcodeUtil.Lookup.byName.[name])
     
     static member OfInstructionHex hex = 
-        printfn "opcode of instruction hex ==> %A" hex
+        //printfn "opcode of instruction hex ==> %A" hex
         let bits, rru = getOpcodeBits hex
         //printfn "bits, rru ===> %A, %A" bits rru
         let enc = Convert.bin2int(bits)

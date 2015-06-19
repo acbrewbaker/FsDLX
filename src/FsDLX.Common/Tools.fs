@@ -18,8 +18,20 @@ module Tools =
     let revstr (s:string) = s.ToCharArray() |> Array.rev |> Array.fold(fun s c -> s + string c) ("")
 
     let concatLines lines = lines |> List.fold (fun s l -> s + l + "\n") ("")
+    
+    let splitInput (s:string) = s.Split([|':'; '#'|])
+
+    let splitLine (s:string) = s.Split([|':'; '#'|])
 
     let splitForHex (s:string) = s.Split([|':'; '#'|]).[1].Trim()
+
+    module Input =
+        let splitLine (s:string) = s.Split([|':'; '#'|])
+        
+        let line2adc s =
+            let s = splitLine s in s.[0].Trim(), s.[1].Trim(), s.[2].Trim()
+
+        let line2ad s = let a,d,_ = line2adc s in a,d
 
     module Info =
         let parseTypeFile filepath =
@@ -96,23 +108,27 @@ module Convert =
             |> List.reduce (+)
         | _ -> failwith (sprintf "failed binary to hex conversion of: %A, of length %d\nbinary string must be length 32!" s s.Length)
 
+    let bytes2string = 
+        let b2s : byte -> string = char >> string
+        let concatByte s r = s + (b2s r)
+        Array.fold concatByte ("")
 
-    let hex2bytes (hex:string) = 
-        Enumerable.Range(0, hex.Length)
-                    .Where(fun x -> x % 2 = 0)
-                    .Select(fun x -> Convert.ToByte(hex.Substring(x,2), 16))
-                    .ToArray() |> Array.rev
+//    let hex2bytes (hex:string) = 
+//        Enumerable.Range(0, hex.Length)
+//                    .Where(fun x -> x % 2 = 0)
+//                    .Select(fun x -> Convert.ToByte(hex.Substring(x,2), 16))
+//                    .ToArray() |> Array.rev
 
-    let hex2int hex = BitConverter.ToInt32(hex2bytes hex, 0)
+    let hex2bytes (hex:string) =
+        [|for i in [0..2..hex.Length-2] -> Convert.ToByte(hex.Substring(i,2), 16)|]
+    
+    let hex2int hex = BitConverter.ToInt32(hex |> hex2bytes |> Array.rev, 0)
 
     let hex2bits hex a b = (hex2bin hex).[a..b]
 
     let hex2bits2int hex a b = bin2int(hex2bits hex a b)
 
-    let bytes2string = 
-        let b2s : byte -> string = char >> string
-        let concatByte s r = s + (b2s r)
-        Array.rev >> Array.fold concatByte ("")
+    let hex2string = hex2bytes >> bytes2string
 
     let int2hex (i:int) = i.ToString("x8")
 

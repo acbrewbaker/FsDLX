@@ -1,5 +1,17 @@
 ﻿namespace FsDLX.Common
 
+open System
+open System.IO
+
+//
+//type AddressDataComment(inputLine:string) =
+//    let split = 
+//
+//type DLXHexFile(filePath:string) =
+//    let lines = File.ReadAllLines filePath
+//    let a,d,c =
+//        lines |> Array.map splitLine |> Array.map ()
+
 type ParsedOpcode = 
     { 
         Info : List<string*string*string>; 

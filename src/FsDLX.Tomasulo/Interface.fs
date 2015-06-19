@@ -13,7 +13,9 @@ type Simulator(input:string, verbose:bool) =
     let PC = PC.GetInstance
     let RegisterFile = RegisterFile.GetInstance
     let Mem = Memory.GetInstance
-    let FunctionalUnits = FunctionalUnits.GetInstance
+    let FunctionalUnits = 
+        FunctionalUnits.Reset()
+        FunctionalUnits.GetInstance
     
     let getDisplayStrings () =
         let memStr = if Clock.Cycles = 0 then Mem.ToString() else ""
@@ -57,23 +59,23 @@ type Simulator(input:string, verbose:bool) =
     let fetch i = 
         let instruction = Instruction.OfInstructionInt i
         if instruction.FuncCode = FuncCode.HALT then halt.Fetched <- true
-        printfn "\n*****  Instruction: %O, %O  *****" instruction Clock
+        //printfn "\n*****  Instruction: %O, %O  *****" instruction Clock
         instruction
         
     let runRegular() =
         Mem.Load(input)
         let mutable stall = false
         
-        while not(halt.Issued) || not(finished()) do
+        while (not(halt.Issued) || not(finished())) do
+            let fin = finished()
             cdb := write()
             execute()
             if not(halt.Issued) && not(branchInBranchUnit()) then
                 stall <- Mem.[PC.Value] |> fetch |> issue
                 if not(halt.Fetched) && not(stall) then PC.Increment()
             update(!cdb)
-            
-            Clock.Tic()
-        
+             
+            Clock.Tic()        
                     
     let runVerbose() = ()
     
