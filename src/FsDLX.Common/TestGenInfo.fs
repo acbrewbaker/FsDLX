@@ -49,7 +49,7 @@ module TomasuloTests =
             fprintfn file "    use sw = new StringWriter() in Console.SetOut(sw)"
             fprintfn file "    simulator.Run()"
             fprintfn file "    let expected, actual ="
-            fprintfn file "        File.ReadAllText(@%A @@ @%A).Trim()," inputDir dotOutFile
+            fprintfn file "        File.ReadAllText(@%A @@ @%A).Replace(\"\\r\",\"\")," inputDir dotOutFile
             fprintfn file "        sw.ToString()"
             fprintfn file "    StringAssert.Contains(expected, actual)"
             fprintfn file ""

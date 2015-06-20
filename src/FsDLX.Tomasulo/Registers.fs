@@ -17,7 +17,7 @@ type RegisterFile private () =
     member rf.UpdateInfo() = info <- sprintf "%O%O" (GPR.GetInstance) (FPR.GetInstance) |> Some
 
     member rf.Update(cdb) =
-        regs |> Array.iter (fun reg -> reg.Update())
+        regs |> Array.iter (fun reg -> reg.Update(cdb))
         match cdb with
         | Some _-> rf.UpdateInfo()
         | None -> info <- None
@@ -109,12 +109,9 @@ and Regs private (instruction:int) =
 
     member regs.Item
         with get oreg = oreg |> function
-            | OperandReg.NONE -> Register.Init(0).Contents
-            | OperandReg.GPR s -> 
-                let x = reg s
-                let y = GPR.GetInstance.[x]
-                GPR.GetInstance.[reg s].Contents
-            | OperandReg.FPR s -> FPR.GetInstance.[reg s].Contents
+            | OperandReg.NONE   -> Register.Init(0).Contents
+            | OperandReg.GPR s  -> GPR.GetInstance.[reg s].Contents
+            | OperandReg.FPR s  -> FPR.GetInstance.[reg s].Contents
 
     static member GetInstance = instance
     static member Reset() = instance <- fun i -> Regs(i)
@@ -128,10 +125,10 @@ and Register =
     member r.IsAvailable() = 
         r.Qi |> function | Some _ -> false | _ -> true
 
-    member r.Update() = 
-        let cdb = CDB.GetInstance
-        match r.Qi with
-        | Some Qi -> if Qi = cdb.Src then r.Contents <- cdb.Result; r.Qi <- None
+    member r.Update(cdb:CDB option) = 
+        //let cdb = CDB.GetInstance
+        match cdb, r.Qi with
+        | Some cdb, Some Qi -> if Qi = cdb.Src then r.Contents <- cdb.Result; r.Qi <- None
         | _ -> ()
 
     override r.ToString() = (r.Qi, r.Contents) |> function

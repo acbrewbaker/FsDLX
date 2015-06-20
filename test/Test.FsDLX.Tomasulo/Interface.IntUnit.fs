@@ -12,7 +12,7 @@ let [<Test>] ``intUnit1.hex`` () =
     use sw = new StringWriter() in Console.SetOut(sw)
     simulator.Run()
     let expected, actual =
-        File.ReadAllText(@"H:\FsDLX\Project2\Inputs" @@ @"intUnit1.out").Trim(),
+        File.ReadAllText(@"H:\FsDLX\Project2\Inputs" @@ @"intUnit1.out").Replace("\r",""),
         sw.ToString()
     StringAssert.Contains(expected, actual)
 
@@ -22,7 +22,7 @@ let [<Test>] ``intUnit2.hex`` () =
     use sw = new StringWriter() in Console.SetOut(sw)
     simulator.Run()
     let expected, actual =
-        File.ReadAllText(@"H:\FsDLX\Project2\Inputs" @@ @"intUnit2.out").Trim(),
+        File.ReadAllText(@"H:\FsDLX\Project2\Inputs" @@ @"intUnit2.out").Replace("\r",""),
         sw.ToString()
     StringAssert.Contains(expected, actual)
 
@@ -32,7 +32,7 @@ let [<Test>] ``intUnit3.hex`` () =
     use sw = new StringWriter() in Console.SetOut(sw)
     simulator.Run()
     let expected, actual =
-        File.ReadAllText(@"H:\FsDLX\Project2\Inputs" @@ @"intUnit3.out").Trim(),
+        File.ReadAllText(@"H:\FsDLX\Project2\Inputs" @@ @"intUnit3.out").Replace("\r",""),
         sw.ToString()
     StringAssert.Contains(expected, actual)
 
@@ -42,7 +42,7 @@ let [<Test>] ``intUnit4.hex`` () =
     use sw = new StringWriter() in Console.SetOut(sw)
     simulator.Run()
     let expected, actual =
-        File.ReadAllText(@"H:\FsDLX\Project2\Inputs" @@ @"intUnit4.out").Trim(),
+        File.ReadAllText(@"H:\FsDLX\Project2\Inputs" @@ @"intUnit4.out").Replace("\r",""),
         sw.ToString()
     StringAssert.Contains(expected, actual)
 
@@ -52,7 +52,7 @@ let [<Test>] ``intUnit5.hex`` () =
     use sw = new StringWriter() in Console.SetOut(sw)
     simulator.Run()
     let expected, actual =
-        File.ReadAllText(@"H:\FsDLX\Project2\Inputs" @@ @"intUnit5.out").Trim(),
+        File.ReadAllText(@"H:\FsDLX\Project2\Inputs" @@ @"intUnit5.out").Replace("\r",""),
         sw.ToString()
     StringAssert.Contains(expected, actual)
 
@@ -62,7 +62,7 @@ let [<Test>] ``intUnit6.hex`` () =
     use sw = new StringWriter() in Console.SetOut(sw)
     simulator.Run()
     let expected, actual =
-        File.ReadAllText(@"H:\FsDLX\Project2\Inputs" @@ @"intUnit6.out").Trim(),
+        File.ReadAllText(@"H:\FsDLX\Project2\Inputs" @@ @"intUnit6.out").Replace("\r",""),
         sw.ToString()
     StringAssert.Contains(expected, actual)
 
@@ -72,7 +72,7 @@ let [<Test>] ``intUnit7.hex`` () =
     use sw = new StringWriter() in Console.SetOut(sw)
     simulator.Run()
     let expected, actual =
-        File.ReadAllText(@"H:\FsDLX\Project2\Inputs" @@ @"intUnit7.out").Trim(),
+        File.ReadAllText(@"H:\FsDLX\Project2\Inputs" @@ @"intUnit7.out").Replace("\r",""),
         sw.ToString()
     StringAssert.Contains(expected, actual)
 
@@ -82,7 +82,7 @@ let [<Test>] ``intUnit8.hex`` () =
     use sw = new StringWriter() in Console.SetOut(sw)
     simulator.Run()
     let expected, actual =
-        File.ReadAllText(@"H:\FsDLX\Project2\Inputs" @@ @"intUnit8.out").Trim(),
+        File.ReadAllText(@"H:\FsDLX\Project2\Inputs" @@ @"intUnit8.out").Replace("\r",""),
         sw.ToString()
     StringAssert.Contains(expected, actual)
 

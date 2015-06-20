@@ -34,13 +34,15 @@ type Simulator(input:string, verbose:bool) =
 
     let updateReservationStations(cdb) = 
         FunctionalUnits.UpdateReservationStations()
-        RegisterFile.Update(cdb)
+        
 
     let clearReservationStations() = FunctionalUnits.ClearReservationStations()
     
     let update(cdb) =
         updateReservationStations(cdb)
         clearReservationStations()
+        RegisterFile.Update(cdb)
+        //printfn "\n%O\n%O\n" (Clock) (GPR.GetInstance)
         output := !output @ getDisplayStrings()
 
     let branchInBranchUnit() = false
@@ -67,11 +69,14 @@ type Simulator(input:string, verbose:bool) =
         let mutable stall = false
         
         while (not(halt.Issued) || not(finished())) do
-            let fin = finished()
+            let gpr = GPR.GetInstance
             cdb := write()
             execute()
             if not(halt.Issued) && not(branchInBranchUnit()) then
-                stall <- Mem.[PC.Value] |> fetch |> issue
+                let instruction = fetch Mem.[PC.Value]
+                let i = instruction.AsHex
+                stall <- issue instruction
+                //stall <- Mem.[PC.Value] |> fetch |> issue
                 if not(halt.Fetched) && not(stall) then PC.Increment()
             update(!cdb)
              

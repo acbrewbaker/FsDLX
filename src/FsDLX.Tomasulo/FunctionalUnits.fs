@@ -80,39 +80,15 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
 
     member fu.Write() =
         let cdb = CDB.GetInstance
-//        match tryFindResultReady() with
-//        | Some r ->
-//            RS(r).ResultWritten <- true
-//            cdb.Result <- RS(r).Result
-//            cdb.Src <- RS(r).Name
-//            Some(cdb)
-//        | None -> None
-
-        match fu with
-        | :? TrapUnit ->
-//            printfn "------ Stations (before) -------"
-//            printfn "%A" (reservationStations.Dump())
-            match tryFindResultReady() with
-            | Some r ->
-                RS(r).ResultWritten <- true
-                cdb.Result <- RS(r).Result
-                cdb.Src <- RS(r).Name
-//                printfn "------ Stations (after) -------"
-//                printfn "%A" (reservationStations.Dump())
-            | None -> ()
-//                        match tryFindBusyStation() with
-//                        | Some r -> printfn "Still busy: %O" r
-//                        | None -> ()            
-            None
-        | _ ->
-            match tryFindResultReady() with
-            | Some r ->
-                RS(r).ResultWritten <- true
-                cdb.Result <- RS(r).Result
-                cdb.Src <- RS(r).Name
-                Some(cdb)
-            | None -> None
-
+        match tryFindResultReady() with
+        | Some r ->
+            //printfn "\nWrite\n%O\n%O\n%A\n" (Clock.GetInstance) r (RS(r).Result)
+            RS(r).ResultWritten <- true
+            cdb.Result <- RS(r).Result
+            cdb.Src <- RS(r).Name
+            Some(cdb)
+        | None -> None
+        
     member fu.Name() =
         sprintf "%sUNIT"
             (match fu with
@@ -192,6 +168,7 @@ and IntegerUnit private (cfg, rsRef) =
                 | "nop" -> fun _ _ -> 0
                 | op -> printfn "%A" op; failwith "invalid integer unit instruction"
             | None -> failwith "tried to compute with no opcode"
+        //printfn "\nIntUnit-Compute\n%O\n%O\n%A" (Clock.GetInstance) r (RS(r).Result)
         RS(r).ResultReady <- true
         
 
@@ -252,6 +229,7 @@ and TrapUnit private (cfg, rsRef) =
     override tu.Compute r =
         let r : ReservationStation = queue.Dequeue() :?> ReservationStation
         tu.ExecRS <- Some(RS(r).Name)
+        //printf "\n%O\n%O\n%O\n==>%s\n" (Clock.GetInstance) r (GPR.GetInstance)
         printf "%s" 
             (match RS(r).Op with
             | Some op -> 
@@ -264,7 +242,7 @@ and TrapUnit private (cfg, rsRef) =
                     |> Convert.bytes2string
                 | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
             | None -> "")
-        RS(r).Result <- RS(r).Vj
+        //RS(r).Result <- RS(r).Vj
         RS(r).ResultReady <- true
 
     static member GetInstance = instance
