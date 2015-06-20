@@ -8,8 +8,7 @@ type Memory private () =
     static let mutable instance = Memory()
 
     let size = Config.Memory.DefaultMemorySize
-
-
+    
     let dumpBy (by:int) (mem:byte[]) =
         let mem = [|0..4..size-4|] |> Array.map (fun e -> BitConverter.ToInt32(mem, e))
         let content = 
@@ -32,41 +31,9 @@ type Memory private () =
         |> sprintf "MEMORY\n%s"
 
     let mutable M = Array.zeroCreate<byte> size
-    
-    let checkAddr = function
-        | a when a % 4 <> 0 -> failwith "Invalid PC"
-        | a -> a / 4 
-
-    let loadRegular input = 
-        input |> File.ReadAllLines
-        |> Array.map (splitForHex >> Convert.hex2bytes)
-        |> Array.concat
-        |> Array.iteri (fun i b -> M.[i] <- b)
-
-    let loadVerbose = loadRegular
-
-    let loadDebug input = 
-        let lines = input |> File.ReadAllLines
-        printfn "input lines"
-        for l in lines do printfn "%s" l
-        
-        let hex = lines |> Array.map splitForHex
-        printfn "hex instructions"
-        for h in hex do printfn "%s" h
-
-        let ints = hex |> Array.map Convert.hex2int
-        printfn "int instructions"
-        for i in ints do printfn "%d" i
-
-        //ints |> Array.iteri (fun i b -> M.[i] <- b)
 
     member val Size = M.Length with get, set
-    
-//    member m.Load input = Config.Memory.outputLevel |> function
-//        | Regular -> loadRegular input
-//        | Verbose -> loadVerbose input
-//        | Debug -> loadDebug input
-//
+
     member m.Load =
         File.ReadAllLines
         >> Array.map (Input.line2ad >> fun (a,d) -> Convert.hex2int a,d)
@@ -78,10 +45,6 @@ type Memory private () =
         and set address (v:int) = 
             let a = address in Array.blit (BitConverter.GetBytes v) 0 M a 4
 
-    member m.Byte
-        with get i = M.[i]
-        and set i v = M.[i] <- v
-
     member m.AsBytes = M
 
     member m.Write(addr:int, data:byte[]) = Array.blit data 0 M addr data.Length
@@ -89,9 +52,7 @@ type Memory private () =
 
     member m.Dump(cols) = M |> dumpBy cols |> sprintf "%s"
     member m.Dump()     = m.Dump(8)
-
-
-
+    
     override m.ToString() = m.Dump().Trim()
 
     static member GetInstance = instance

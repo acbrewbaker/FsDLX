@@ -80,11 +80,7 @@ type Instruction =
     static member CVTI2F = (Opcode.OfName "cvti2f", FuncCode.NONE, DstReg.FPR 16, S1Reg.FPR 6, S2Reg.NONE, Imm.NONE)
 
     static member OfInstructionInt(i:int) =
-//        printfn "OfInstructionInt: %A\n" i
-  //      printfn "hex ==> %A" (Convert.int2hex i)
         let opcode = Opcode.OfInstructionInt i
-        //printfn "Opcode ===> %O" opcode
-        //printfn "Opcode Name ===> %A" opcode.Name
         let funcCode = 
             if      opcode.Name = "trap" 
             then    Convert.int2bits2int i 27 31
@@ -126,9 +122,7 @@ type Instruction =
         | "cvtf2i", _ -> Instruction.FloatingPoint(i, Instruction.CVTF2I)
         | "cvti2f", _ -> Instruction.FloatingPoint(i, Instruction.CVTI2F)
         
-        | op, _ -> Instruction.Trap(Convert.hex2int "44000000", Instruction.HALT)//failwith (sprintf "opcode <%s> not supported" op)
-
-    //static member _HALT_ = Instruction.Trap(Convert.hex2int "44000000", Instruction.HALT)
+        | op, _ -> failwith (sprintf "opcode <%s> not supported" op)
 
 and InstructionInt = int
 and InstructionInfo = Opcode * FuncCode * DstReg * S1Reg * S2Reg * Imm

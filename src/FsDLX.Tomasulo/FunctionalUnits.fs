@@ -1,5 +1,4 @@
-﻿//module FsDLX.Tomasulo.FunctionalUnits
-namespace FsDLX.Tomasulo
+﻿namespace FsDLX.Tomasulo
 
 open System
 open System.Collections
@@ -21,14 +20,12 @@ type XUnit(maxCycles:int) =
             xu.RemainingCycles <- xu.MaxCycles
             xu.Busy <- false
             xu.CurrentRS <- None
-
-    static member Cycle (xunit:XUnit) = xunit.Cycle()
     
     override xu.ToString() =
-        sprintf "-MaxCycles:         %d\n" xu.MaxCycles +
-        sprintf "-RemainingCycles:   %d\n" xu.RemainingCycles +
-        sprintf "-Busy:              %A\n" xu.Busy +
-        sprintf "-CurrentRS:         %O\n" xu.CurrentRS
+        sprintf "MaxCycles:         %d\n" xu.MaxCycles +
+        sprintf "RemainingCycles:   %d\n" xu.RemainingCycles +
+        sprintf "Busy:              %A\n" xu.Busy +
+        sprintf "CurrentRS:         %O\n" xu.CurrentRS
 
     static member TryFindAvailable (xunits:XUnit[]) =
         xunits |> Array.tryFindIndex (fun xu -> not(xu.Busy))
@@ -82,7 +79,6 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
         let cdb = CDB.GetInstance
         match tryFindResultReady() with
         | Some r ->
-            //printfn "\nWrite\n%O\n%O\n%A\n" (Clock.GetInstance) r (RS(r).Result)
             RS(r).ResultWritten <- true
             cdb.Result <- RS(r).Result
             cdb.Src <- RS(r).Name
@@ -116,7 +112,6 @@ and IntegerUnit private (cfg, rsRef) =
     let RS(r) = RS'.[r]
 
     override iu.Insert instruction =
-        //printfn "Insert Int."
         let Regs(i) = (Regs.GetInstance instruction.AsInt).[i]
         let RegisterStat(i) = (RegisterStat.GetInstance instruction.AsInt).[i]
         
@@ -168,9 +163,7 @@ and IntegerUnit private (cfg, rsRef) =
                 | "nop" -> fun _ _ -> 0
                 | op -> printfn "%A" op; failwith "invalid integer unit instruction"
             | None -> failwith "tried to compute with no opcode"
-        //printfn "\nIntUnit-Compute\n%O\n%O\n%A" (Clock.GetInstance) r (RS(r).Result)
         RS(r).ResultReady <- true
-        
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsRef -> IntegerUnit(cfg, rsRef)
@@ -229,7 +222,6 @@ and TrapUnit private (cfg, rsRef) =
     override tu.Compute r =
         let r : ReservationStation = queue.Dequeue() :?> ReservationStation
         tu.ExecRS <- Some(RS(r).Name)
-        //printf "\n%O\n%O\n%O\n==>%s\n" (Clock.GetInstance) r (GPR.GetInstance)
         printf "%s" 
             (match RS(r).Op with
             | Some op -> 
@@ -242,7 +234,6 @@ and TrapUnit private (cfg, rsRef) =
                     |> Convert.bytes2string
                 | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
             | None -> "")
-        //RS(r).Result <- RS(r).Vj
         RS(r).ResultReady <- true
 
     static member GetInstance = instance
@@ -268,10 +259,6 @@ and MemoryUnit private (cfg, rsRef) =
     static let mutable instance = fun rsRef -> MemoryUnit(cfg, rsRef)
     let mutable xQueue = List.empty<int>
     let mutable wQueue = List.empty<int>
-
-//    member val LoadBuffer   = ReservationStation.ArrayInit Config.FunctionalUnit.MemoryUnit with get, set
-//    member val StoreBuffer  = ReservationStation.ArrayInit Config.FunctionalUnit.MemoryUnit with get, set
-//
 
     override mu.Insert instruction = ()
 
