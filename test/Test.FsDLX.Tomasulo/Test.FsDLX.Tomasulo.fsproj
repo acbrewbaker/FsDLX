@@ -71,6 +71,7 @@
     <Compile Include="Memory.fs" />
     <Compile Include="Interface.IntUnit.fs" />
     <Compile Include="Program.fs" />
+    <None Include="CodeGen.fsx" />
     <None Include="TestGen.fsx" />
     <None Include="App.config" />
     <Content Include="packages.config" />

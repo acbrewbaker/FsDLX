@@ -9,11 +9,11 @@ open System.Text.RegularExpressions
 
 [<AutoOpen>]
 module Tools =
-    let inline (@@) (a:string) (b:string) = Path.Combine(a, b)
-    let inline (++) (a:string) (b:string) = a + " " + b
-    let inline (+|+) (a:string) (b:string) = a + "|" + b
+    let (@@) a b = Path.Combine(a, b)
+    let (++) a b = a + " " + b
+    let (+|+) a b = a + "|" + b
 
-    let inline (>=>) (description:string) (x:'T) = printfn "%s%O" description x; x
+    let (>=>) (description:string) (x:'T) = printfn "%s%O" description x; x
 
     let revstr (s:string) = s.ToCharArray() |> Array.rev |> Array.fold(fun s c -> s + string c) ("")
 

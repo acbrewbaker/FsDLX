@@ -250,7 +250,6 @@ and TrapUnit private (cfg, rsRef) =
         | None -> tu.LastInsert <- None; tu.Stall <- true
 
     override tu.Compute r =
-        //if r.Name = (queue.Peek() :?> ReservationStation).Name then
         let r : ReservationStation = queue.Dequeue() :?> ReservationStation
         tu.ExecRS <- Some(RS(r).Name)
         printf "%s" 
