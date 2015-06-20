@@ -1,11 +1,12 @@
-module Test.FsDLX.Tomasulo.Interface
+module Test.FsDLX.Tomasulo.Interface.IntegerUnit
 
 open System
 open System.IO
 open NUnit.Framework
+open FsDLX.Common
 open FsDLX.Tomasulo
 
-//<IntUnitTests>
+//<IntegerUnitTests>
 [<NCrunch.Framework.Isolated>]
 let [<Test>] ``intUnit1.hex`` () =
     let simulator = Simulator(@"H:\FsDLX\Project2\Inputs" @@ @"intUnit1.hex",false)
@@ -87,4 +88,4 @@ let [<Test>] ``intUnit8.hex`` () =
     StringAssert.Contains(expected, actual)
 
 
-//</IntUnitTests>
+//</IntegerUnitTests>
