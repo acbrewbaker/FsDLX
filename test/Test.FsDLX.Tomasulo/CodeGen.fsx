@@ -9,7 +9,10 @@ let inputDir = solutionDir @@ "Project2\Inputs"
 
 let verbose = false
 
-do
-    TomasuloTests.IntUnit.generate testProjectDir inputDir verbose
+do TomasuloTests.IntUnit.generate testProjectDir inputDir verbose
 
+do TomasuloTests.MemoryUnit.generate testProjectDir inputDir verbose
 
+do TomasuloTests.FloatingPointUnit.generate testProjectDir inputDir verbose
+
+do TomasuloTests.BranchUnit.generate testProjectDir inputDir verbose

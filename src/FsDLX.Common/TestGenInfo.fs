@@ -59,8 +59,15 @@ module TomasuloTests =
         replace (testProjectDir @@ testFile) tag code
 
     
-    module IntUnit =
-        let generate = generate "intUnit" "Interface.IntUnit.fs" "IntUnitTests"
+    module IntegerUnit =
+        let generate = generate "intUnit" "Interface.IntegerUnit.fs" "IntegerUnitTests"
 
+    module MemoryUnit =
+        let generate = generate "memUnit" "Interface.MemoryUnit.fs" "MemoryUnitTests"
 
+    module FloatingPointUnit =
+        let generate = generate "fpUnit" "Interface.FloatingPointUnit.fs" "FloatingPointUnitTests"
+
+    module BranchUnit =
+        let generate = generate "brUnit" "Interface.BranchUnit.fs" "BranchUnitTests"
 
