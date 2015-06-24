@@ -33,3 +33,12 @@ type ExpenseReportRepository() =
                         [{ExpenseType="Dinner" 
                           ExpenseAmount="100"}]}
            }
+
+    member x.GetAll2() =
+        seq{ yield {InstructionStateLineItems = 
+                        [{Instruction="Lunch" 
+                          Issue="50"
+                          Execute="asfd"
+                          WriteResult="asfd"
+                          Cycle="asdf"}]}             
+           }

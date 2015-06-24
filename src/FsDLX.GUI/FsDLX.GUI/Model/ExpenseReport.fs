@@ -5,3 +5,5 @@ type ExpenseReport =
       Department : string
       ExpenseLineItems : seq<Expense>}
 
+type InstructionStateReport =
+    { InstructionStateLineItems : seq<InstructionStates> }

@@ -20,6 +20,8 @@ type ExpenseItHomeViewModel(expenseReportRepository : ExpenseReportRepository) =
     let mutable lastApprovalDisplayMessage = ""
     let mutable selectedExpenseReport = 
         {Name=""; Department=""; ExpenseLineItems = []}
+    let mutable selectedInstructionState =
+        {InstructionStateLineItems = []}
     let handleApprovalAction (this:ExpenseItHomeViewModel) approvalStatus name =
         match approvalStatus with
         | ApprovalStatus.Approved -> 
@@ -30,11 +32,19 @@ type ExpenseItHomeViewModel(expenseReportRepository : ExpenseReportRepository) =
     member x.ExpenseReports = 
         new ObservableCollection<ExpenseReport>(
             expenseReportRepository.GetAll())
+    member x.InstructionStates =
+        new ObservableCollection<InstructionStateReport>(
+            expenseReportRepository.GetAll2())
     member x.SelectedExpenseReport 
         with get () = selectedExpenseReport
         and set value = selectedExpenseReport <- value
                         x.LastApprovalDisplayMessage <- ""
                         x.OnPropertyChanged "SelectedExpenseReport"
+    member x.SelectedInstructionState
+        with get () = selectedInstructionState
+        and set value = selectedInstructionState <- value
+                        x.LastApprovalDisplayMessage <- ""
+                        x.OnPropertyChanged "SelectedInstructionState"
     member x.LastApprovalDisplayMessage 
         with get() = lastApprovalDisplayMessage
         and set value = 
