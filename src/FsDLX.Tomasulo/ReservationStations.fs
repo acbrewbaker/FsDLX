@@ -3,7 +3,27 @@
 open System.Collections.Generic
 open FsDLX.Common
 
-type RSGroup = ReservationStation[]
+type RSGroup = RSGroup of ReservationStation[] with
+    member rs.Length = match rs with RSGroup rsg -> rsg.Length
+    member rs.Iter f = match rs with RSGroup rsg -> rsg |> Array.iter f
+    member rs.Iteri f = match rs with RSGroup rsg -> rsg |> Array.iteri f
+    member rs.ForAll f = match rs with RSGroup rsg -> rsg |> Array.forall f
+    member rs.TryFind f = match rs with RSGroup rsg -> rsg |> Array.tryFind f
+    member rs.Fold f s = match rs with RSGroup rsg -> rsg |> Array.fold f s
+    member rs.Filter f = match rs with RSGroup rsg -> rsg |> Array.filter f
+    member rs.BusyOnly = rs.Filter (fun r -> r.Busy)
+    
+    static member Value (RSGroup rsg) = rsg
+    static member Init(cfg:Config.FunctionalUnit) =
+        Array.init cfg.rsCount (fun i -> ReservationStation.Init (cfg.rsPrefix + string i))
+        |> RSGroup
+
+    static member IntUnitInit() = RSGroup.Init Config.FunctionalUnit.IntegerUnit
+    static member TrapUnitInit() = RSGroup.Init Config.FunctionalUnit.TrapUnit
+    static member MemoryUnitInit() = RSGroup.Init Config.FunctionalUnit.MemoryUnit
+    static member BranchUnitInit() = RSGroup.Init Config.FunctionalUnit.BranchUnit
+    static member FloatingPointUnitInit() = RSGroup.Init Config.FunctionalUnit.FloatingPointUnit
+
 and RSGroupRef = RSGroup ref
 and RS =
     | IntegerUnit of RSGroupRef
@@ -13,21 +33,17 @@ and RS =
     | FloatingPointUnit of RSGroupRef
 
     static member ApplyFunction (f:RSGroupRef -> 'T) = function
-        | IntegerUnit rs -> f rs
-        | TrapUnit rs -> f rs
-        | BranchUnit rs -> f rs
-        | MemoryUnit rs -> f rs
+        | IntegerUnit rs 
+        | TrapUnit rs
+        | BranchUnit rs
+        | MemoryUnit rs
         | FloatingPointUnit rs -> f rs
 
     member rs.Contents = rs |> RS.ApplyFunction (!)
 
     member private rs.GetMap() =
         let kvp (r:ReservationStation) = (r.Name, r)
-        rs.Contents |> Array.map kvp |> Map.ofArray
-
-    member private rs.Item
-        with get(i) = rs.Contents.[i]            
-        and set i value = rs.Contents.[i] <- value
+        rs.Contents |> RSGroup.Value |> Array.map kvp |> Map.ofArray
 
     member rs.Item with get(r:ReservationStation) = rs.GetMap().[r.Name]
     
@@ -35,7 +51,7 @@ and RS =
 
     member rs.Update() = 
         let cdb = CDB.GetInstance
-        rs.Contents |> Array.iteri (fun i r ->
+        rs.Contents.Iteri (fun i r ->
             match r.Qj with | Some Qj -> if r.Busy && cdb.Src = Qj then r.Qj <- None; r.Vj <- cdb.Result
                             | None -> ()
             
@@ -48,41 +64,29 @@ and RS =
                     r.Qk <- None; r.Vk <- cdb.Result
             | None, None -> () )
     
-    member rs.Clear() = rs.Contents |> Array.iter (fun r -> r.Clear())
+    member rs.Clear() = rs.Contents.Iter (fun r -> r.Clear())
 
-    member rs.AllBusy() = rs.Contents |> ReservationStation.AllBusy
-    member rs.AllNotBusy() = rs.Contents |> ReservationStation.AllNotBusy
+    member rs.AllBusy() = rs.Contents.ForAll (fun r -> r.Busy)
+    member rs.AllNotBusy() = rs.Contents.ForAll (fun r -> not(r.Busy))
 
-    member rs.TryFind f = rs.Contents |> Array.tryFind f
-
-    member rs.TryFindOperandsAvailable() = rs.Contents |> Array.tryFind (fun r -> r.OperandsAvailable())
-    member rs.TryFindResultReady() = rs.Contents |> Array.tryFind (fun r -> r.ResultReady)
-    member rs.TryFindEmpty() = rs.Contents |> Array.tryFind (fun r -> r.IsEmpty())
-
-    member rs.TryFindNotBusy() = rs.Contents |> Array.tryFind (fun r -> not(r.Busy))
-
-    member rs.Filter(f:ReservationStation -> bool) = rs.Contents |> Array.filter f
-
+    member rs.TryFind = rs.Contents.TryFind
+    member rs.TryFindOperandsAvailable() = rs.TryFind (fun r -> r.OperandsAvailable())
+    member rs.TryFindResultReady() = rs.TryFind (fun r -> r.ResultReady)
+    member rs.TryFindEmpty() = rs.TryFind (fun r -> r.IsEmpty())
+    member rs.TryFindNotBusy() = rs.TryFind (fun r -> not(r.Busy))
+    
     member rs.Dump() =
-        rs.Contents |> Array.fold (fun s r -> s + "\n" + (r.Dump()))
+        rs.Contents.Fold (fun s r -> s + "\n" + (r.Dump()))
             ("Name  Busy  Opcode   Vj  Vk  Qj  Qk  A  ResultReady  ResultWritten  Result")
     
     override rs.ToString() =
-        //rs.Contents |> Array.map (sprintf "%O\n") |> Array.reduce (+)
-        let onlyBusy = rs.Contents |> Array.filter (fun r -> r.Busy)
-        if onlyBusy.Length <> 0 
-        then (onlyBusy |> Array.map (sprintf "%O\n") |> Array.reduce (+)).Trim()
+        let busyOnly = rs.Contents.BusyOnly
+        if busyOnly.Length <> 0 
+        then (busyOnly |> Array.map (sprintf "%O\n") |> Array.reduce (+)).Trim()
         else ""
-
-    static member AllNotBusy (rs:RS[]) =
-        rs |> Array.forall (fun r -> r.AllNotBusy())
-
-    static member Filter(rs:RS[], f) =
-        rs |> Array.map (fun r -> r.Filter f) |> Array.concat
 
     static member Update(rs:RS[]) = rs |> Array.iter (fun r -> r.Update())
 
-    static member TryFindEmptyStation (rs:RS) = rs.TryFindEmpty()
 // The ReservationStation class contains the fields of an individual reservation station: 
 // name, busy, opcode, Vj, Vk, Qj, Qk, A, result, resultReady, resultWritten.  It also 
 // contains methods to access or modify an individual reservation station.
@@ -152,20 +156,6 @@ and ReservationStation =
             ResultReady = false;
             ResultWritten = false;
             Result = 0 }
-
-    static member ArrayInit(n, namePrefix) =
-        Array.init n (fun i -> ReservationStation.Init (namePrefix + string i))
-
-    static member ArrayInit(cfg:Config.FunctionalUnit) =
-        Array.init cfg.rsCount (fun i -> ReservationStation.Init (cfg.rsPrefix + string i))
-
-    static member IntUnitInit() = ReservationStation.ArrayInit Config.FunctionalUnit.IntegerUnit
-    static member TrapUnitInit() = ReservationStation.ArrayInit Config.FunctionalUnit.TrapUnit
-
-    static member Clear (r:ReservationStation) = r.Clear()
-
-    static member AllBusy (RS:RSGroup) = RS |> Array.forall (fun r -> r.Busy)
-    static member AllNotBusy (RS:RSGroup) = RS |> Array.forall (fun r -> not(r.Busy))
 
 and ReservationStationQueue = Queue<ReservationStation>
 
