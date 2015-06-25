@@ -13,9 +13,7 @@ type Simulator(input:string, verbose:bool) =
     let PC = PC.GetInstance
     let RegisterFile = RegisterFile.GetInstance
     let Mem = Memory.GetInstance
-    let FunctionalUnits = 
-        FunctionalUnits.Reset()
-        FunctionalUnits.GetInstance
+    let FunctionalUnits = FunctionalUnits.Reset(); FunctionalUnits.GetInstance
     
     let getDisplayStrings () =
         let memStr = if Clock.Cycles = 0 then Mem.ToString() else ""
@@ -29,20 +27,14 @@ type Simulator(input:string, verbose:bool) =
     
     let output = ref List.empty<string list>
     
-    let finished() = 
-        if Clock.Cycles = 0 then false else FunctionalUnits.Finished()
-
-    let updateReservationStations(cdb) = 
-        FunctionalUnits.UpdateReservationStations()
-        
-
+    let finished() = if Clock.Cycles = 0 then false else FunctionalUnits.Finished()
+    let updateReservationStations(cdb) = FunctionalUnits.UpdateReservationStations()
     let clearReservationStations() = FunctionalUnits.ClearReservationStations()
     
     let update(cdb) =
         updateReservationStations(cdb)
         clearReservationStations()
         RegisterFile.Update(cdb)
-        //printfn "\n%O\n%O\n" (Clock) (GPR.GetInstance)
         output := !output @ getDisplayStrings()
 
     let branchInBranchUnit() = false
@@ -61,7 +53,6 @@ type Simulator(input:string, verbose:bool) =
     let fetch i = 
         let instruction = Instruction.OfInstructionInt i
         if instruction.FuncCode = FuncCode.HALT then halt.Fetched <- true
-        //printfn "\n*****  Instruction: %O, %O  *****" instruction Clock
         instruction
         
     let runRegular() =
@@ -73,10 +64,7 @@ type Simulator(input:string, verbose:bool) =
             cdb := write()
             execute()
             if not(halt.Issued) && not(branchInBranchUnit()) then
-                let instruction = fetch Mem.[PC.Value]
-                let i = instruction.AsHex
-                stall <- issue instruction
-                //stall <- Mem.[PC.Value] |> fetch |> issue
+                stall <- Mem.[PC.Value] |> fetch |> issue
                 if not(halt.Fetched) && not(stall) then PC.Increment()
             update(!cdb)
              
@@ -88,7 +76,8 @@ type Simulator(input:string, verbose:bool) =
 
     let runDebug() = ()
     
-    member s.Run() = Config.Simulator.outputLevel |> function
+    member s.Run() = 
+        match Config.Simulator.outputLevel with
         | Regular -> runRegular()
         | Verbose -> runVerbose()
         | Debug -> runDebug()

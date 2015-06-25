@@ -29,7 +29,7 @@ let ``opcodes`` () =
 
 
 
-    let op = Opcode.OfName "addi"
+    let op = Opcode "addi"
     printfn "ToString: %O" op
     printfn "op.Name: %A" op.Name
 
@@ -85,6 +85,6 @@ let ``opcode of instruction hex`` () =
     let lookups = rruAndenc |> List.map lookup
     lookups |> List.iter (printfn "%A")
 
-    let opcodesOfName = lookups |> List.map (Opcode.OfName)
+    let opcodesOfName = lookups |> List.map (Opcode.Create)
     opcodesOfName |> List.iter (printfn "%A")
     //printfn "lookup: %A" (lookup rru enc)

@@ -253,58 +253,71 @@ module OpcodeUtil =
             [   2, "j"
                 3, "jal" ] |> Map.ofList
     
-
-
-type Opcode(op:string, enc:int) =
-
-    static let isRType (hex:string) =
+    let isRType (hex:string) =
         Convert.hex2bits2int hex 0 (Constants.nOpcodeBits - 1) |> function
             | rru when rru = 0 -> true, rru
             | rru when rru = 1 -> true, rru 
             | _ -> false, 2
 
     
-    static let getOpcodeBits (hex:string) =
+    let getOpcodeInfo (hex:string) =
         let bin = Convert.hex2bin hex
         let isRType, rru = isRType hex
         if      not(isRType)
-        then    bin.[0..Constants.nOpcodeBits - 1], rru
-        else    bin.[26..31], rru
+        then    bin.[0..Constants.nOpcodeBits - 1] |> Convert.bin2int, rru
+        else    bin.[26..31] |> Convert.bin2int, rru
 
-//    static let getTrapFunc (hex:string) =
-//        Convert.hex2bits2int hex  27 31 |> function
-//        | 0 -> "halt"
-//        | 1 -> "dumpgpr"
-//        | 2 -> "dumpfpr"
-//        | 3 -> "dumpstr"
-//        | _ -> failwith "invalid trap function"
+    let (|RType|_|) hex =
+        let enc, rru = getOpcodeInfo hex
+        if rru <> 2 
+        then Lookup.rtypeByEnc.[rru].[enc] |> Some
+        else None
 
-    member val Name = op with get, set
-    member val asInt = enc with get 
-    member val asHex = Convert.int2hex enc with get
-    member val asBin = Convert.int2bin enc
+    let (|IType|_|) hex =
+        let enc, _ = getOpcodeInfo hex
+        if Lookup.itypeByEnc.ContainsKey(enc) then 
+            match Lookup.itypeByEnc.[enc], Convert.hex2bits2int hex 27 31 with
+            | "trap", 0 -> "halt" 
+            | "trap", 1 -> "dumpGPR" 
+            | "trap", 2 -> "dumpFPR" 
+            | "trap", 3 -> "dumpSTR"
+            | n, _ -> n
+            |> Some
+        else None
 
+    let (|JType|_|) hex =
+        let enc, _ = getOpcodeInfo hex
+        if Lookup.jtypeByEnc.ContainsKey(enc)
+        then Lookup.jtypeByEnc.[enc] |> Some
+        else None
+
+type Opcode(name:string) =
+    
+    static let (|RType|_|) = function
+        | OpcodeUtil.RType op -> Opcode(op) |> Some
+        | _ -> None
+
+    static let (|IType|_|) = function
+        | OpcodeUtil.IType op -> Opcode(op) |> Some
+        | _ -> None
+    
+    static let (|JType|_|) = function
+        | OpcodeUtil.JType op -> Opcode(op) |> Some
+        | _ -> None
+
+    member val Name = name with get, set
 
     override o.ToString() = o.Name
 
-    static member OfName name = Opcode(name, OpcodeUtil.Lookup.byName.[name])
-    
-    static member OfInstructionHex hex = 
-        //printfn "opcode of instruction hex ==> %A" hex
-        let bits, rru = getOpcodeBits hex
-        //printfn "bits, rru ===> %A, %A" bits rru
-        let enc = Convert.bin2int(bits)
-        //printfn "ENCODING ====> %A" enc
-        if rru <> 2 then
-            Opcode.OfName(OpcodeUtil.Lookup.rtypeByEnc.[rru].[enc])
-        elif OpcodeUtil.Lookup.itypeByEnc.ContainsKey(enc) then
-            Opcode.OfName(OpcodeUtil.Lookup.itypeByEnc.[enc])
-        elif OpcodeUtil.Lookup.jtypeByEnc.ContainsKey(enc) then
-            Opcode.OfName(OpcodeUtil.Lookup.jtypeByEnc.[enc])
-        else
-            failwith "opcode lookup failure"
+    static member OfInstructionHex = function
+        | RType op -> op
+        | IType op -> op
+        | JType op -> op
+        | _ -> failwith "opcode lookup failure"
     
     static member OfInstructionInt i = Opcode.OfInstructionHex(Convert.int2hex i)
+
+    static member Create name = Opcode(name)
 
     static member Opt2String (o:Opcode option) = o |> function
         | Some o -> sprintf "%s" o.Name
