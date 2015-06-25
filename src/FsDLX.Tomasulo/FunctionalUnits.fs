@@ -207,32 +207,24 @@ and BranchUnit private (cfg, rsRef) =
     static member GetInstance = instance
     static member Reset() = instance <- fun rsRef -> BranchUnit(cfg, rsRef)
 
-and MemoryUnit private (cfg, rsRef) =
+and MemoryUnit private (cfg, rsRef) as mu =
     inherit FunctionalUnit(cfg, rsRef)
 
     static let cfg = Config.FunctionalUnit.MemoryUnit
     static let mutable instance = fun rsRef -> MemoryUnit(cfg, rsRef)
 
+    let RS(r) = mu.ReservationStations.[r]
+
     override mu.Compute r =
-        //let r = queue.Dequeue() :?> ReservationStation
         mu.ExecRS <- Some(RS(r).Name)
-//        match RS(r).Op, RS(r).A with
-//        | Some op, Some _ -> 
-//            match op.Name with
-//            | "lw" | "lf" -> 
-//                RS(r).Result <- Memory.GetInstance.[RS(r).A.Value + RS(r).Vj]
-//            | "sw" | "sf" -> 
-//                Memory.GetInstance.[RS(r).A.Value + RS(r).Vj] <- RS(r).Vk
-//            | op -> printfn "%A" op; failwith "invalid memory unit instruction"
-//        | _ -> failwith "memory compute failure"
         RS(r).ResultReady <- true
 
     override mu.Write() =
         let cdb = CDB.GetInstance
-        if      queue.Count = 0 
+        if      mu.Queue.Count = 0 
         then    Some(cdb)
         else
-            let r = queue.Dequeue() :?> ReservationStation
+            let r = mu.Queue.Dequeue()
             match RS(r).Op with
             | Some op ->
                 match op.Name with
