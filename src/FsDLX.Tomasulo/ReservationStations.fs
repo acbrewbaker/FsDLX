@@ -1,5 +1,6 @@
 ﻿namespace FsDLX.Tomasulo
 
+open System.Collections.Generic
 open FsDLX.Common
 
 type RSGroup = ReservationStation[]
@@ -81,6 +82,7 @@ and RS =
 
     static member Update(rs:RS[]) = rs |> Array.iter (fun r -> r.Update())
 
+    static member TryFindEmptyStation (rs:RS) = rs.TryFindEmpty()
 // The ReservationStation class contains the fields of an individual reservation station: 
 // name, busy, opcode, Vj, Vk, Qj, Qk, A, result, resultReady, resultWritten.  It also 
 // contains methods to access or modify an individual reservation station.
@@ -165,4 +167,7 @@ and ReservationStation =
     static member AllBusy (RS:RSGroup) = RS |> Array.forall (fun r -> r.Busy)
     static member AllNotBusy (RS:RSGroup) = RS |> Array.forall (fun r -> not(r.Busy))
 
+and ReservationStationQueue = Queue<ReservationStation>
+
 and RSId = RSId of string option
+
