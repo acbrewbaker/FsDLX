@@ -246,27 +246,20 @@ and FloatingPointUnit private (cfg, rsRef) =
     
 and FunctionalUnits private () =
     static let mutable instance = FunctionalUnits()
-        
-    let iuCfg, tuCfg, buCfg, muCfg, fpuCfg = 
-        Config.FunctionalUnit.IntegerUnit,
-        Config.FunctionalUnit.TrapUnit,
-        Config.FunctionalUnit.BranchUnit,
-        Config.FunctionalUnit.MemoryUnit,
-        Config.FunctionalUnit.FloatingPointUnit
-    
-    let iuRS, tuRS, buRS, muRS, fpuRS =
-        ReservationStation.ArrayInit iuCfg |> ref,
-        ReservationStation.ArrayInit tuCfg |> ref,
-        ReservationStation.ArrayInit buCfg |> ref,
-        ReservationStation.ArrayInit muCfg |> ref,
-        ReservationStation.ArrayInit fpuCfg |> ref
+
+    let iuRSG, tuRSG, buRSG, muRSG, fpuRSG =
+        RSGroup.IntUnitInit() |> ref,
+        RSGroup.TrapUnitInit() |> ref,
+        RSGroup.BranchUnitInit() |> ref,
+        RSGroup.MemoryUnitInit() |> ref,
+        RSGroup.FloatingPointUnitInit() |> ref
 
     let iu, tu, bu, mu, fpu =
-        IntegerUnit.GetInstance iuRS,
-        TrapUnit.GetInstance tuRS,
-        BranchUnit.GetInstance buRS,
-        MemoryUnit.GetInstance muRS,
-        FloatingPointUnit.GetInstance fpuRS
+        IntegerUnit.GetInstance iuRSG,
+        TrapUnit.GetInstance tuRSG,
+        BranchUnit.GetInstance buRSG,
+        MemoryUnit.GetInstance muRSG,
+        FloatingPointUnit.GetInstance fpuRSG
 
     let allfu =
         let cast u = u :> FunctionalUnit
@@ -274,11 +267,11 @@ and FunctionalUnits private () =
 
     let allrs = 
         [| 
-            RS.IntegerUnit iuRS 
-            RS.TrapUnit tuRS
-            RS.BranchUnit buRS
-            RS.MemoryUnit muRS 
-            RS.FloatingPointUnit fpuRS |]
+            RS.IntegerUnit iuRSG 
+            RS.TrapUnit tuRSG
+            RS.BranchUnit buRSG
+            RS.MemoryUnit muRSG 
+            RS.FloatingPointUnit fpuRSG |]
 
     let allInfos = Array.init<string option> allfu.Length (fun _ -> None)
 
@@ -321,8 +314,7 @@ and FunctionalUnits private () =
 
     member fu.UpdateReservationStations() = RS.Update(fu.ReservationStations)
 
-    member fu.ClearReservationStations() =
-        allfu |> Array.iter (fun u -> u.Clear())
+    member fu.ClearReservationStations() = allfu |> Array.iter (fun u -> u.Clear())
 
     member fu.DumpLastInsert() = allfu |> Array.iter (fun u -> printfn "%A" u.LastInsert)
 
