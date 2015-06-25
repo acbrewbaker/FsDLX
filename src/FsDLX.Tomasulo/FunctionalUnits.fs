@@ -83,21 +83,12 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
         let Regs(i) = (Regs.GetInstance instruction.AsInt).[i]
         let RegisterStat(i) = (RegisterStat.GetInstance instruction.AsInt).[i]
 
-        let opcode, funcCode, rd, rs, rt, imm =
+        let opcode, rd, rs, rt, imm =
             instruction.Opcode,
-            instruction.FuncCode,
             instruction.DstReg,
             instruction.S1Reg,
             instruction.S2Reg,
             instruction.Immediate
-        
-        opcode.Name <-
-            match funcCode with
-            | FuncCode.HALT     -> fu.Halt <- true; "halt"
-            | FuncCode.DUMPGPR  -> "dumpGPR"
-            | FuncCode.DUMPFPR  -> "dumpFPR"
-            | FuncCode.DUMPSTR  -> "dumpSTR"
-            | _ -> opcode.Name
 
         match fu.TryFindEmptyStation() with
         | Some r -> 
@@ -183,11 +174,6 @@ and TrapUnit private (cfg, rsRef) =
     static let cfg = Config.FunctionalUnit.TrapUnit
     static let mutable instance = fun rsRef -> TrapUnit(cfg, rsRef) 
 
-//    let RS' = RS.TrapUnit rsRef
-//    let tryFindReadyStation() = RS'.TryFind (fun r -> r.OperandsAvailable())
-//    let tryFindEmptyStation() = RS'.TryFindEmpty()
-//    let RS(r) = RS'.[r]
-    
     override tu.Compute r =
         let RS(r) = tu.ReservationStations.[r]
         let r = tu.Queue.Dequeue()
