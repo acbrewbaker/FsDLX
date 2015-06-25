@@ -184,7 +184,8 @@ and TrapUnit private (cfg, rsRef) =
                 match op.Name with
                 | "halt" -> tu.Halt <- true; ""
                 | "dumpGPR" -> RS(r).Vj.ToString()
-                | "dumpFPR" -> RS(r).Vj.ToString()
+                | "dumpFPR" -> 
+                    BitConverter.ToSingle(BitConverter.GetBytes(RS(r).Vj),0).ToString("N1")
                 | "dumpSTR" ->
                     Memory.GetInstance.AsBytes.Skip(RS(r).Vj).TakeWhile((<>) 0uy).ToArray() 
                     |> Convert.bytes2string
@@ -206,15 +207,36 @@ and BranchUnit private (cfg, rsRef) =
     static member GetInstance = instance
     static member Reset() = instance <- fun rsRef -> BranchUnit(cfg, rsRef)
 
-and MemoryUnit private (cfg, rsRef) =
+and MemoryUnit private (cfg, rsRef) as mu =
     inherit FunctionalUnit(cfg, rsRef)
 
     static let cfg = Config.FunctionalUnit.MemoryUnit
     static let mutable instance = fun rsRef -> MemoryUnit(cfg, rsRef)
-    let mutable xQueue = List.empty<int>
-    let mutable wQueue = List.empty<int>
-        
-    override mu.Compute r = ()
+
+    let RS(r) = mu.ReservationStations.[r]
+
+    override mu.Compute r =
+        mu.ExecRS <- Some(RS(r).Name)
+        RS(r).ResultReady <- true
+
+    override mu.Write() =
+        let cdb = CDB.GetInstance
+        if      mu.Queue.Count = 0 
+        then    Some(cdb)
+        else
+            let r = mu.Queue.Dequeue()
+            match RS(r).Op with
+            | Some op ->
+                match op.Name with
+                | "lw" | "lf" ->
+                    cdb.Result <- Memory.GetInstance.[RS(r).A.Value + RS(r).Vj]
+                    cdb.Src <- RS(r).Name                    
+                | "sw" | "sf" ->
+                    Memory.GetInstance.[RS(r).A.Value + RS(r).Vj] <- RS(r).Vk                    
+                | _ -> failwith "invalid opcode in memory unit write"
+            | None -> ()
+            RS(r).ResultWritten <- true
+            Some(cdb)
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsRef -> MemoryUnit(cfg, rsRef)

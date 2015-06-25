@@ -51,18 +51,17 @@ and RS =
 
     member rs.Update() = 
         let cdb = CDB.GetInstance
-        rs.Contents.Iteri (fun i r ->
-            match r.Qj with | Some Qj -> if r.Busy && cdb.Src = Qj then r.Qj <- None; r.Vj <- cdb.Result
-                            | None -> ()
+        rs.Contents.Iter (fun r ->
+            match r.Qj with Some Qj -> if r.Busy && cdb.Src = Qj then   
+                                            r.Qj <- None
+                                            r.Vj <- cdb.Result 
+                                        | _ -> ()
             
-            (r.Qj, r.Qk) |> function
-            | Some Qj, _ ->
-                if r.Busy && cdb.Src = Qj then 
-                    r.Qj <- None; r.Vj <- cdb.Result
-            | _, Some Qk ->
-                if r.Busy && cdb.Src = Qk then
-                    r.Qk <- None; r.Vk <- cdb.Result
-            | None, None -> () )
+            match r.Qk with Some Qk -> if r.Busy && cdb.Src = Qk then
+                                            r.Qk <- None
+                                            r.Vk <- cdb.Result 
+                                        | _ -> ()
+            )
     
     member rs.Clear() = rs.Contents.Iter (fun r -> r.Clear())
 
