@@ -247,7 +247,29 @@ and FloatingPointUnit private (cfg, rsRef) =
     static let cfg = Config.FunctionalUnit.FloatingPointUnit
     static let mutable instance = fun rsRef -> FloatingPointUnit(cfg, rsRef)
 
-    override fpu.Compute r = ()
+    override fpu.Compute r =
+        let RS(r) = fpu.ReservationStations.[r]
+        fpu.ExecRS <- Some(RS(r).Name)
+        RS(r).Result <-
+            match RS(r).Op with
+            | Some op ->
+                if      RS(r).A.IsSome
+                then    RS(r).Vj, RS(r).A.Value
+                else    RS(r).Vj, RS(r).Vk
+                ||> (fun x y -> float x, float y) ||>
+                (match op.Name with
+                | "addf" -> (+)
+                | "subf" -> (-)
+                | "multf" -> (*)
+                | "divf" -> (/)
+                | "mult" -> (*)
+                | "div" -> (/)
+                | "cvtf2i" -> fun x y -> x
+                | "cvti2f" -> fun x y -> x
+                | _ -> failwith "invalid floating point unit instruction")
+                |> int
+            | _ -> failwith "tried to compute with no opcode"
+        RS(r).ResultReady <- true
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsRef -> FloatingPointUnit(cfg, rsRef)
