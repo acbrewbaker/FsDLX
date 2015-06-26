@@ -59,7 +59,7 @@ type Simulator(input:string, verbose:bool) =
         Mem.Load(input)
         let mutable stall = false
         
-        while (not(halt.Issued) || not(finished())) do
+        while (not(halt.Issued) || not(finished())) && Clock.Cycles < 40 do
             let gpr = GPR.GetInstance
             cdb := write()
             execute()
