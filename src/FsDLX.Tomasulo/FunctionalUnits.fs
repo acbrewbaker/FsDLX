@@ -219,7 +219,12 @@ and MemoryUnit private (cfg, rsRef) as mu =
 
     override mu.Compute r =
         mu.ExecRS <- Some(RS(r).Name)
-        RS(r).ResultReady <- true
+        if mu.Queue.Count > 0 then 
+            printfn "%O" (mu.Queue)
+            if mu.Queue.Peek().Name = r.Name then
+                RS(r).A <- Some(RS(r).Vj + RS(r).A.Value)
+                RS(r).Result <- RS(r).Vj + RS(r).A.Value
+                RS(r).ResultReady <- true
 
     override mu.Write() =
         let cdb = CDB.GetInstance
@@ -230,15 +235,15 @@ and MemoryUnit private (cfg, rsRef) as mu =
             match RS(r).Op with
             | Some op ->
                 match op.Name with
-                | "lw" | "lf" ->
-                    cdb.Result <- Memory.GetInstance.[RS(r).A.Value + RS(r).Vj]
-                    cdb.Src <- RS(r).Name                    
-                | "sw" | "sf" ->
-                    Memory.GetInstance.[RS(r).A.Value + RS(r).Vj] <- RS(r).Vk                    
-                | _ -> failwith "invalid opcode in memory unit write"
-            | None -> ()
-            RS(r).ResultWritten <- true
-            Some(cdb)
+                | "sw" | "sf" -> Memory.GetInstance.[RS(r).Result] <- RS(r).Vk; | _ -> ()
+
+                match op.Name with
+                | "lw" | "lf" -> 
+                    cdb.Result <- Memory.GetInstance.[RS(r).Result]
+                    cdb.Src <- RS(r).Name
+                    RS(r).ResultWritten <- true; Some(cdb)
+                | _ -> None                
+            | None -> None
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsRef -> MemoryUnit(cfg, rsRef)
