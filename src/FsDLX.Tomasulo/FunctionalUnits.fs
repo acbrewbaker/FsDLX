@@ -139,7 +139,9 @@ and IntegerUnit private (cfg, rsRef) =
     
     static let cfg = Config.FunctionalUnit.IntegerUnit
     static let mutable instance = fun rsRef -> IntegerUnit(cfg, rsRef)
-        
+    
+//    let (|Movf|_|) = 
+      
     override iu.Compute r =
         let RS(r) = iu.ReservationStations.[r]
         iu.ExecRS <- Some(RS(r).Name)
@@ -185,7 +187,7 @@ and TrapUnit private (cfg, rsRef) =
                 | "halt" -> tu.Halt <- true; ""
                 | "dumpGPR" -> RS(r).Vj.ToString()
                 | "dumpFPR" -> 
-                    BitConverter.ToSingle(BitConverter.GetBytes(RS(r).Vj),0).ToString("N1")
+                    BitConverter.ToSingle(BitConverter.GetBytes(RS(r).Vj),0).ToString("N2")
                 | "dumpSTR" ->
                     Memory.GetInstance.AsBytes.Skip(RS(r).Vj).TakeWhile((<>) 0uy).ToArray() 
                     |> Convert.bytes2string
@@ -222,7 +224,7 @@ and MemoryUnit private (cfg, rsRef) as mu =
     override mu.Write() =
         let cdb = CDB.GetInstance
         if      mu.Queue.Count = 0 
-        then    Some(cdb)
+        then    None
         else
             let r = mu.Queue.Dequeue()
             match RS(r).Op with

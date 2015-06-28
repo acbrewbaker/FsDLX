@@ -48,6 +48,7 @@ type PC private () =
     member pc.Increment() = pc.Value <- pc.Value + 4
     static member GetInstance = instance
     static member Reset() = instance <- PC()
+    override pc.ToString() = sprintf "Program Counter: %s" (Convert.int2hex pc.Value)
 
 type Clock private () =
     static let mutable instance = Clock()
