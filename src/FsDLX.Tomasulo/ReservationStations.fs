@@ -59,7 +59,8 @@ and RS =
             
             match r.Qk with Some Qk -> if r.Busy && cdb.Src = Qk then
                                             r.Qk <- None
-                                            r.Vk <- cdb.Result 
+                                            r.Vk <- cdb.Result
+                                            //printfn "Vk ==> %A" (r.Vk) 
                                         | _ -> ()
             )
     
@@ -68,6 +69,8 @@ and RS =
     member rs.AllBusy() = rs.Contents.ForAll (fun r -> r.Busy)
     member rs.AllNotBusy() = rs.Contents.ForAll (fun r -> not(r.Busy))
 
+    member rs.Iter = rs.Contents.Iter
+    member rs.Filter = rs.Contents.Filter
     member rs.TryFind = rs.Contents.TryFind
     member rs.TryFindOperandsAvailable() = rs.TryFind (fun r -> r.OperandsAvailable())
     member rs.TryFindResultReady() = rs.TryFind (fun r -> r.ResultReady)

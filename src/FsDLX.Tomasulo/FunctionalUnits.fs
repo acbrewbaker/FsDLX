@@ -74,8 +74,9 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
 
     member fu.GetRSInfo() = sprintf "%s RESERVATION STATIONS\n%O" (fu.Name()) reservationStations
     
-    abstract member Issue : Instruction -> unit
+    abstract member Cycle : XUnit -> unit
     abstract member Compute  : ReservationStation -> unit
+    abstract member Issue : Instruction -> unit
     abstract member Execute : unit -> unit
     abstract member Write : unit -> CDB option
     
@@ -110,19 +111,20 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
 
         | None -> fu.LastInsert <- None; fu.Stall <- true            
     
-    default fu.Execute() =
-        let cycle (xunit:XUnit) = xunit.CurrentRS |> function
+    default fu.Cycle xunit =
+        match xunit.CurrentRS with
             | Some station -> 
                 if xunit.Busy then xunit.Cycle()
                 if xunit.RemainingCycles = 0 && not(station.ResultReady) then
                     fu.Compute station; xunit.Reset();
             | None -> ()
 
+    default fu.Execute() =
         match fu.TryFindReadyStation(), fu.TryFindAvailableXUnit() with
         | Some r, Some x -> XUnits(x).Set(r) 
         | _ -> ()
         
-        xunits |> Array.iter cycle
+        xunits |> Array.iter fu.Cycle
 
     default fu.Write() =
         let cdb = CDB.GetInstance
@@ -139,9 +141,7 @@ and IntegerUnit private (cfg, rsRef) =
     
     static let cfg = Config.FunctionalUnit.IntegerUnit
     static let mutable instance = fun rsRef -> IntegerUnit(cfg, rsRef)
-    
-//    let (|Movf|_|) = 
-      
+          
     override iu.Compute r =
         let RS(r) = iu.ReservationStations.[r]
         iu.ExecRS <- Some(RS(r).Name)
@@ -185,7 +185,10 @@ and TrapUnit private (cfg, rsRef) =
             | Some op -> 
                 match op.Name with
                 | "halt" -> tu.Halt <- true; ""
-                | "dumpGPR" -> RS(r).Vj.ToString()
+                | "dumpGPR" -> 
+//                    GPR.GetInstance.[RS(r).Vj].ToString()
+                      printfn "%A" (RS(r).Vj |> Convert.int2hex)
+                      RS(r).Vj.ToString("G")
                 | "dumpFPR" -> 
                     BitConverter.ToSingle(BitConverter.GetBytes(RS(r).Vj),0).ToString("N2")
                 | "dumpSTR" ->
@@ -216,35 +219,114 @@ and MemoryUnit private (cfg, rsRef) as mu =
     static let mutable instance = fun rsRef -> MemoryUnit(cfg, rsRef)
 
     let RS(r) = mu.ReservationStations.[r]
+    let XUnits(x) = mu.ExecutionUnits.[x]
+    
+    let loadQueue = ReservationStationQueue()
+    let storeQueue = ReservationStationQueue()
+    
+    override mu.Issue instruction =
+        let Regs(i) = (Regs.GetInstance instruction.AsInt).[i]
+        let RegisterStat(i) = (RegisterStat.GetInstance instruction.AsInt).[i]
+
+        let opcode, rd, rs, rt, imm =
+            instruction.Opcode,
+            instruction.DstReg,
+            instruction.S1Reg,
+            instruction.S2Reg,
+            instruction.Immediate
+
+        match mu.TryFindEmptyStation() with
+        | Some r -> 
+            RS(r).Op <- Some(opcode)
+            match RegisterStat(rs).Qi with  | Some _->  RS(r).Qj <- RegisterStat(rs).Qi
+                                            | None  ->  RS(r).Vj <- Regs(rs); RS(r).Qj <- None
+  
+            RS(r).A <- imm
+            RS(r).Busy <- true
+
+            match opcode.Name with
+            | "lw" | "lf" -> RegisterStat(rt).Qi <- Some(RS(r).Name)
+            | _ ->
+
+                match RegisterStat(rt).Qi with  | Some _->  RS(r).Qk <- RegisterStat(rt).Qi
+                                                | None  ->  RS(r).Vk <- Regs(rt); RS(r).Qk <- None
+
+            mu.Queue.Enqueue(r)
+
+        | None -> mu.LastInsert <- None; mu.Stall <- true       
+
+    override mu.Cycle xunit =
+        match xunit.CurrentRS with
+        | Some station ->
+            if xunit.Busy then 
+                xunit.Cycle()
+                if xunit.RemainingCycles = 1 then 
+                    RS(station).A <- Some(RS(station).Vj + RS(station).A.Value)
+                elif xunit.RemainingCycles = 0 then
+                    station |> mu.Compute; xunit.Reset()
+        | _ -> ()
+
+    override mu.Execute() =
+//        if mu.Queue.Count > 0 then
+//            let r = mu.Queue.Peek()
+//            printfn "----%A" (Memory.GetInstance.[RS(r).A.Value + RS(r).Vj])
+        match mu.TryFindAvailableXUnit(), mu.Queue.Count > 0 with
+        | _, false -> ()
+        | Some x, true -> 
+            match RS(mu.Queue.Peek()).Qj with
+            | None ->
+                let r = mu.Queue.Dequeue()
+                match RS(r).Op.Value.Name with
+                | "lw" | "lf" -> loadQueue.Enqueue(r)
+                | "sw" | "sf" -> storeQueue.Enqueue(r)
+                | _ -> ()
+                XUnits(x).Set(r)
+            | _ -> ()
+        | _ -> ()
+
+        mu.ExecutionUnits |> Array.iter mu.Cycle
 
     override mu.Compute r =
-        mu.ExecRS <- Some(RS(r).Name)
-        if mu.Queue.Count > 0 then 
-            printfn "%O" (mu.Queue)
-            if mu.Queue.Peek().Name = r.Name then
-                RS(r).A <- Some(RS(r).Vj + RS(r).A.Value)
-                RS(r).Result <- RS(r).Vj + RS(r).A.Value
-                RS(r).ResultReady <- true
+        match RS(r).Op with
+        | Some op -> 
+            match op.Name with
+            | "lw" | "lf" -> RS(r).Result <- Memory.GetInstance.[RS(r).A.Value]
+            | _ -> ()
+            RS(r).ResultReady <- true        
+        | _ -> ()
 
     override mu.Write() =
         let cdb = CDB.GetInstance
-        if      mu.Queue.Count = 0 
-        then    None
-        else
-            let r = mu.Queue.Dequeue()
-            match RS(r).Op with
-            | Some op ->
-                match op.Name with
-                | "sw" | "sf" -> Memory.GetInstance.[RS(r).Result] <- RS(r).Vk; | _ -> ()
-
-                match op.Name with
-                | "lw" | "lf" -> 
-                    cdb.Result <- Memory.GetInstance.[RS(r).Result]
-                    cdb.Src <- RS(r).Name
-                    RS(r).ResultWritten <- true; Some(cdb)
-                | _ -> None                
-            | None -> None
-
+        mu.ReservationStations.Filter (fun r -> r.ResultReady)
+        |> Array.iter (fun r -> match r.Op.Value.Name, r.Qk with 
+                                | "sw", None 
+                                | "sf", None -> Memory.GetInstance.[r.A.Value] <- RS(r).Vk
+                                | _ -> ())
+        let load = mu.ReservationStations.TryFind (fun r -> r.ResultReady && (r.Op.Value.Name = "lw"))
+        match load with
+        | Some r ->
+            RS(r).ResultWritten <- true
+            //printfn "=====> %A, %A" (RS(r).Result) (RS(r).Name)
+            cdb.Result <- RS(r).Result
+            cdb.Src <- RS(r).Name
+            Some(cdb)
+        | _ -> None
+//        if storeQueue.Count > 0 then
+//            let r = storeQueue.Peek()
+//            if RS(r).ResultReady && RS(r).Qk.IsNone then
+//                let r = storeQueue.Dequeue()
+//                RS(r).ResultWritten <- true
+//                Memory.GetInstance.[RS(r).A.Value] <- RS(r).Vk
+//        if loadQueue.Count > 0 then
+//            if RS(loadQueue.Peek()).ResultReady then
+//                let r = loadQueue.Dequeue()
+//                RS(r).ResultWritten <- true
+//                cdb.Result <- RS(r).Result
+//                cdb.Src <- RS(r).Name
+//                Some(cdb)
+//            else None
+//        else None
+        
     static member GetInstance = instance
     static member Reset() = instance <- fun rsRef -> MemoryUnit(cfg, rsRef)
     
