@@ -53,12 +53,12 @@ and RS =
     member rs.Update() = 
         let cdb = CDB.GetInstance
         rs.Contents.Iter (fun r ->
-            match r.Qj with Some Qj -> if cdb.Src = Qj then //if r.Busy && cdb.Src = Qj then   
+            match r.Qj with Some Qj -> if r.Busy && cdb.Src = Qj then   
                                             r.Qj <- None
                                             r.Vj <- cdb.Result 
                                         | _ -> ()
             
-            match r.Qk with Some Qk -> if cdb.Src = Qk then //if r.Busy && cdb.Src = Qk then
+            match r.Qk with Some Qk -> if r.Busy && cdb.Src = Qk then
                                             r.Qk <- None
                                             r.Vk <- cdb.Result
                                             //printfn "Vk ==> %A" (r.Vk) 
