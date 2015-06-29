@@ -21,12 +21,6 @@ type XUnit(maxCycles:int) =
             xu.RemainingCycles <- xu.MaxCycles
             xu.Busy <- false
             xu.CurrentRS <- None
-    
-//    override xu.ToString() =
-//        sprintf "MaxCycles:         %d\n" xu.MaxCycles +
-//        sprintf "RemainingCycles:   %d\n" xu.RemainingCycles +
-//        sprintf "Busy:              %A\n" xu.Busy +
-//        sprintf "CurrentRS:         %O\n" xu.CurrentRS
 
     static member TryFindAvailable (xunits:XUnit[]) =
         xunits |> Array.tryFindIndex (fun xu -> not(xu.Busy))
@@ -102,11 +96,9 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
             match RegisterStat(rt).Qi with  | Some _->  RS(r).Qk <- RegisterStat(rt).Qi
                                             | None  ->  RS(r).Vk <- Regs(rt); RS(r).Qk <- None
 
-            RS(r).Op <- Some opcode; RS(r).Busy <- true
-            let rsId = Some(RS(r).Name)
-            RegisterStat(rd).Qi <- rsId
-            fu.LastInsert <- rsId
-
+            RS(r).Op <- Some(opcode)
+            RS(r).Busy <- true
+            RegisterStat(rd).Qi <- Some(RS(r).Name)
             RS(r).A <- imm
 
             fu.Queue.Enqueue(r)
@@ -196,10 +188,8 @@ and TrapUnit private (cfg, rsRef) as tu =
             | Some op -> 
                 match op.Name with
                 | "halt" -> tu.Halt <- true; ""
-                | "dumpGPR" -> 
-                    RS(r).Vj.ToString() // |> Convert.int2hex
-                | "dumpFPR" -> 
-                    BitConverter.ToSingle(BitConverter.GetBytes(RS(r).Vj),0).ToString(".0######")
+                | "dumpGPR" -> RS(r).Vj.ToString()
+                | "dumpFPR" -> BitConverter.ToSingle(BitConverter.GetBytes(RS(r).Vj),0).ToString(".0######")
                 | "dumpSTR" ->
                     Memory.GetInstance.AsBytes.Skip(RS(r).Vj).TakeWhile((<>) 0uy).ToArray() 
                     |> Convert.bytes2string
@@ -252,10 +242,7 @@ and MemoryUnit private (cfg, rsRef) as mu =
 
     let RS(r) = mu.ReservationStations.[r]
     let XUnits(x) = mu.ExecutionUnits.[x]
-    
-    let loadQueue = ReservationStationQueue()
-    let storeQueue = ReservationStationQueue()
-    
+        
     override mu.Compute r =
         //let r = mu.Queue.Dequeue()
         match RS(r).Op.Value.Name with
@@ -265,7 +252,6 @@ and MemoryUnit private (cfg, rsRef) as mu =
 
     override mu.Execute() =
         if not(XUnits(0).Busy) && mu.Queue.Count <> 0 then 
-            
             XUnits(0).Set(mu.Queue.Dequeue()); XUnits(0).Cycle()
         elif XUnits(0).Busy then
             XUnits(0).Cycle()
@@ -394,7 +380,7 @@ and FunctionalUnits private () =
             | FloatingPoint(_) -> fpu.Issue i
         fu.Stall()
         
-    member fu.Finished() = allrs |> Array.forall (fun rs -> rs.AllNotBusy())
+    member fu.Finished() = allfu |> Array.forall (fun fu -> fu.Finished())
 
     member fu.UpdateReservationStations() = RS.Update(fu.ReservationStations)
 
