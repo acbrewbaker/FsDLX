@@ -68,7 +68,7 @@ and RS =
     member rs.Clear() = rs.Contents.Iter (fun r -> r.Clear())
 
     member rs.AllBusy() = rs.Contents.ForAll (fun r -> r.Busy)
-    member rs.AllNotBusy() = rs.Contents.ForAll (fun r -> not(r.Busy))
+    member rs.Finished() = rs.Contents.ForAll (fun r -> not(r.Busy))
 
     member rs.Iter = rs.Contents.Iter
     member rs.Filter = rs.Contents.Filter
