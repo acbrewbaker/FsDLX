@@ -138,16 +138,13 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
 
     default fu.Write() =
         let cdb = CDB.GetInstance
-        match fu with
-        | :? TrapUnit -> None
-        | _ ->
-            match fu.TryFindResultReady() with
-            | Some r ->
-                RS(r).ResultWritten <- true
-                cdb.Result <- RS(r).Result
-                cdb.Src <- RS(r).Name
-                Some(cdb)
-            | None -> None
+        match fu.TryFindResultReady() with
+        | Some r ->
+            RS(r).ResultWritten <- true
+            cdb.Result <- RS(r).Result
+            cdb.Src <- RS(r).Name
+            Some(cdb)
+        | None -> None
 
 and IntegerUnit private (cfg, rsRef) =
     inherit FunctionalUnit(cfg, rsRef)
@@ -193,7 +190,7 @@ and TrapUnit private (cfg, rsRef) as tu =
     let XUnits(x) = tu.ExecutionUnits.[x]
     
     override tu.Compute r =
-        tu.ExecRS <- Some(RS(r).Name)
+        let r = tu.Queue.Dequeue()
         printf "%s" 
             (match RS(r).Op with
             | Some op -> 
@@ -208,18 +205,18 @@ and TrapUnit private (cfg, rsRef) as tu =
                     |> Convert.bytes2string
                 | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
             | None -> "")
-        RS(r).ResultReady <- true; RS(r).ResultWritten <- true
+        RS(r).ResultReady <- true
 
-    override tu.Execute() =
-        if not(XUnits(0).Busy) && tu.Queue.Count <> 0 then 
-            
-            XUnits(0).Set(tu.Queue.Dequeue()); XUnits(0).Cycle()
-        elif XUnits(0).Busy then
-            XUnits(0).Cycle()
-            if XUnits(0).RemainingCycles = 0 then
-                match XUnits(0).CurrentRS with
-                | Some r -> tu.Compute r; XUnits(0).Reset()
-                | _ -> ()
+//    override tu.Execute() =
+//        if not(XUnits(0).Busy) && tu.Queue.Count <> 0 then 
+//            
+//            XUnits(0).Set(tu.Queue.Dequeue()); XUnits(0).Cycle()
+//        elif XUnits(0).Busy then
+//            XUnits(0).Cycle()
+//            if XUnits(0).RemainingCycles = 0 then
+//                match XUnits(0).CurrentRS with
+//                | Some r -> tu.Compute r; XUnits(0).Reset()
+//                | _ -> ()
 
 //    override tu.Execute() =
 //        let XUnits(x) = tu.ExecutionUnits.[x]
@@ -260,9 +257,10 @@ and MemoryUnit private (cfg, rsRef) as mu =
     let storeQueue = ReservationStationQueue()
     
     override mu.Compute r =
+        //let r = mu.Queue.Dequeue()
         match RS(r).Op.Value.Name with
         | "lw" | "lf" -> RS(r).Result <- Memory.GetInstance.[RS(r).Vj + RS(r).A.Value]
-        | _ -> () //Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
+        | _ -> Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
         RS(r).ResultReady <- true
 
     override mu.Execute() =
@@ -275,21 +273,21 @@ and MemoryUnit private (cfg, rsRef) as mu =
                 match XUnits(0).CurrentRS with
                 | Some r -> mu.Compute r; XUnits(0).Reset()
                 | _ -> ()
-
-    override mu.Write() =
-        let cdb = CDB.GetInstance
-        mu.ReservationStations.Filter (fun r -> RS(r).ResultReady)
-        |> Array.tryPick (fun r ->
-            match RS(r).Op.Value.Name with
-            | "lw" | "lf" ->               
-                RS(r).ResultWritten <- true
-                cdb.Result <- RS(r).Result
-                cdb.Src <- RS(r).Name
-                Some(cdb)
-            | _ ->
-                RS(r).ResultWritten <- true
-                Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
-                None)
+//
+//    override mu.Write() =
+//        let cdb = CDB.GetInstance
+//        mu.ReservationStations.Filter (fun r -> RS(r).ResultReady)
+//        |> Array.tryPick (fun r ->
+//            match RS(r).Op.Value.Name with
+//            | "lw" | "lf" ->               
+//                RS(r).ResultWritten <- true
+//                cdb.Result <- RS(r).Result
+//                cdb.Src <- RS(r).Name
+//                Some(cdb)
+//            | _ ->
+//                RS(r).ResultWritten <- true
+//                Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
+//                None)
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsRef -> MemoryUnit(cfg, rsRef)
