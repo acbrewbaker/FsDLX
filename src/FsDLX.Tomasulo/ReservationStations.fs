@@ -9,6 +9,7 @@ type RSGroup = RSGroup of ReservationStation[] with
     member rs.Iteri f = match rs with RSGroup rsg -> rsg |> Array.iteri f
     member rs.ForAll f = match rs with RSGroup rsg -> rsg |> Array.forall f
     member rs.TryFind f = match rs with RSGroup rsg -> rsg |> Array.tryFind f
+    member rs.TryPick f = match rs with RSGroup rsg -> rsg |> Array.tryPick f
     member rs.Fold f s = match rs with RSGroup rsg -> rsg |> Array.fold f s
     member rs.Filter f = match rs with RSGroup rsg -> rsg |> Array.filter f
     member rs.BusyOnly = rs.Filter (fun r -> r.Busy)
@@ -52,12 +53,12 @@ and RS =
     member rs.Update() = 
         let cdb = CDB.GetInstance
         rs.Contents.Iter (fun r ->
-            match r.Qj with Some Qj -> if cdb.Src = Qj then //if r.Busy && cdb.Src = Qj then   
+            match r.Qj with Some Qj -> if r.Busy && cdb.Src = Qj then   
                                             r.Qj <- None
                                             r.Vj <- cdb.Result 
                                         | _ -> ()
             
-            match r.Qk with Some Qk -> if cdb.Src = Qk then //if r.Busy && cdb.Src = Qk then
+            match r.Qk with Some Qk -> if r.Busy && cdb.Src = Qk then
                                             r.Qk <- None
                                             r.Vk <- cdb.Result
                                             //printfn "Vk ==> %A" (r.Vk) 
@@ -72,6 +73,7 @@ and RS =
     member rs.Iter = rs.Contents.Iter
     member rs.Filter = rs.Contents.Filter
     member rs.TryFind = rs.Contents.TryFind
+    member rs.TryPick = rs.Contents.TryPick
     member rs.TryFindOperandsAvailable() = rs.TryFind (fun r -> r.OperandsAvailable())
     member rs.TryFindResultReady() = rs.TryFind (fun r -> r.ResultReady)
     member rs.TryFindEmpty() = rs.TryFind (fun r -> r.IsEmpty())
