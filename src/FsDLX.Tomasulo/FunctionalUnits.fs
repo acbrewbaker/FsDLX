@@ -5,7 +5,6 @@ open System.Collections
 open System.Linq
 open FsDLX.Common
 
-
 type XUnit(maxCycles:int) =
     member val MaxCycles = maxCycles with get
     member val RemainingCycles = maxCycles with get, set
@@ -182,20 +181,26 @@ and TrapUnit private (cfg, rsRef) as tu =
     let XUnits(x) = tu.ExecutionUnits.[x]
     
     override tu.Compute r =
-        let r = tu.Queue.Dequeue()
-        printf "%s" 
-            (match RS(r).Op with
-            | Some op -> 
-                match op.Name with
-                | "halt" -> tu.Halt <- true; ""
-                | "dumpGPR" -> RS(r).Vj.ToString()
-                | "dumpFPR" -> BitConverter.ToSingle(BitConverter.GetBytes(RS(r).Vj),0).ToString(".0######")
-                | "dumpSTR" ->
-                    Memory.GetInstance.AsBytes.Skip(RS(r).Vj).TakeWhile((<>) 0uy).ToArray() 
-                    |> Convert.bytes2string
-                | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
-            | None -> "")
-        RS(r).ResultReady <- true
+        //let r = tu.Queue.Dequeue()
+        match tu.Queue.Peek().Qj with
+        | Some _ -> ()
+        | None ->
+            let r = tu.Queue.Dequeue()
+            printf "%s" 
+                (match RS(r).Op with
+                | Some op -> 
+                    match op.Name with
+                    | "halt" -> tu.Halt <- true; ""
+                    | "dumpGPR" -> RS(r).Vj.ToString()
+                    | "dumpFPR" -> BitConverter.ToSingle(BitConverter.GetBytes(RS(r).Vj),0).ToString(".0######")
+                    | "dumpSTR" ->
+                        let s = 
+                            Memory.GetInstance.AsBytes.Skip(RS(r).Vj).TakeWhile((<>) 0uy).ToArray() 
+                            |> Convert.bytes2string
+                        s
+                    | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
+                | None -> "")
+            RS(r).ResultReady <- true
 
 //    override tu.Execute() =
 //        if not(XUnits(0).Busy) && tu.Queue.Count <> 0 then 
@@ -245,35 +250,50 @@ and MemoryUnit private (cfg, rsRef) as mu =
         
     override mu.Compute r =
         //let r = mu.Queue.Dequeue()
-        match RS(r).Op.Value.Name with
-        | "lw" | "lf" -> RS(r).Result <- Memory.GetInstance.[RS(r).Vj + RS(r).A.Value]
-        | _ -> Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
+        RS(r).Result <-
+            match RS(r).Op.Value.Name with
+            | "lw" | "lf" -> Memory.GetInstance.[RS(r).Vj + RS(r).A.Value]
+            | "sw" -> Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk; 0
+            | _ -> Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk; RS(r).Vk
         RS(r).ResultReady <- true
 
     override mu.Execute() =
         if not(XUnits(0).Busy) && mu.Queue.Count <> 0 then 
             XUnits(0).Set(mu.Queue.Dequeue()); XUnits(0).Cycle()
-        elif XUnits(0).Busy then
-            XUnits(0).Cycle()
-            if XUnits(0).RemainingCycles = 0 then
-                match XUnits(0).CurrentRS with
-                | Some r -> mu.Compute r; XUnits(0).Reset()
-                | _ -> ()
+        elif XUnits(0).Busy then XUnits(0).Cycle()
+        if XUnits(0).RemainingCycles = 0 then
+            match XUnits(0).CurrentRS with
+            | Some r -> mu.Compute r; XUnits(0).Reset()
+            | _ -> ()
 //
 //    override mu.Write() =
+//        mu.ReservationStations.Iter (fun r -> 
+//            if r.ResultReady then
+//                match RS(r).Op.Value.Name, RS(r).Qk with
+//                | "sw", None
+//                | "sf", None  ->
+//                    RS(r).ResultWritten <- true
+//                    Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
+//                | _ -> ())
 //        let cdb = CDB.GetInstance
-//        mu.ReservationStations.Filter (fun r -> RS(r).ResultReady)
-//        |> Array.tryPick (fun r ->
-//            match RS(r).Op.Value.Name with
-//            | "lw" | "lf" ->               
-//                RS(r).ResultWritten <- true
-//                cdb.Result <- RS(r).Result
-//                cdb.Src <- RS(r).Name
-//                Some(cdb)
-//            | _ ->
-//                RS(r).ResultWritten <- true
-//                Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
-//                None)
+//        mu.ReservationStations.Iter ( fun r ->
+//            if r.ResultReady then
+//                match RS(r).Op.Value.Name with
+//                | "lw" | "lf" ->
+//                    RS(r).ResultWritten <- true
+//                    cdb.Result <- RS(r).Result
+//                    cdb.Src <- RS(r).Name                    
+//                | _ -> ())
+//                match RS(r).Op.Value.Name with
+//                | "lw" | "lf" ->               
+//                    RS(r).ResultWritten <- true
+//                    cdb.Result <- RS(r).Result
+//                    cdb.Src <- RS(r).Name
+//                    Some(cdb)
+//                | _ ->
+//                    RS(r).ResultWritten <- true
+//                    Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
+//                    None)
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsRef -> MemoryUnit(cfg, rsRef)
