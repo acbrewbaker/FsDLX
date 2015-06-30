@@ -60,7 +60,7 @@ type Simulator(input:string, verbose:bool) =
         let mutable stall = false
         
         while (not(halt.Issued) || not(finished())) do
-//        while (not(halt.Issued) || not(finished())) && PC.Value < (Convert.hex2int "00000050") do
+//        while (not(halt.Issued) || not(finished())) && PC.Value < (Convert.hex2int "00000084") do
             let gpr = GPR.GetInstance
             cdb := write()
             execute()
