@@ -19,17 +19,18 @@ type XUnit(maxCycles:int) =
         sprintf "Cycles(%d/%d) Busy(%A) Station(%A)" (xu.RemainingCycles) (xu.MaxCycles) xu.Busy xu.Station
 
 [<AbstractClass>]
-type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
+type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) as fu =
     
     let xunits = Array.init cfg.unitCount (fun _ -> XUnit cfg.maxCycles)
 
-    let reservationStations = fu |> function
-        | :? IntegerUnit -> RS.IntegerUnit rsRef
-        | :? TrapUnit -> RS.TrapUnit rsRef
-        | :? BranchUnit -> RS.BranchUnit rsRef
-        | :? MemoryUnit -> RS.MemoryUnit rsRef
-        | :? FloatingPointUnit -> RS.FloatingPointUnit rsRef
-        | _ -> failwith "invalid reservation station group"
+    let reservationStations = rsg.FilterByPrefix cfg.rsPrefix
+//        fu |> function
+//        | :? IntegerUnit -> RS.IntegerUnit rsRef
+//        | :? TrapUnit -> RS.TrapUnit rsRef
+//        | :? BranchUnit -> RS.BranchUnit rsRef
+//        | :? MemoryUnit -> RS.MemoryUnit rsRef
+//        | :? FloatingPointUnit -> RS.FloatingPointUnit rsRef
+//        | _ -> failwith "invalid reservation station group"
 
     let RS(r) = reservationStations.[r]
     let XUnits(i) = xunits.[i]
@@ -43,7 +44,6 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
     
     member fu.TryFindEmptyStation() = fu.ReservationStations.TryFindEmpty()
     member fu.TryFindReadyStation() = fu.ReservationStations.TryFind (fun r -> r.OperandsAvailable())
-    member fu.TryFindAvailableStation() = fu.ReservationStations.TryFindNotBusy()
     member fu.TryFindAvailableXUnit() = fu.ExecutionUnits |> Array.tryFindIndex (fun xunit -> not(xunit.Busy))
     member fu.TrySetXUnit() = 
         match fu.TryFindReadyStation(), fu.TryFindAvailableXUnit() with 
@@ -111,11 +111,11 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsRef:RSGroupRef) as fu =
             Some(cdb)
         | None -> None
 
-and IntegerUnit private (cfg, rsRef) =
-    inherit FunctionalUnit(cfg, rsRef)
+and IntegerUnit private (cfg, rsg) =
+    inherit FunctionalUnit(cfg, rsg)
     
     static let cfg = Config.FunctionalUnit.IntegerUnit
-    static let mutable instance = fun rsRef -> IntegerUnit(cfg, rsRef)
+    static let mutable instance = fun rsg -> IntegerUnit(cfg, rsg)
     
     override iu.Compute r =
         let RS(r) = iu.ReservationStations.[r]
@@ -142,13 +142,13 @@ and IntegerUnit private (cfg, rsRef) =
         RS(r).ResultReady <- true
 
     static member GetInstance = instance
-    static member Reset() = instance <- fun rsRef -> IntegerUnit(cfg, rsRef)
+    static member Reset() = instance <- fun rsg -> IntegerUnit(cfg, rsg)
 
-and TrapUnit private (cfg, rsRef) =
-    inherit FunctionalUnit(cfg, rsRef)
+and TrapUnit private (cfg, rsg) =
+    inherit FunctionalUnit(cfg, rsg)
 
     static let cfg = Config.FunctionalUnit.TrapUnit
-    static let mutable instance = fun rsRef -> TrapUnit(cfg, rsRef) 
+    static let mutable instance = fun rsg -> TrapUnit(cfg, rsg) 
 
     override tu.Compute r =
         let RS(r) = tu.ReservationStations.[r]
@@ -181,24 +181,24 @@ and TrapUnit private (cfg, rsRef) =
         tu.ExecutionUnits |> Array.iter tu.Cycle
 
     static member GetInstance = instance
-    static member Reset() = instance <- fun rsRef -> TrapUnit(cfg, rsRef)
+    static member Reset() = instance <- fun rsg -> TrapUnit(cfg, rsg)
 
-and BranchUnit private (cfg, rsRef) =
-    inherit FunctionalUnit(cfg, rsRef)
+and BranchUnit private (cfg, rsg) =
+    inherit FunctionalUnit(cfg, rsg)
 
     static let cfg = Config.FunctionalUnit.BranchUnit
-    static let mutable instance = fun rsRef -> BranchUnit(cfg, rsRef)
+    static let mutable instance = fun rsg -> BranchUnit(cfg, rsg)
         
     override bu.Compute r = ()
 
     static member GetInstance = instance
-    static member Reset() = instance <- fun rsRef -> BranchUnit(cfg, rsRef)
+    static member Reset() = instance <- fun rsg -> BranchUnit(cfg, rsg)
 
-and MemoryUnit private (cfg, rsRef) as mu =
-    inherit FunctionalUnit(cfg, rsRef)
+and MemoryUnit private (cfg, rsg) as mu =
+    inherit FunctionalUnit(cfg, rsg)
 
     static let cfg = Config.FunctionalUnit.MemoryUnit
-    static let mutable instance = fun rsRef -> MemoryUnit(cfg, rsRef)
+    static let mutable instance = fun rsg -> MemoryUnit(cfg, rsg)
 
     let RS(r) = mu.ReservationStations.[r]
     let XUnits(x) = mu.ExecutionUnits.[x]
@@ -210,13 +210,13 @@ and MemoryUnit private (cfg, rsRef) as mu =
         RS(r).ResultReady <- true
 
     static member GetInstance = instance
-    static member Reset() = instance <- fun rsRef -> MemoryUnit(cfg, rsRef)
+    static member Reset() = instance <- fun rsg -> MemoryUnit(cfg, rsg)
     
-and FloatingPointUnit private (cfg, rsRef) =
-    inherit FunctionalUnit(cfg, rsRef)
+and FloatingPointUnit private (cfg, rsg) =
+    inherit FunctionalUnit(cfg, rsg)
 
     static let cfg = Config.FunctionalUnit.FloatingPointUnit
-    static let mutable instance = fun rsRef -> FloatingPointUnit(cfg, rsRef)
+    static let mutable instance = fun rsg -> FloatingPointUnit(cfg, rsg)
 
     override fpu.Compute r =
         let RS(r) = fpu.ReservationStations.[r]
@@ -242,38 +242,25 @@ and FloatingPointUnit private (cfg, rsRef) =
         RS(r).ResultReady <- true
 
     static member GetInstance = instance
-    static member Reset() = instance <- fun rsRef -> FloatingPointUnit(cfg, rsRef)
+    static member Reset() = instance <- fun rsg -> FloatingPointUnit(cfg, rsg)
     
 and FunctionalUnits private () =
     static let mutable instance = FunctionalUnits()
 
-    let iuRSG, tuRSG, buRSG, muRSG, fpuRSG =
-        RSGroup.IntUnitInit() |> ref,
-        RSGroup.TrapUnitInit() |> ref,
-        RSGroup.BranchUnitInit() |> ref,
-        RSGroup.MemoryUnitInit() |> ref,
-        RSGroup.FloatingPointUnitInit() |> ref
+    let allrs = RSGroup.InitAll
 
     let iu, tu, bu, mu, fpu =
-        IntegerUnit.GetInstance iuRSG,
-        TrapUnit.GetInstance tuRSG,
-        BranchUnit.GetInstance buRSG,
-        MemoryUnit.GetInstance muRSG,
-        FloatingPointUnit.GetInstance fpuRSG
+        IntegerUnit.GetInstance allrs,
+        TrapUnit.GetInstance allrs,
+        BranchUnit.GetInstance allrs,
+        MemoryUnit.GetInstance allrs,
+        FloatingPointUnit.GetInstance allrs
 
     let allfu =
         let cast u = u :> FunctionalUnit
         //[| cast iu; cast tu; cast bu; cast mu; cast fpu |]
         [| cast iu; cast tu; cast mu; |]
 
-    let allrs = 
-        [|   
-            RS.IntegerUnit iuRSG
-            RS.TrapUnit tuRSG
-            //RS.BranchUnit buRSG
-            RS.MemoryUnit muRSG 
-            |]
-            //RS.FloatingPointUnit fpuRSG |]
     
     member val All = allfu with get
 
@@ -298,7 +285,7 @@ and FunctionalUnits private () =
         
     member fu.Finished() = allfu |> Array.forall (fun fu -> fu.Finished())
 
-    member fu.UpdateReservationStations() = RS.Update(fu.ReservationStations)
+    member fu.UpdateReservationStations() = allrs.Update()
 
     member fu.ClearReservationStations() = allfu |> Array.iter (fun u -> u.Clear())
    
