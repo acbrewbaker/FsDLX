@@ -16,7 +16,8 @@ type RSGroup = RSGroup of ReservationStation[] with
     
     member rsg.TryFindEmpty() = rsg.TryFind (fun r -> r.IsEmpty())
     member rsg.TryFindResultReady() = rsg.TryFind (fun r -> r.ResultReady)
-    
+    member rsg.TryFindReadyStation() = rsg.TryFind (fun r -> r.OperandsAvailable())
+
     member rsg.Clear() = rsg.Iter (fun r -> r.Clear())
     member rsg.Finished() = rsg.ForAll (fun r -> r.Busy = false)
     

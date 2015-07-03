@@ -83,7 +83,7 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
             fu.Queue.Enqueue(r)
 
         | None -> fu.Stall <- true            
-    
+
     default fu.Cycle xunit =
         match xunit.Station with
             | Some station -> 
@@ -92,7 +92,8 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
                     fu.Compute station; xunit.Reset();
             | None -> ()
 
-    default fu.Execute() = fu.TrySetXUnit(); xunits |> Array.iter fu.Cycle
+    default fu.Execute() = 
+        fu.TrySetXUnit(); xunits |> Array.iter fu.Cycle
 
     default fu.Write() =
         let cdb = CDB.GetInstance
@@ -145,28 +146,25 @@ and TrapUnit private (cfg, rsg) =
 
     override tu.Compute r =
         let RS(r) = tu.ReservationStations.[r]
-        match r.Qj with
-        | Some _ -> ()
-        | None ->
-            printf "%s"
-                (match RS(r).Op with
-                | Some op -> 
-                    match op.Name with
-                    | "halt" -> tu.Halt <- true; ""
-                    | "dumpGPR" -> RS(r).Vj.ToString()
-                    | "dumpFPR" -> BitConverter.ToSingle(BitConverter.GetBytes(RS(r).Vj),0).ToString(".0######")
-                    | "dumpSTR" ->
-                        Memory.GetInstance.AsBytes.Skip(RS(r).Vj).TakeWhile((<>) 0uy).ToArray() 
-                        |> Convert.bytes2string
-                    | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
-                | None -> "")
-            RS(r).ResultReady <- true
+        printf "%s"
+            (match RS(r).Op with
+            | Some op -> 
+                match op.Name with
+                | "halt" -> tu.Halt <- true; ""
+                | "dumpGPR" -> RS(r).Vj.ToString()
+                | "dumpFPR" -> BitConverter.ToSingle(BitConverter.GetBytes(RS(r).Vj),0).ToString(".0######")
+                | "dumpSTR" ->
+                    Memory.GetInstance.AsBytes.Skip(RS(r).Vj).TakeWhile((<>) 0uy).ToArray() 
+                    |> Convert.bytes2string
+                | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
+            | None -> "")
+        RS(r).ResultReady <- true
 
     override tu.Execute() =
         let XUnits(x) = tu.ExecutionUnits.[x]
         let tryFindReadyStation() =
             if      tu.Queue.Count > 0 
-            then    tu.ReservationStations.TryFind (fun r -> r.OperandsAvailable() && (r.Name = tu.Queue.Peek().Name))
+            then    tu.ReservationStations.TryFind (fun r -> r.Qj.IsNone && (r.Name = tu.Queue.Peek().Name))
             else    None
         match tu.TryFindAvailableXUnit(), tryFindReadyStation() with
         | Some x, Some r -> XUnits(x).Set(tu.Queue.Dequeue()) | _ -> ()
@@ -196,11 +194,63 @@ and MemoryUnit private (cfg, rsg) as mu =
     let RS(r) = mu.ReservationStations.[r]
     let XUnits(x) = mu.ExecutionUnits.[x]
 
+    override fu.Issue instruction =
+        let Regs(i) = (Regs.GetInstance instruction.AsInt).[i]
+        let RegisterStat(i) = (RegisterStat.GetInstance instruction.AsInt).[i]
+
+        let opcode, rd, rs, rt, imm =
+            instruction.Opcode,
+            instruction.DstReg,
+            instruction.S1Reg,
+            instruction.S2Reg,
+            instruction.Immediate
+
+        match fu.TryFindEmptyStation() with
+        | Some r -> 
+            RS(r).Op <- Some(opcode)
+
+            match RegisterStat(rs).Qi with  | Some _->  RS(r).Qj <- RegisterStat(rs).Qi
+                                            | None  ->  RS(r).Vj <- Regs(rs); RS(r).Qj <- None
+  
+            RS(r).A <- imm
+            RS(r).Busy <- true
+
+
+            match opcode.Name with
+            | "lw" | "lf" ->
+                RegisterStat(rd).Qi <- Some(RS(r).Name)
+            | _ ->
+                match RegisterStat(rt).Qi with  | Some _->  RS(r).Qk <- RegisterStat(rt).Qi
+                                                | None  ->  RS(r).Vk <- Regs(rt); RS(r).Qk <- None
+                                                
+            fu.Queue.Enqueue(r)
+
+        | None -> fu.Stall <- true  
+
+    default fu.Cycle xunit =
+        match xunit.Station with
+            | Some station -> 
+                if xunit.Busy && xunit.RemainingCycles > 0 then xunit.Cycle()
+                if xunit.RemainingCycles = 0 && not(station.ResultReady) then
+                    fu.Compute station; xunit.Reset();
+            | None -> ()
+
     override mu.Compute r =
         match RS(r).Op.Value.Name with
         | "lw" | "lf" -> RS(r).Result <- Memory.GetInstance.[RS(r).Vj + RS(r).A.Value]
         | _ -> Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
-        RS(r).ResultReady <- true
+        RS(r).ResultReady <- true //; mu.Queue.Dequeue() |> ignore
+
+    override mu.Execute() =
+        let XUnits(x) = mu.ExecutionUnits.[x]
+        let tryFindReadyStation() =
+            if      mu.Queue.Count > 0 
+            then    mu.ReservationStations.TryFind (fun r -> r.Qj.IsNone && (r.Name = mu.Queue.Peek().Name))
+            else    None
+        match mu.TryFindAvailableXUnit(), tryFindReadyStation() with
+        | Some x, Some r -> XUnits(x).Set(mu.Queue.Dequeue()) | _ -> ()
+
+        mu.ExecutionUnits |> Array.iter mu.Cycle
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> MemoryUnit(cfg, rsg)
