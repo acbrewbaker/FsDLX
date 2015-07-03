@@ -171,6 +171,13 @@ module Config =
                 instructions = [| "addf"; "subf"; "multf"; "divf"; "mult"; "div"; "cvtf2i"; "cvti2f" |]
             }
 
+        static member All =
+            [|  FunctionalUnit.IntegerUnit;
+                FunctionalUnit.TrapUnit;
+                FunctionalUnit.BranchUnit;
+                FunctionalUnit.MemoryUnit;
+                FunctionalUnit.FloatingPointUnit |]
+
         static member RSTotal =
             FunctionalUnit.IntegerUnit.rsCount +
             FunctionalUnit.TrapUnit.rsCount +
