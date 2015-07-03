@@ -19,18 +19,11 @@ type XUnit(maxCycles:int) =
         sprintf "Cycles(%d/%d) Busy(%A) Station(%A)" (xu.RemainingCycles) (xu.MaxCycles) xu.Busy xu.Station
 
 [<AbstractClass>]
-type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) as fu =
+type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
     
     let xunits = Array.init cfg.unitCount (fun _ -> XUnit cfg.maxCycles)
 
     let reservationStations = rsg.FilterByPrefix cfg.rsPrefix
-//        fu |> function
-//        | :? IntegerUnit -> RS.IntegerUnit rsRef
-//        | :? TrapUnit -> RS.TrapUnit rsRef
-//        | :? BranchUnit -> RS.BranchUnit rsRef
-//        | :? MemoryUnit -> RS.MemoryUnit rsRef
-//        | :? FloatingPointUnit -> RS.FloatingPointUnit rsRef
-//        | _ -> failwith "invalid reservation station group"
 
     let RS(r) = reservationStations.[r]
     let XUnits(i) = xunits.[i]

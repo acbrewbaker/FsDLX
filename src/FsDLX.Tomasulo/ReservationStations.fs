@@ -58,71 +58,6 @@ type RSGroup = RSGroup of ReservationStation[] with
     static member BranchUnitInit() = RSGroup.Init Config.FunctionalUnit.BranchUnit
     static member FloatingPointUnitInit() = RSGroup.Init Config.FunctionalUnit.FloatingPointUnit
 
-//and RSGroupRef = RSGroup ref
-//and RS =
-//    | IntegerUnit of RSGroupRef
-//    | TrapUnit of RSGroupRef
-//    | BranchUnit of RSGroupRef
-//    | MemoryUnit of RSGroupRef
-//    | FloatingPointUnit of RSGroupRef
-//
-//    static member ApplyFunction (f:RSGroupRef -> 'T) = function
-//        | IntegerUnit rs 
-//        | TrapUnit rs
-//        | BranchUnit rs
-//        | MemoryUnit rs
-//        | FloatingPointUnit rs -> f rs
-//
-//    member rsg.Contents = rs |> rsg.ApplyFunction (!)
-//
-//    member private rsg.GetMap() =
-//        let kvp (r:ReservationStation) = (r.Name, r)
-//        rsg.Contents |> RSGroup.Value |> Array.map kvp |> Map.ofArray
-//
-//    member rsg.Item with get(r:ReservationStation) = rsg.GetMap().[r.Name]
-//    
-//    member rsg.Length = rsg.Contents.Length
-//
-//    member rsg.Update() = 
-//        let cdb = CDB.GetInstance
-//        rsg.Contents.Iter (fun r ->
-//            match r.Qj with Some Qj -> if r.Busy && cdb.Src = Qj then   
-//                                            r.Qj <- None
-//                                            r.Vj <- cdb.Result 
-//                                        | _ -> ()
-//            
-//            match r.Qk with Some Qk -> if r.Busy && cdb.Src = Qk then
-//                                            r.Qk <- None
-//                                            r.Vk <- cdb.Result
-//                                        | _ -> ()
-//            )
-//    
-//    member rsg.Clear() = rsg.Contents.Iter (fun r -> r.Clear())
-//
-//    member rsg.AllBusy() = rsg.Contents.ForAll (fun r -> r.Busy)
-//    member rsg.Finished() = rsg.Contents.ForAll (fun r -> not(r.Busy))
-//
-//    member rsg.Iter = rsg.Contents.Iter
-//    member rsg.Filter = rsg.Contents.Filter
-//    member rsg.TryFind = rsg.Contents.TryFind
-//    member rsg.TryPick = rsg.Contents.TryPick
-//    member rsg.TryFindOperandsAvailable() = rsg.TryFind (fun r -> r.OperandsAvailable())
-//    member rsg.TryFindResultReady() = rsg.TryFind (fun r -> r.ResultReady)
-//    member rsg.TryFindEmpty() = rsg.TryFind (fun r -> r.IsEmpty())
-//    member rsg.TryFindNotBusy() = rsg.TryFind (fun r -> not(r.Busy))
-//    
-//    member rsg.Dump() =
-//        rsg.Contents.Fold (fun s r -> s + "\n" + (r.Dump()))
-//            ("Name  Busy  Opcode   Vj  Vk  Qj  Qk  A  ResultReady  ResultWritten  Result")
-//    
-//    override rsg.ToString() =
-//        let busyOnly = rsg.Contents.BusyOnly
-//        if busyOnly.Length <> 0 
-//        then (busyOnly |> Array.map (sprintf "%O\n") |> Array.reduce (+)).Trim()
-//        else ""
-//
-//    static member Update(rs:RS[]) = rs |> Array.iter (fun r -> r.Update())
-
 // The ReservationStation class contains the fields of an individual reservation station: 
 // name, busy, opcode, Vj, Vk, Qj, Qk, A, result, resultReady, resultWritten.  It also 
 // contains methods to access or modify an individual reservation station.
@@ -193,5 +128,3 @@ and ReservationStation =
             Result = 0 }
 
 and ReservationStationQueue = Queue<ReservationStation>
-
-and RSId = RSId of string option

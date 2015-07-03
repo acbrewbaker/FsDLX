@@ -18,29 +18,14 @@ type OperandReg = | NONE | GPR of int | FPR of int
 
 type CDB private () =
     static let mutable instance = CDB()
-
-    let mutable src, result = "", 0
-    member cdb.Src
-        with get() = src
-        and set(v) = src <- v
-
-    member cdb.Result
-        with get() = result
-        and set(v) = result <- v
-
+    member val Src = "" with get, set
+    member val Result = 0 with get, set
     override cdb.ToString() =
-        sprintf "CDB: result: %s station: %s"
-            (Convert.int2hex cdb.Result)
-            cdb.Src
-            
+        sprintf "CDB: result: %s station: %s" (Convert.int2hex cdb.Result) cdb.Src
     static member GetInstance = instance
     static member Reset() = instance <- CDB()
-
     static member Opt2String (cdb:CDB option) = 
-        match cdb with
-        | Some cdb -> sprintf "%O" cdb
-        | None -> ""
-        //sprintf "%O" cdb
+        match cdb with Some cdb -> sprintf "%O" cdb | None -> ""
 
 type PC private () =
     static let mutable instance = PC()
@@ -82,41 +67,6 @@ module Config =
 
     let nCharsInHexInstruction = 8
     
-//    module IntegerUnit =
-//        let rsPrefix = "Int" 
-//        let rsCount = 8
-//        let unitCount = 3
-//        let maxCycles = 1
-//        let instructions = [| "addi"; "nop"; "add"; "sub"; "and"; "or"; "xor"; "movf"; "movfp2i"; "movi2fp" |]
-//    
-//    module TrapUnit =
-//        let rsPrefix = "Trap" 
-//        let rsCount = 4
-//        let unitCount = 1
-//        let maxCycles = 1
-//        let instructions = [| "trap" |]
-//
-//    module BranchUnit =
-//        let rsPrefix = "Branch" 
-//        let rsCount = 1
-//        let unitCount = 1
-//        let maxCycles = 1
-//        let instructions = [| "beqz"; "j"; "jr"; "jal"; "jalr" |]
-//
-//    module MemoryUnit =
-//        let rsPrefix = "Memory" 
-//        let rsCount = 8
-//        let unitCount = 1
-//        let maxCycles = 1
-//        let instructions = [| "lw"; "lf"; "sw"; "sf" |]
-//
-//    module FloatingPointUnit =
-//        let rsPrefix = "FP" 
-//        let rsCount = 8
-//        let unitCount = 2
-//        let maxCycles = 4
-//        let instructions = [| "addf"; "subf"; "multf"; "divf"; "mult"; "div"; "cvtf2i"; "cvti2f" |]
-
     type FunctionalUnit =
         {
             rsPrefix    : string
