@@ -78,7 +78,7 @@ module Config =
 
         static member IntegerUnit =
             { 
-                rsPrefix = "IntUnit"
+                rsPrefix = "Int"
                 rsCount = 8
                 unitCount = 3
                 maxCycles = 1
@@ -87,7 +87,7 @@ module Config =
 
         static member TrapUnit =
             {
-                rsPrefix = "TrapUnit"
+                rsPrefix = "Trap"
                 rsCount = 4
                 unitCount = 1
                 maxCycles = 1
@@ -105,7 +105,7 @@ module Config =
 
         static member MemoryUnit =
             {
-                rsPrefix = "Memory"
+                rsPrefix = "Mem"
                 rsCount = 8
                 unitCount = 1
                 maxCycles = 2
@@ -114,7 +114,7 @@ module Config =
 
         static member FloatingPointUnit =
             {
-                rsPrefix = "FloatingPoint"
+                rsPrefix = "FP"
                 rsCount = 8
                 unitCount = 2
                 maxCycles = 4

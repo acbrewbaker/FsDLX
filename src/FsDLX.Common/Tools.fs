@@ -132,6 +132,8 @@ module Convert =
 
     let int2hex (i:int) = i.ToString("x8")
 
+    let int2bytes (i:int) = BitConverter.GetBytes i |> Array.rev
+
     let int2nibble (i:int) = (int2hex i).[4..7]
 
     let int2bits i a b = (int2bin i).[a..b]
