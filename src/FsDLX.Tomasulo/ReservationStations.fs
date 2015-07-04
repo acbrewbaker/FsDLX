@@ -31,19 +31,20 @@ type RSGroup = RSGroup of ReservationStation[] with
 
     member rsg.Item with get(r:ReservationStation) = rsg.GetMap().[r.Name]
 
-    member rsg.Update() = 
-        let cdb = CDB.GetInstance
-        rsg.Iter (fun r ->
-            match r.Qj with Some Qj -> if r.Busy && cdb.Src = Qj then   
-                                            r.Qj <- None
-                                            r.Vj <- cdb.Result 
-                                        | _ -> ()
+    member rsg.Update(cdb:CDB option) = 
+        match cdb with
+        | Some cdb ->
+            rsg.Iter (fun r ->
+                match r.Qj with Some Qj -> if r.Busy && cdb.Src = Qj then   
+                                                r.Qj <- None
+                                                r.Vj <- cdb.Result 
+                                            | _ -> ()
             
-            match r.Qk with Some Qk -> if r.Busy && cdb.Src = Qk then
-                                            r.Qk <- None
-                                            r.Vk <- cdb.Result
-                                        | _ -> ()
-            )
+                match r.Qk with Some Qk -> if r.Busy && cdb.Src = Qk then
+                                                r.Qk <- None
+                                                r.Vk <- cdb.Result
+                                            | _ -> ())
+        | _ -> ()
     
     member private rsg.DumpActive() = 
         let active = rsg.BusyOnly 

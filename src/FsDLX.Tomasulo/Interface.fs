@@ -28,13 +28,13 @@ type Simulator(input:string, verbose:bool) =
     let output = ref List.empty<string list>
     
     let finished() = if Clock.Cycles = 0 then false else FunctionalUnits.Finished()
-    let updateReservationStations(cdb) = FunctionalUnits.UpdateReservationStations()
+    let updateReservationStations = FunctionalUnits.UpdateReservationStations
     let clearReservationStations() = FunctionalUnits.ClearReservationStations()
     
     let update(cdb) =
         updateReservationStations(cdb)
-        clearReservationStations()
         RegisterFile.Update(cdb)
+        clearReservationStations()
         output := !output @ getDisplayStrings()
 
     let branchInBranchUnit() = false

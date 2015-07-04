@@ -74,7 +74,7 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
             instruction.S1Reg,
             instruction.S2Reg,
             instruction.Immediate
-
+        
         match fu.TryFindEmptyStation() with
         | Some r -> 
             
@@ -91,7 +91,7 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
 
             fu.Queue.Enqueue(r)
 
-        | None -> fu.Stall <- true            
+        | _ -> fu.Stall <- true
 
     default fu.Cycle xunit =
         match xunit.Station with
@@ -147,14 +147,15 @@ and IntegerUnit private (cfg, rsg) =
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> IntegerUnit(cfg, rsg)
 
-and TrapUnit private (cfg, rsg) =
+and TrapUnit private (cfg, rsg) as tu =
     inherit FunctionalUnit(cfg, rsg)
 
     static let cfg = Config.FunctionalUnit.TrapUnit
     static let mutable instance = fun rsg -> TrapUnit(cfg, rsg) 
-
+    
+    let RS(r) = tu.ReservationStations.[r]
+    
     override tu.Compute r =
-        let RS(r) = tu.ReservationStations.[r]
         printf "%s"
             (match RS(r).Op with
             | Some op -> 
@@ -167,18 +168,23 @@ and TrapUnit private (cfg, rsg) =
                     |> Convert.bytes2string
                 | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
             | None -> "")
-        RS(r).ResultReady <- true
-
+        RS(r).ResultReady <- true; RS(r).ResultWritten <- true //; RS(r).Clear()
+        
     override tu.Execute() =
         let XUnits(x) = tu.ExecutionUnits.[x]
         let tryFindReadyStation() =
             if      tu.Queue.Count > 0 
-            then    tu.ReservationStations.TryFind (fun r -> r.Qj.IsNone && (r.Name = tu.Queue.Peek().Name))
+            then    tu.ReservationStations.TryFind (fun r -> r.OperandsAvailable() && (r.Name = tu.Queue.Peek().Name))
             else    None
         match tu.TryFindAvailableXUnit(), tryFindReadyStation() with
         | Some x, Some r -> XUnits(x).Set(tu.Queue.Dequeue()) | _ -> ()
 
         tu.ExecutionUnits |> Array.iter tu.Cycle
+
+    override tu.Write() =
+        //let cdb = CDB.GetInstance
+        //tu.ReservationStations.Iter (fun r -> if RS(r).ResultReady then RS(r).ResultWritten <- true)
+        None
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> TrapUnit(cfg, rsg)
@@ -247,7 +253,7 @@ and MemoryUnit private (cfg, rsg) as mu =
     override mu.Compute r =
         match RS(r).Op.Value.Name with
         | "lw" | "lf" -> RS(r).Result <- Memory.GetInstance.[RS(r).Vj + RS(r).A.Value]
-        | _ -> Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
+        | _ -> () //Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
         RS(r).ResultReady <- true
 
     override mu.Execute() =
@@ -260,6 +266,23 @@ and MemoryUnit private (cfg, rsg) as mu =
         | Some x, Some r -> XUnits(x).Set(mu.Queue.Dequeue()) | _ -> ()
 
         mu.ExecutionUnits |> Array.iter mu.Cycle
+
+    override mu.Write() =
+        let cdb = CDB.GetInstance
+        mu.ReservationStations.Iter (fun r ->
+            if RS(r).ResultReady then
+                match RS(r).Op.Value.Name with
+                | "sw" | "sf" -> 
+                    Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
+                    RS(r).ResultWritten <- true
+                | _ -> ())
+        match mu.TryFindResultReady() with
+        | Some r ->
+            RS(r).ResultWritten <- true
+            cdb.Result <- RS(r).Result
+            cdb.Src <- RS(r).Name
+            Some(cdb)
+        | None -> None
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> MemoryUnit(cfg, rsg)
@@ -337,7 +360,7 @@ and FunctionalUnits private () =
         
     member fu.Finished() = allfu |> Array.forall (fun fu -> fu.Finished())
 
-    member fu.UpdateReservationStations() = allrs.Update()
+    member fu.UpdateReservationStations = allrs.Update
 
     member fu.ClearReservationStations() = allfu |> Array.iter (fun u -> u.Clear())
    
