@@ -54,6 +54,11 @@ type Simulator(input:string, verbose:bool) =
         let instruction = Instruction.OfInstructionInt i
         if instruction.FuncCode = FuncCode.HALT then halt.Fetched <- true
         instruction
+
+    let dump() =
+        printfn "\n%O" Clock
+        FunctionalUnits.DumpFU() |> printfn "%s"
+        FunctionalUnits.DumpRS() |> printfn "%s"
         
     let runRegular() =
         Mem.Load(input)
@@ -69,6 +74,7 @@ type Simulator(input:string, verbose:bool) =
                 if not(halt.Fetched) && not(stall) then PC.Increment()
             update(!cdb)
             //printfn "%O" gpr
+            //dump()
             Clock.Tic()
         
                     

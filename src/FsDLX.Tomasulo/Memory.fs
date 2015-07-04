@@ -43,12 +43,13 @@ type Memory private () =
         with get(address) = 
             let a = address in BitConverter.ToInt32(Array.rev M.[a..a+3], 0)
         and set address (v:int) = 
-            let a = address in Array.blit (BitConverter.GetBytes v) 0 M a 4
+            let data = Convert.int2bytes v in Array.blit data 0 M address data.Length
 
     member m.AsBytes = M
 
     member m.Write(addr:int, data:byte[]) = Array.blit data 0 M addr data.Length
     member m.Write(addr, hex) = m.Write(addr, Convert.hex2bytes hex)
+    member m.Write(addr, int':int) = m.Write(addr, Convert.int2hex int')
 
     member m.Dump(cols) = M |> dumpBy cols |> sprintf "%s"
     member m.Dump()     = m.Dump(8)
