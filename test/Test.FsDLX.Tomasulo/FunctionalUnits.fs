@@ -52,7 +52,7 @@ let run (stopCycle:int) =
         if Clock.Cycles = 0 then false else FunctionalUnits.Finished()
 
     let updateReservationStations(cdb) = 
-        FunctionalUnits.UpdateReservationStations()
+        FunctionalUnits.UpdateReservationStations(cdb)
         RegisterFile.Update(cdb)
 
     let clearReservationStations() = FunctionalUnits.ClearReservationStations()
