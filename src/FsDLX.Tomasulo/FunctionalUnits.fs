@@ -62,7 +62,6 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
     abstract member Compute  : ReservationStation -> unit
     abstract member Issue : Instruction -> unit
     abstract member Execute : unit -> unit
-    abstract member Write : unit -> CDB option
     
     default fu.Issue instruction =
         let Regs(i) = (Regs.GetInstance instruction.AsInt).[i]
@@ -97,22 +96,12 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
         match xunit.Station with
             | Some station -> 
                 if xunit.Busy && xunit.RemainingCycles > 0 then xunit.Cycle()
-                if xunit.RemainingCycles = 0 && not(station.ResultReady) then
+                if xunit.Busy && (xunit.RemainingCycles = 0) && not(station.ResultReady) then
                     fu.Compute station; xunit.Reset();
             | None -> ()
 
     default fu.Execute() = 
         fu.TrySetXUnit(); xunits |> Array.iter fu.Cycle
-
-    default fu.Write() =
-        let cdb = CDB.GetInstance
-        match fu.TryFindResultReady() with
-        | Some r ->
-            RS(r).ResultWritten <- true
-            cdb.Result <- RS(r).Result
-            cdb.Src <- RS(r).Name
-            Some(cdb)
-        | None -> None
 
 and IntegerUnit private (cfg, rsg) =
     inherit FunctionalUnit(cfg, rsg)
@@ -168,7 +157,7 @@ and TrapUnit private (cfg, rsg) as tu =
                     |> Convert.bytes2string
                 | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
             | None -> "")
-        RS(r).ResultReady <- true; RS(r).ResultWritten <- true //; RS(r).Clear()
+        RS(r).ResultReady <- true; //RS(r).ResultWritten <- true //; RS(r).Clear()
         
     override tu.Execute() =
         let XUnits(x) = tu.ExecutionUnits.[x]
@@ -181,10 +170,10 @@ and TrapUnit private (cfg, rsg) as tu =
 
         tu.ExecutionUnits |> Array.iter tu.Cycle
 
-    override tu.Write() =
-        //let cdb = CDB.GetInstance
-        //tu.ReservationStations.Iter (fun r -> if RS(r).ResultReady then RS(r).ResultWritten <- true)
-        None
+//    override tu.Write() =
+//        //let cdb = CDB.GetInstance
+//        tu.ReservationStations.Iter (fun r -> if RS(r).ResultReady then RS(r).ResultWritten <- true)
+//        None
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> TrapUnit(cfg, rsg)
@@ -253,7 +242,7 @@ and MemoryUnit private (cfg, rsg) as mu =
     override mu.Compute r =
         match RS(r).Op.Value.Name with
         | "lw" | "lf" -> RS(r).Result <- Memory.GetInstance.[RS(r).Vj + RS(r).A.Value]
-        | _ -> () //Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
+        | _ -> Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
         RS(r).ResultReady <- true
 
     override mu.Execute() =
@@ -267,34 +256,19 @@ and MemoryUnit private (cfg, rsg) as mu =
 
         mu.ExecutionUnits |> Array.iter mu.Cycle
 
-    override mu.Write() =
-        let cdb = CDB.GetInstance
-        mu.ReservationStations.Iter (fun r ->
-            if RS(r).ResultReady then
-                match RS(r).Op.Value.Name with
-                | "sw" | "sf" -> 
-                    Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
-                    RS(r).ResultWritten <- true
-                | _ -> ())
-        match mu.TryFindResultReady() with
-        | Some r ->
-            RS(r).ResultWritten <- true
-            cdb.Result <- RS(r).Result
-            cdb.Src <- RS(r).Name
-            Some(cdb)
-        | None -> None
-
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> MemoryUnit(cfg, rsg)
     
-and FloatingPointUnit private (cfg, rsg) =
+and FloatingPointUnit private (cfg, rsg) as fpu =
     inherit FunctionalUnit(cfg, rsg)
 
     static let cfg = Config.FunctionalUnit.FloatingPointUnit
     static let mutable instance = fun rsg -> FloatingPointUnit(cfg, rsg)
 
+    let RS(r) = fpu.ReservationStations.[r]
+
     override fpu.Compute r =
-        let RS(r) = fpu.ReservationStations.[r]
+        //let RS(r) = fpu.ReservationStations.[r]
         RS(r).Result <-
             match RS(r).Op with
             | Some op ->
@@ -313,8 +287,11 @@ and FloatingPointUnit private (cfg, rsg) =
                 | "cvti2f" -> fun x y -> x
                 | _ -> failwith "invalid floating point unit instruction")
                 |> int
-            | _ -> failwith "tried to compute with no opcode"
+            | op -> printfn "%O" op; failwith (sprintf "tried to compute with no opcode (%O)" op)
         RS(r).ResultReady <- true
+
+    override fpu.Execute() = 
+        fpu.TrySetXUnit(); fpu.ExecutionUnits |> Array.iter fpu.Cycle
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> FloatingPointUnit(cfg, rsg)
@@ -333,9 +310,7 @@ and FunctionalUnits private () =
 
     let allfu =
         let cast u = u :> FunctionalUnit
-        //[| cast iu; cast tu; cast bu; cast mu; cast fpu |]
-        [| cast iu; cast tu; cast mu; |]
-
+        [| cast iu; cast tu; cast bu; cast mu; cast fpu |]
     
     member val All = allfu with get
 
@@ -344,7 +319,16 @@ and FunctionalUnits private () =
     member fu.Halt() = allfu |> Array.forall (fun u -> u.Halt = false) |> not
     member fu.Stall() = allfu |> Array.forall (fun u -> u.Stall)
 
-    member fu.Write() = allfu |> Array.tryPick (fun u -> u.Write())
+    member fu.Write() = //allfu |> Array.tryPick (fun u -> u.Write())
+        let cdb = CDB.GetInstance
+        let RS(r) = allrs.[r]
+        match allrs.TryFindResultReady() with
+        | Some r ->
+            RS(r).ResultWritten <- true
+            cdb.Result <- RS(r).Result
+            cdb.Src <- RS(r).Name
+            Some(cdb)
+        | _ -> None
 
     member fu.Execute() = allfu |> Array.iter (fun u -> u.Execute())
 

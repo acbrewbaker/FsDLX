@@ -65,12 +65,14 @@ type Simulator(input:string, verbose:bool) =
         let mutable stall = false
         
         while (not(halt.Issued) || not(finished())) do
-//        while (not(halt.Issued) || not(finished())) && PC.Value < (Convert.hex2int "00000084") do
+//        while (not(halt.Issued) || not(finished())) && PC.Value < (Convert.hex2int "0000003c") do
             let gpr = GPR.GetInstance
             cdb := write()
             execute()
             if not(halt.Issued) && not(branchInBranchUnit()) then
-                stall <- Mem.[PC.Value] |> fetch |> issue
+                let instruction = Mem.[PC.Value] |> fetch
+                stall <- instruction |> issue
+//                stall <- Mem.[PC.Value] |> fetch |> issue
                 if not(halt.Fetched) && not(stall) then PC.Increment()
             update(!cdb)
             //printfn "%O" gpr
