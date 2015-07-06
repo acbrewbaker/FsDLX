@@ -253,7 +253,7 @@ and MemoryUnit private (cfg, rsg) as mu =
     override mu.Compute r =
         match RS(r).Op.Value.Name with
         | "lw" | "lf" -> RS(r).Result <- Memory.GetInstance.[RS(r).Vj + RS(r).A.Value]
-        | _ -> () //Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
+        | _ -> Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
         RS(r).ResultReady <- true
 
     override mu.Execute() =
@@ -266,23 +266,6 @@ and MemoryUnit private (cfg, rsg) as mu =
         | Some x, Some r -> XUnits(x).Set(mu.Queue.Dequeue()) | _ -> ()
 
         mu.ExecutionUnits |> Array.iter mu.Cycle
-
-    override mu.Write() =
-        let cdb = CDB.GetInstance
-        mu.ReservationStations.Iter (fun r ->
-            if RS(r).ResultReady then
-                match RS(r).Op.Value.Name with
-                | "sw" | "sf" -> 
-                    Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
-                    RS(r).ResultWritten <- true
-                | _ -> ())
-        match mu.TryFindResultReady() with
-        | Some r ->
-            RS(r).ResultWritten <- true
-            cdb.Result <- RS(r).Result
-            cdb.Src <- RS(r).Name
-            Some(cdb)
-        | None -> None
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> MemoryUnit(cfg, rsg)
@@ -333,10 +316,8 @@ and FunctionalUnits private () =
 
     let allfu =
         let cast u = u :> FunctionalUnit
-        //[| cast iu; cast tu; cast bu; cast mu; cast fpu |]
-        [| cast iu; cast tu; cast mu; |]
-
-    
+        [| cast iu; cast tu; cast bu; cast mu; cast fpu |]
+           
     member val All = allfu with get
 
     member val ReservationStations = allrs with get
