@@ -127,6 +127,9 @@ and IntegerUnit private (cfg, rsg) as iu =
     
     let RS(r) = iu.ReservationStations.[r]
     
+    let cvtf2i (x:float32) = BitConverter.ToInt32(BitConverter.GetBytes(x),0)
+    let cvti2f (x:int) = BitConverter.ToSingle(BitConverter.GetBytes(x),0)
+
     override iu.Compute r =
         RS(r).Result <- 
             match RS(r).Op with
@@ -143,8 +146,8 @@ and IntegerUnit private (cfg, rsg) as iu =
                 | "or" -> (|||)
                 | "xor" -> (^^^)
                 | "movf" -> fun x y -> x
-                | "movfp2i" -> fun x y -> x
-                | "movi2fp" -> fun x y -> x
+                | "movfp2i" -> fun x y -> x |> cvti2f |> cvtf2i
+                | "movi2fp" -> fun x y -> x |> cvti2f |> cvtf2i
                 | "nop" -> fun _ _ -> 0
                 | op -> printfn "%A" op; failwith "invalid integer unit instruction"
             | None -> failwith "tried to compute with no opcode"
@@ -274,25 +277,28 @@ and FloatingPointUnit private (cfg, rsg) as fpu =
 
     let RS(r) = fpu.ReservationStations.[r]
     
+    let cvtf2i (x:float32) = BitConverter.ToInt32(BitConverter.GetBytes(x),0)
+    let cvti2f (x:int) = BitConverter.ToSingle(BitConverter.GetBytes(x),0)
+
     override fpu.Compute r =
+        let f g x y = (cvti2f x, cvti2f y) ||> g |> cvtf2i
         RS(r).Result <-
             match RS(r).Op with
             | Some op ->
                 if      RS(r).A.IsSome
                 then    RS(r).Vj, RS(r).A.Value
                 else    RS(r).Vj, RS(r).Vk
-                ||> (fun x y -> float x, float y) ||>
+                ||>
                 (match op.Name with
-                | "addf" -> (+)
-                | "subf" -> (-)
-                | "multf" -> (*)
-                | "divf" -> (/)
+                | "addf" -> f (+)
+                | "subf" -> f (-)
+                | "multf" -> f (*)
+                | "divf" -> f (/)
                 | "mult" -> (*)
                 | "div" -> (/)
-                | "cvtf2i" -> fun x y -> x
-                | "cvti2f" -> fun x y -> x
+                | "cvtf2i" -> fun x y -> x |> cvti2f |> int
+                | "cvti2f" -> fun x y -> x |> float32 |> cvtf2i
                 | _ -> failwith "invalid floating point unit instruction")
-                |> int
             | _ -> failwith "tried to compute with no opcode"
         RS(r).ResultReady <- true
 

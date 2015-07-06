@@ -1,5 +1,6 @@
 ﻿namespace FsDLX.Tomasulo
 
+open System
 open System.Collections
 open FsDLX.Common
 
@@ -136,4 +137,7 @@ and Imm     = | NONE  | A of (int * int) with
     member this.GetImmVal(i:Instruction) =
         match this with
         | NONE -> None
-        | A imm -> imm ||> Convert.int2bits2int (i.AsInt) |> Some
+        | A imm -> 
+            let a = imm ||> Convert.int2bits (i.AsInt)
+            Convert.ToInt32(a.PadLeft(32,a.[0]),2)
+            |> Some
