@@ -6,6 +6,7 @@ open FsDLX.Common
 type HALT() =
     member val Issued = false with get,set
     member val Fetched = false with get,set
+    override h.ToString() = sprintf "HALT - Issued(%A), Fetched(%A)" (h.Issued) (h.Fetched)
 
 type Simulator(input:string, verbose:bool) =
     let cdb : CDB option ref = ref None
@@ -28,13 +29,11 @@ type Simulator(input:string, verbose:bool) =
     let output = ref List.empty<string list>
     
     let finished() = if Clock.Cycles = 0 then false else FunctionalUnits.Finished()
-    let updateReservationStations = FunctionalUnits.UpdateReservationStations
-    let clearReservationStations() = FunctionalUnits.ClearReservationStations()
     
     let update(cdb) =
-        updateReservationStations(cdb)
+        FunctionalUnits.UpdateReservationStations(cdb)
         RegisterFile.Update(cdb)
-        clearReservationStations()
+        FunctionalUnits.ClearReservationStations()
         output := !output @ getDisplayStrings()
 
     let branchInBranchUnit() = false
@@ -42,10 +41,8 @@ type Simulator(input:string, verbose:bool) =
     let halt = HALT()
 
     let write = FunctionalUnits.Write
-
     let execute = FunctionalUnits.Execute
-
-    let issue i =
+    let issue i = 
         let stall = FunctionalUnits.Issue i
         halt.Issued <- FunctionalUnits.Halt()
         stall
@@ -66,18 +63,15 @@ type Simulator(input:string, verbose:bool) =
         
         while (not(halt.Issued) || not(finished())) do
 //        while (not(halt.Issued) || not(finished())) && PC.Value < (Convert.hex2int "00000084") do
-            let gpr = GPR.GetInstance
             cdb := write()
             execute()
             if not(halt.Issued) && not(branchInBranchUnit()) then
                 stall <- Mem.[PC.Value] |> fetch |> issue
                 if not(halt.Fetched) && not(stall) then PC.Increment()
             update(!cdb)
-            //printfn "%O" gpr
             //dump()
             Clock.Tic()
-        
-                    
+                            
     let runVerbose() = ()
     
     let display() = ()

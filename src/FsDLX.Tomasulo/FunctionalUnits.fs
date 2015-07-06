@@ -114,14 +114,15 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
             Some(cdb)
         | None -> None
 
-and IntegerUnit private (cfg, rsg) =
+and IntegerUnit private (cfg, rsg) as iu =
     inherit FunctionalUnit(cfg, rsg)
     
     static let cfg = Config.FunctionalUnit.IntegerUnit
     static let mutable instance = fun rsg -> IntegerUnit(cfg, rsg)
     
+    let RS(r) = iu.ReservationStations.[r]
+    
     override iu.Compute r =
-        let RS(r) = iu.ReservationStations.[r]
         RS(r).Result <- 
             match RS(r).Op with
             | Some op -> 
@@ -209,7 +210,7 @@ and MemoryUnit private (cfg, rsg) as mu =
     let RS(r) = mu.ReservationStations.[r]
     let XUnits(x) = mu.ExecutionUnits.[x]
 
-    override fu.Issue instruction =
+    override mu.Issue instruction =
         let Regs(i) = (Regs.GetInstance instruction.AsInt).[i]
         let RegisterStat(i) = (RegisterStat.GetInstance instruction.AsInt).[i]
 
@@ -220,7 +221,7 @@ and MemoryUnit private (cfg, rsg) as mu =
             instruction.S2Reg,
             instruction.Immediate
 
-        match fu.TryFindEmptyStation() with
+        match mu.TryFindEmptyStation() with
         | Some r -> 
             RS(r).Op <- Some(opcode)
 
@@ -229,8 +230,7 @@ and MemoryUnit private (cfg, rsg) as mu =
   
             RS(r).A <- imm
             RS(r).Busy <- true
-
-
+            
             match opcode.Name with
             | "lw" | "lf" ->
                 RegisterStat(rd).Qi <- Some(RS(r).Name)
@@ -238,17 +238,9 @@ and MemoryUnit private (cfg, rsg) as mu =
                 match RegisterStat(rd).Qi with  | Some _->  RS(r).Qk <- RegisterStat(rd).Qi
                                                 | None  ->  RS(r).Vk <- Regs(rd); RS(r).Qk <- None
                                                 
-            fu.Queue.Enqueue(r)
+            mu.Queue.Enqueue(r)
 
-        | None -> fu.Stall <- true  
-
-    default fu.Cycle xunit =
-        match xunit.Station with
-            | Some station -> 
-                if xunit.Busy && xunit.RemainingCycles > 0 then xunit.Cycle()
-                if xunit.RemainingCycles = 0 && not(station.ResultReady) then
-                    fu.Compute station; xunit.Reset();
-            | None -> ()
+        | None -> mu.Stall <- true  
 
     override mu.Compute r =
         match RS(r).Op.Value.Name with
@@ -270,14 +262,15 @@ and MemoryUnit private (cfg, rsg) as mu =
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> MemoryUnit(cfg, rsg)
     
-and FloatingPointUnit private (cfg, rsg) =
+and FloatingPointUnit private (cfg, rsg) as fpu =
     inherit FunctionalUnit(cfg, rsg)
 
     static let cfg = Config.FunctionalUnit.FloatingPointUnit
     static let mutable instance = fun rsg -> FloatingPointUnit(cfg, rsg)
 
+    let RS(r) = fpu.ReservationStations.[r]
+    
     override fpu.Compute r =
-        let RS(r) = fpu.ReservationStations.[r]
         RS(r).Result <-
             match RS(r).Op with
             | Some op ->
@@ -323,7 +316,7 @@ and FunctionalUnits private () =
     member val ReservationStations = allrs with get
 
     member fu.Halt() = allfu |> Array.forall (fun u -> u.Halt = false) |> not
-    member fu.Stall() = allfu |> Array.forall (fun u -> u.Stall)
+    member fu.Stall() = allfu |> Array.forall (fun u -> u.Stall = false) |> not
 
     member fu.Write() = allfu |> Array.tryPick (fun u -> u.Write())
 
