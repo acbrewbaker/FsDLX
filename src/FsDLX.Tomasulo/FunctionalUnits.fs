@@ -38,10 +38,16 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
     
     member fu.TryFindEmptyStation() = fu.ReservationStations.TryFindEmpty()
     member fu.TryFindReadyStation() = fu.ReservationStations.TryFind (fun r -> r.OperandsAvailable())
-    member fu.TryFindAvailableXUnit() = fu.ExecutionUnits |> Array.tryFindIndex (fun xunit -> not(xunit.Busy))
+    member fu.TryFindAvailableXUnit() = fu.ExecutionUnits |> Array.tryFindIndex (fun xunit -> xunit.Busy = false)
     member fu.TrySetXUnit() = 
         match fu.TryFindReadyStation(), fu.TryFindAvailableXUnit() with 
-        | Some r, Some x -> XUnits(x).Set r | _ -> ()
+        | Some r, Some x -> 
+            if fu.ExecutionUnits |> Array.forall (fun xunit -> 
+                match xunit.Station with 
+                | Some station -> r.Name <> station.Name
+                | _ -> true) then XUnits(x).Set r 
+              
+        | _ -> ()
 
     member fu.TryFindResultReady() = fu.ReservationStations.TryFindResultReady()
     member fu.Finished() = 
@@ -90,7 +96,6 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
             RS(r).A <- imm
 
             fu.Queue.Enqueue(r)
-
         | _ -> fu.Stall <- true
 
     default fu.Cycle xunit =
@@ -169,7 +174,7 @@ and TrapUnit private (cfg, rsg) as tu =
                     |> Convert.bytes2string
                 | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
             | None -> "")
-        RS(r).ResultReady <- true; RS(r).ResultWritten <- true //; RS(r).Clear()
+        RS(r).ResultReady <- true; RS(r).ResultWritten <- true
         
     override tu.Execute() =
         let XUnits(x) = tu.ExecutionUnits.[x]
@@ -239,7 +244,6 @@ and MemoryUnit private (cfg, rsg) as mu =
                                                 | None  ->  RS(r).Vk <- Regs(rd); RS(r).Qk <- None
                                                 
             mu.Queue.Enqueue(r)
-
         | None -> mu.Stall <- true  
 
     override mu.Compute r =
@@ -317,7 +321,7 @@ and FunctionalUnits private () =
 
     member fu.Halt() = allfu |> Array.forall (fun u -> u.Halt = false) |> not
     member fu.Stall() = allfu |> Array.forall (fun u -> u.Stall = false) |> not
-
+    
     member fu.Write() = allfu |> Array.tryPick (fun u -> u.Write())
 
     member fu.Execute() = allfu |> Array.iter (fun u -> u.Execute())

@@ -54,6 +54,13 @@ let ``simple load`` () =
     memory.Load file
     memory.Dump() |> printfn "%A"
 
+[<Test>]
+let ``column dump`` () =
+    let file = inputdir @@ "fpUnit1.hex"
+    let memory = Memory.GetInstance
+    memory.Load file
+    memory.Dump(1) |> printfn "%A"
+
 //
 //type Mem() =
 //    let mutable M = Array.zeroCreate<byte> 100

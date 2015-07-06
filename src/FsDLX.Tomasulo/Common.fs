@@ -6,6 +6,7 @@ open System.Linq
 
 open FsDLX.Common
 
+exception ComputeException of string
 
 type SimulatorOutputLevel =
     | Regular

@@ -53,7 +53,9 @@ type Simulator(input:string, verbose:bool) =
         instruction
 
     let dump() =
-        printfn "\n%O" Clock
+        printfn "\n%O\n%O" Clock PC
+        printfn "%O" halt
+        printfn "Finished? %A" (finished())
         FunctionalUnits.DumpFU() |> printfn "%s"
         FunctionalUnits.DumpRS() |> printfn "%s"
         
