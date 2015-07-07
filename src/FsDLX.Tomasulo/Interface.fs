@@ -36,7 +36,7 @@ type Simulator(input:string, verbose:bool) =
         FunctionalUnits.ClearReservationStations()
         output := !output @ getDisplayStrings()
 
-    let branchInBranchUnit() = false
+    let branchInBranchUnit() = FunctionalUnits.BranchInBranchUnit()
 
     let halt = HALT()
 
