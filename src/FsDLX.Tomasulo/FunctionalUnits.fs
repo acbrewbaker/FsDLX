@@ -116,6 +116,8 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
             RS(r).ResultWritten <- true
             cdb.Result <- RS(r).Result
             cdb.Src <- RS(r).Name
+            if RS(r).Name.StartsWith("Branch") then
+                PC.GetInstance.Value <- RS(r).Result
             Some(cdb)
         | None -> None
 
@@ -198,13 +200,28 @@ and TrapUnit private (cfg, rsg) as tu =
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> TrapUnit(cfg, rsg)
 
-and BranchUnit private (cfg, rsg) =
+and BranchUnit private (cfg, rsg) as bu =
     inherit FunctionalUnit(cfg, rsg)
 
     static let cfg = Config.FunctionalUnit.BranchUnit
     static let mutable instance = fun rsg -> BranchUnit(cfg, rsg)
-        
-    override bu.Compute r = ()
+    
+    let RS(r) = bu.ReservationStations.[r]    
+
+    override bu.Compute r =
+        RS(r).Result <- 
+            match RS(r).Op with
+            | Some op -> 
+                match op.Name with
+                | "beqz" -> PC.GetInstance.Value + RS(r).A.Value
+                | "j" -> PC.GetInstance.Value + RS(r).A.Value
+                | "jr" -> RS(r).Vj
+                | "jal" -> PC.GetInstance.Value + RS(r).A.Value
+                | "jalr" -> RS(r).Vj + RS(r).A.Value
+                | op -> printfn "%A" op; failwith "invalid branch unit instruction"
+            | None -> failwith "tried to compute with no opcode"
+        printfn "Branch Compute Result ====> %A" (RS(r).Result)
+        RS(r).ResultReady <- true
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> BranchUnit(cfg, rsg)
