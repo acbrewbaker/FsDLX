@@ -142,6 +142,9 @@ module Convert =
 
     let int2bits2reg i startBit = int2bits2int i startBit (startBit + 4)
 
+    let f2i (x:float32) = BitConverter.ToInt32(BitConverter.GetBytes(x),0)
+    let i2f (x:int) = BitConverter.ToSingle(BitConverter.GetBytes(x),0)
+
     let strOption2str (o:string option) = o |> function
         | Some o -> sprintf "%s" o
         | None -> sprintf "%O" o

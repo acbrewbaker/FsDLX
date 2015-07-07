@@ -32,12 +32,21 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
     member val ReservationStations = reservationStations
     member val ExecutionUnits = xunits with get, set
     member val Queue = ReservationStationQueue()
+    member val BranchValue = 0 with get,set
 
     member val Stall = false with get, set
     member val Halt = false with get, set
     
     member fu.TryFindEmptyStation() = fu.ReservationStations.TryFindEmpty()
-    member fu.TryFindReadyStation() = fu.ReservationStations.TryFind (fun r -> r.OperandsAvailable())
+    member fu.TryFindReadyStation() = 
+        match fu with
+        | :? TrapUnit | :? MemoryUnit ->
+            if      fu.Queue.Count > 0 
+            then    fu.ReservationStations.TryFind (fun r -> r.OperandsAvailable() && (r.Name = fu.Queue.Peek().Name))
+            else    None
+        | _ ->
+            fu.ReservationStations.TryFind (fun r -> r.OperandsAvailable())
+    
     member fu.TryFindAvailableXUnit() = fu.ExecutionUnits |> Array.tryFindIndex (fun xunit -> xunit.Busy = false)
     member fu.TrySetXUnit() = 
         match fu.TryFindReadyStation(), fu.TryFindAvailableXUnit() with 
@@ -64,10 +73,10 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
         then active |> Array.mapi (fun i xunit -> sprintf "%s(%d): %O" cfg.rsPrefix i xunit)
         else [|""|]
 
-    abstract member Cycle : XUnit -> unit
+    //abstract member Cycle : XUnit -> unit
     abstract member Compute  : ReservationStation -> unit
     abstract member Issue : Instruction -> unit
-    abstract member Execute : unit -> unit
+    //abstract member Execute : unit -> unit
     abstract member Write : unit -> CDB option
     
     default fu.Issue instruction =
@@ -83,22 +92,32 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
         
         match fu.TryFindEmptyStation() with
         | Some r -> 
+            RS(r).Op <- Some(opcode)
+            RS(r).Busy <- true
+            RS(r).A <- imm
             
             match RegisterStat(rs).Qi with  | Some _->  RS(r).Qj <- RegisterStat(rs).Qi
                                             | None  ->  RS(r).Vj <- Regs(rs); RS(r).Qj <- None
   
-            match RegisterStat(rt).Qi with  | Some _->  RS(r).Qk <- RegisterStat(rt).Qi
-                                            | None  ->  RS(r).Vk <- Regs(rt); RS(r).Qk <- None
+            match opcode.Name with
+            | "lw" | "lf" ->
+                RegisterStat(rd).Qi <- Some(RS(r).Name)
+            | "sw" | "sf" ->
+                match RegisterStat(rd).Qi with  | Some _->  RS(r).Qk <- RegisterStat(rd).Qi
+                                                | None  ->  RS(r).Vk <- Regs(rd); RS(r).Qk <- None
+            | _ ->
+                match RegisterStat(rt).Qi with  | Some _->  RS(r).Qk <- RegisterStat(rt).Qi
+                                                | None  ->  RS(r).Vk <- Regs(rt); RS(r).Qk <- None
 
-            RS(r).Op <- Some(opcode)
-            RS(r).Busy <- true
-            RegisterStat(rd).Qi <- Some(RS(r).Name)
-            RS(r).A <- imm
-
+            match opcode.Name with
+            | "jal" | "jalr" ->
+                GPR.GetInstance.[31].Qi <- Some(RS(r).Name)
+            | _ -> RegisterStat(rd).Qi <- Some(RS(r).Name)
+            
             fu.Queue.Enqueue(r)
         | _ -> fu.Stall <- true
 
-    default fu.Cycle xunit =
+    member fu.Cycle (xunit:XUnit) =
         match xunit.Station with
             | Some station -> 
                 if xunit.Busy && xunit.RemainingCycles > 0 then xunit.Cycle()
@@ -106,8 +125,14 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
                     fu.Compute station; xunit.Reset();
             | None -> ()
 
-    default fu.Execute() = 
-        fu.TrySetXUnit(); xunits |> Array.iter fu.Cycle
+    member fu.Execute() = 
+        match fu with
+        | :? TrapUnit | :? MemoryUnit ->
+            match fu.TryFindAvailableXUnit(), fu.TryFindReadyStation() with
+            | Some x, Some r -> XUnits(x).Set(fu.Queue.Dequeue()) | _ -> ()
+        | _ ->
+            fu.TrySetXUnit()
+        xunits |> Array.iter fu.Cycle
 
     default fu.Write() =
         let cdb = CDB.GetInstance
@@ -116,6 +141,7 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
             RS(r).ResultWritten <- true
             cdb.Result <- RS(r).Result
             cdb.Src <- RS(r).Name
+            match fu with :? BranchUnit -> PC.GetInstance.Value <- fu.BranchValue | _ -> ()
             Some(cdb)
         | None -> None
 
@@ -127,9 +153,6 @@ and IntegerUnit private (cfg, rsg) as iu =
     
     let RS(r) = iu.ReservationStations.[r]
     
-    let cvtf2i (x:float32) = BitConverter.ToInt32(BitConverter.GetBytes(x),0)
-    let cvti2f (x:int) = BitConverter.ToSingle(BitConverter.GetBytes(x),0)
-
     override iu.Compute r =
         RS(r).Result <- 
             match RS(r).Op with
@@ -146,8 +169,8 @@ and IntegerUnit private (cfg, rsg) as iu =
                 | "or" -> (|||)
                 | "xor" -> (^^^)
                 | "movf" -> fun x y -> x
-                | "movfp2i" -> fun x y -> x |> cvti2f |> cvtf2i
-                | "movi2fp" -> fun x y -> x |> cvti2f |> cvtf2i
+                | "movfp2i" -> fun x y -> x |> Convert.i2f |> Convert.f2i
+                | "movi2fp" -> fun x y -> x |> Convert.i2f |> Convert.f2i
                 | "nop" -> fun _ _ -> 0
                 | op -> printfn "%A" op; failwith "invalid integer unit instruction"
             | None -> failwith "tried to compute with no opcode"
@@ -171,7 +194,7 @@ and TrapUnit private (cfg, rsg) as tu =
                 match op.Name with
                 | "halt" -> tu.Halt <- true; ""
                 | "dumpGPR" -> RS(r).Vj.ToString()
-                | "dumpFPR" -> BitConverter.ToSingle(BitConverter.GetBytes(RS(r).Vj),0).ToString(".0######")
+                | "dumpFPR" -> Convert.i2f(RS(r).Vj).ToString(".0######")
                 | "dumpSTR" ->
                     Memory.GetInstance.AsBytes.Skip(RS(r).Vj).TakeWhile((<>) 0uy).ToArray() 
                     |> Convert.bytes2string
@@ -179,22 +202,6 @@ and TrapUnit private (cfg, rsg) as tu =
             | None -> "")
         RS(r).ResultReady <- true; RS(r).ResultWritten <- true
         
-    override tu.Execute() =
-        let XUnits(x) = tu.ExecutionUnits.[x]
-        let tryFindReadyStation() =
-            if      tu.Queue.Count > 0 
-            then    tu.ReservationStations.TryFind (fun r -> r.OperandsAvailable() && (r.Name = tu.Queue.Peek().Name))
-            else    None
-        match tu.TryFindAvailableXUnit(), tryFindReadyStation() with
-        | Some x, Some r -> XUnits(x).Set(tu.Queue.Dequeue()) | _ -> ()
-
-        tu.ExecutionUnits |> Array.iter tu.Cycle
-
-    override tu.Write() =
-        //let cdb = CDB.GetInstance
-        //tu.ReservationStations.Iter (fun r -> if RS(r).ResultReady then RS(r).ResultWritten <- true)
-        None
-
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> TrapUnit(cfg, rsg)
 
@@ -205,40 +212,6 @@ and BranchUnit private (cfg, rsg) as bu =
     static let mutable instance = fun rsg -> BranchUnit(cfg, rsg)
     
     let RS(r) = bu.ReservationStations.[r]    
-
-    member val BranchValue = 0 with get, set
-
-    override bu.Issue instruction =
-        let Regs(i) = (Regs.GetInstance instruction.AsInt).[i]
-        let RegisterStat(i) = (RegisterStat.GetInstance instruction.AsInt).[i]
-
-        let opcode, rd, rs, rt, imm =
-            instruction.Opcode,
-            instruction.DstReg,
-            instruction.S1Reg,
-            instruction.S2Reg,
-            instruction.Immediate
-        
-        match bu.TryFindEmptyStation() with
-        | Some r -> 
-            match opcode.Name with
-            | "beqz" | "jalr" | "jr" ->
-                match RegisterStat(rs).Qi with  | Some _->  RS(r).Qj <- RegisterStat(rs).Qi
-                                                | None  ->  RS(r).Vj <- Regs(rs); RS(r).Qj <- None
-            | _ -> ()
-
-            match opcode.Name with
-            | "jal" | "jalr" ->
-                GPR.GetInstance.[31].Qi <- Some(RS(r).Name)
-            | _ -> ()
-
-            RS(r).Op <- Some(opcode)
-            RS(r).Busy <- true
-//            RegisterStat(rd).Qi <- Some(RS(r).Name)
-            RS(r).A <- imm
-
-            bu.Queue.Enqueue(r)
-        | _ -> bu.Stall <- true
 
     override bu.Compute r =
         let pc = PC.GetInstance.Value
@@ -262,19 +235,7 @@ and BranchUnit private (cfg, rsg) as bu =
                     pc
                 | op -> printfn "%A" op; failwith "invalid branch unit instruction"
             | None -> failwith "tried to compute with no opcode"
-        //printfn "Branch Compute Result ====> %A" (RS(r).Result)
         RS(r).ResultReady <- true
-
-    override bu.Write() =
-        let cdb = CDB.GetInstance
-        match bu.TryFindResultReady() with
-        | Some r ->
-            RS(r).ResultWritten <- true
-            PC.GetInstance.Value <- bu.BranchValue
-            cdb.Result <- RS(r).Result
-            cdb.Src <- RS(r).Name
-            Some(cdb)
-        | _ -> None
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> BranchUnit(cfg, rsg)
@@ -286,55 +247,12 @@ and MemoryUnit private (cfg, rsg) as mu =
     static let mutable instance = fun rsg -> MemoryUnit(cfg, rsg)
 
     let RS(r) = mu.ReservationStations.[r]
-    let XUnits(x) = mu.ExecutionUnits.[x]
-
-    override mu.Issue instruction =
-        let Regs(i) = (Regs.GetInstance instruction.AsInt).[i]
-        let RegisterStat(i) = (RegisterStat.GetInstance instruction.AsInt).[i]
-
-        let opcode, rd, rs, rt, imm =
-            instruction.Opcode,
-            instruction.DstReg,
-            instruction.S1Reg,
-            instruction.S2Reg,
-            instruction.Immediate
-
-        match mu.TryFindEmptyStation() with
-        | Some r -> 
-            RS(r).Op <- Some(opcode)
-
-            match RegisterStat(rs).Qi with  | Some _->  RS(r).Qj <- RegisterStat(rs).Qi
-                                            | None  ->  RS(r).Vj <- Regs(rs); RS(r).Qj <- None
-  
-            RS(r).A <- imm
-            RS(r).Busy <- true
-            
-            match opcode.Name with
-            | "lw" | "lf" ->
-                RegisterStat(rd).Qi <- Some(RS(r).Name)
-            | _ ->
-                match RegisterStat(rd).Qi with  | Some _->  RS(r).Qk <- RegisterStat(rd).Qi
-                                                | None  ->  RS(r).Vk <- Regs(rd); RS(r).Qk <- None
-                                                
-            mu.Queue.Enqueue(r)
-        | None -> mu.Stall <- true  
-
+    
     override mu.Compute r =
         match RS(r).Op.Value.Name with
         | "lw" | "lf" -> RS(r).Result <- Memory.GetInstance.[RS(r).Vj + RS(r).A.Value]
         | _ -> Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
         RS(r).ResultReady <- true
-
-    override mu.Execute() =
-        let XUnits(x) = mu.ExecutionUnits.[x]
-        let tryFindReadyStation() =
-            if      mu.Queue.Count > 0 
-            then    mu.ReservationStations.TryFind (fun r -> r.OperandsAvailable() && (r.Name = mu.Queue.Peek().Name))
-            else    None
-        match mu.TryFindAvailableXUnit(), tryFindReadyStation() with
-        | Some x, Some r -> XUnits(x).Set(mu.Queue.Dequeue()) | _ -> ()
-
-        mu.ExecutionUnits |> Array.iter mu.Cycle
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> MemoryUnit(cfg, rsg)
@@ -347,11 +265,8 @@ and FloatingPointUnit private (cfg, rsg) as fpu =
 
     let RS(r) = fpu.ReservationStations.[r]
     
-    let cvtf2i (x:float32) = BitConverter.ToInt32(BitConverter.GetBytes(x),0)
-    let cvti2f (x:int) = BitConverter.ToSingle(BitConverter.GetBytes(x),0)
-
     override fpu.Compute r =
-        let f g x y = (cvti2f x, cvti2f y) ||> g |> cvtf2i
+        let f g x y = (Convert.i2f x, Convert.i2f y) ||> g |> Convert.f2i
         RS(r).Result <-
             match RS(r).Op with
             | Some op ->
@@ -366,8 +281,8 @@ and FloatingPointUnit private (cfg, rsg) as fpu =
                 | "divf" -> f (/)
                 | "mult" -> (*)
                 | "div" -> (/)
-                | "cvtf2i" -> fun x y -> x |> cvti2f |> int
-                | "cvti2f" -> fun x y -> x |> float32 |> cvtf2i
+                | "cvtf2i" -> fun x y -> x |> Convert.i2f |> int
+                | "cvti2f" -> fun x y -> x |> float32 |> Convert.f2i
                 | _ -> failwith "invalid floating point unit instruction")
             | _ -> failwith "tried to compute with no opcode"
         RS(r).ResultReady <- true
