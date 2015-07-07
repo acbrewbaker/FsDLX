@@ -23,8 +23,10 @@ type XUnit(maxCycles:int) =
 type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
     
     let xunits = Array.init cfg.unitCount (fun _ -> XUnit cfg.maxCycles)
-
     let reservationStations = rsg.FilterByPrefix cfg.rsPrefix
+
+    let stationAlreadyExecuting(r:ReservationStation) =
+        xunits |> Array.forall (fun xunit -> match xunit.Station with Some station -> r.Name <> station.Name | _ -> true) |> not
 
     let RS(r) = reservationStations.[r]
     let XUnits(i) = xunits.[i]
@@ -48,15 +50,15 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
             fu.ReservationStations.TryFind (fun r -> r.OperandsAvailable())
     
     member fu.TryFindAvailableXUnit() = fu.ExecutionUnits |> Array.tryFindIndex (fun xunit -> xunit.Busy = false)
+    
     member fu.TrySetXUnit() = 
-        match fu.TryFindReadyStation(), fu.TryFindAvailableXUnit() with 
-        | Some r, Some x -> 
-            if fu.ExecutionUnits |> Array.forall (fun xunit -> 
-                match xunit.Station with 
-                | Some station -> r.Name <> station.Name
-                | _ -> true) then XUnits(x).Set r 
-              
-        | _ -> ()
+        match fu.TryFindAvailableXUnit(), fu.TryFindReadyStation() with
+        | Some x, Some r -> 
+            if not(stationAlreadyExecuting(r)) then
+                match fu with
+                | :? TrapUnit | :? MemoryUnit ->    XUnits(x).Set(fu.Queue.Dequeue())
+                | _ ->                              XUnits(x).Set(r)
+         | _ -> ()
 
     member fu.TryFindResultReady() = fu.ReservationStations.TryFindResultReady()
     member fu.Finished() = 
@@ -73,13 +75,9 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
         then active |> Array.mapi (fun i xunit -> sprintf "%s(%d): %O" cfg.rsPrefix i xunit)
         else [|""|]
 
-    //abstract member Cycle : XUnit -> unit
-    abstract member Compute  : ReservationStation -> unit
-    abstract member Issue : Instruction -> unit
-    //abstract member Execute : unit -> unit
-    abstract member Write : unit -> CDB option
+    abstract member Compute  : RSMapping -> ReservationStation -> unit
     
-    default fu.Issue instruction =
+    member fu.Issue (instruction:Instruction) =
         let Regs(i) = (Regs.GetInstance instruction.AsInt).[i]
         let RegisterStat(i) = (RegisterStat.GetInstance instruction.AsInt).[i]
 
@@ -92,13 +90,13 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
         
         match fu.TryFindEmptyStation() with
         | Some r -> 
+            fu.Queue.Enqueue(r)
             RS(r).Op <- Some(opcode)
             RS(r).Busy <- true
             RS(r).A <- imm
             
             match RegisterStat(rs).Qi with  | Some _->  RS(r).Qj <- RegisterStat(rs).Qi
                                             | None  ->  RS(r).Vj <- Regs(rs); RS(r).Qj <- None
-  
             match opcode.Name with
             | "lw" | "lf" ->
                 RegisterStat(rd).Qi <- Some(RS(r).Name)
@@ -108,33 +106,23 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
             | _ ->
                 match RegisterStat(rt).Qi with  | Some _->  RS(r).Qk <- RegisterStat(rt).Qi
                                                 | None  ->  RS(r).Vk <- Regs(rt); RS(r).Qk <- None
-
             match opcode.Name with
-            | "jal" | "jalr" ->
-                GPR.GetInstance.[31].Qi <- Some(RS(r).Name)
-            | _ -> RegisterStat(rd).Qi <- Some(RS(r).Name)
-            
-            fu.Queue.Enqueue(r)
+            | "jal" | "jalr" -> GPR.GetInstance.[31].Qi <- Some(RS(r).Name)
+            | _ ->              RegisterStat(rd).Qi <- Some(RS(r).Name)
+                        
         | _ -> fu.Stall <- true
 
-    member fu.Cycle (xunit:XUnit) =
-        match xunit.Station with
+    member fu.Execute() = 
+        let cycle (xunit:XUnit) =
+            match xunit.Station with
             | Some station -> 
                 if xunit.Busy && xunit.RemainingCycles > 0 then xunit.Cycle()
                 if xunit.RemainingCycles = 0 && not(station.ResultReady) then
-                    fu.Compute station; xunit.Reset();
+                    fu.Compute RS station; xunit.Reset();
             | None -> ()
+        fu.TrySetXUnit(); xunits |> Array.iter cycle
 
-    member fu.Execute() = 
-        match fu with
-        | :? TrapUnit | :? MemoryUnit ->
-            match fu.TryFindAvailableXUnit(), fu.TryFindReadyStation() with
-            | Some x, Some r -> XUnits(x).Set(fu.Queue.Dequeue()) | _ -> ()
-        | _ ->
-            fu.TrySetXUnit()
-        xunits |> Array.iter fu.Cycle
-
-    default fu.Write() =
+    member fu.Write() =
         let cdb = CDB.GetInstance
         match fu.TryFindResultReady() with
         | Some r ->
@@ -145,15 +133,12 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
             Some(cdb)
         | None -> None
 
-and IntegerUnit private (cfg, rsg) as iu =
+and IntegerUnit private (cfg, rsg) =
     inherit FunctionalUnit(cfg, rsg)
-    
     static let cfg = Config.FunctionalUnit.IntegerUnit
     static let mutable instance = fun rsg -> IntegerUnit(cfg, rsg)
     
-    let RS(r) = iu.ReservationStations.[r]
-    
-    override iu.Compute r =
+    override iu.Compute RS r =
         RS(r).Result <- 
             match RS(r).Op with
             | Some op -> 
@@ -179,15 +164,12 @@ and IntegerUnit private (cfg, rsg) as iu =
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> IntegerUnit(cfg, rsg)
 
-and TrapUnit private (cfg, rsg) as tu =
+and TrapUnit private (cfg, rsg) =
     inherit FunctionalUnit(cfg, rsg)
-
     static let cfg = Config.FunctionalUnit.TrapUnit
     static let mutable instance = fun rsg -> TrapUnit(cfg, rsg) 
     
-    let RS(r) = tu.ReservationStations.[r]
-    
-    override tu.Compute r =
+    override tu.Compute RS r =
         printf "%s"
             (match RS(r).Op with
             | Some op -> 
@@ -205,15 +187,12 @@ and TrapUnit private (cfg, rsg) as tu =
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> TrapUnit(cfg, rsg)
 
-and BranchUnit private (cfg, rsg) as bu =
+and BranchUnit private (cfg, rsg) =
     inherit FunctionalUnit(cfg, rsg)
-
     static let cfg = Config.FunctionalUnit.BranchUnit
     static let mutable instance = fun rsg -> BranchUnit(cfg, rsg)
     
-    let RS(r) = bu.ReservationStations.[r]    
-
-    override bu.Compute r =
+    override bu.Compute RS r =
         let pc = PC.GetInstance.Value
         RS(r).Result <- 
             match RS(r).Op with
@@ -227,11 +206,8 @@ and BranchUnit private (cfg, rsg) as bu =
                 | "j" -> bu.BranchValue <- pc + RS(r).A.Value; pc
                 | "jr" -> bu.BranchValue <- RS(r).Vj; pc
                 | "jal" -> bu.BranchValue <- pc + RS(r).A.Value; pc
-                | "jalr" -> 
-                    bu.BranchValue <-
-                        match RS(r).A with
-                        | Some a -> RS(r).Vj + a
-                        | _ -> RS(r).Vj
+                | "jalr" ->  
+                    bu.BranchValue <- match RS(r).A with Some a -> RS(r).Vj + a | _ -> RS(r).Vj
                     pc
                 | op -> printfn "%A" op; failwith "invalid branch unit instruction"
             | None -> failwith "tried to compute with no opcode"
@@ -240,15 +216,12 @@ and BranchUnit private (cfg, rsg) as bu =
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> BranchUnit(cfg, rsg)
 
-and MemoryUnit private (cfg, rsg) as mu =
+and MemoryUnit private (cfg, rsg) =
     inherit FunctionalUnit(cfg, rsg)
-
     static let cfg = Config.FunctionalUnit.MemoryUnit
     static let mutable instance = fun rsg -> MemoryUnit(cfg, rsg)
 
-    let RS(r) = mu.ReservationStations.[r]
-    
-    override mu.Compute r =
+    override mu.Compute RS r =
         match RS(r).Op.Value.Name with
         | "lw" | "lf" -> RS(r).Result <- Memory.GetInstance.[RS(r).Vj + RS(r).A.Value]
         | _ -> Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
@@ -257,15 +230,12 @@ and MemoryUnit private (cfg, rsg) as mu =
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> MemoryUnit(cfg, rsg)
     
-and FloatingPointUnit private (cfg, rsg) as fpu =
+and FloatingPointUnit private (cfg, rsg) =
     inherit FunctionalUnit(cfg, rsg)
-
     static let cfg = Config.FunctionalUnit.FloatingPointUnit
     static let mutable instance = fun rsg -> FloatingPointUnit(cfg, rsg)
 
-    let RS(r) = fpu.ReservationStations.[r]
-    
-    override fpu.Compute r =
+    override fpu.Compute RS r =
         let f g x y = (Convert.i2f x, Convert.i2f y) ||> g |> Convert.f2i
         RS(r).Result <-
             match RS(r).Op with

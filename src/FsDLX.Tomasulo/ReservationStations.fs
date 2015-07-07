@@ -154,3 +154,4 @@ and ReservationStation =
         Array.init cfg.rsCount (fun i -> ReservationStation.Init (name cfg.rsPrefix i))
 
 and ReservationStationQueue = Queue<ReservationStation>
+and RSMapping = ReservationStation -> ReservationStation
