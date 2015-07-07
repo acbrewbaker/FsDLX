@@ -56,8 +56,8 @@ type Simulator(input:string, verbose:bool) =
         printfn "\n%O\n%O" Clock PC
         printfn "%O" halt
         printfn "Finished? %A" (finished())
-        FunctionalUnits.DumpFU() |> printfn "%s"
-        FunctionalUnits.DumpRS() |> printfn "%s"
+//        FunctionalUnits.DumpFU() |> printfn "%s"
+//        FunctionalUnits.DumpRS() |> printfn "%s"
         
     let runRegular() =
         Mem.Load(input)

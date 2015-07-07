@@ -20,60 +20,44 @@ type XUnit(maxCycles:int) =
             (match xu.Station with Some station -> station.Name | _ -> "<null>")
 
 [<AbstractClass>]
-type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
+type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) as fu =
     
     let xunits = Array.init cfg.unitCount (fun _ -> XUnit cfg.maxCycles)
+    let XUnits(i) = xunits.[i]
     let reservationStations = rsg.FilterByPrefix cfg.rsPrefix
-
+    let RS(r) = reservationStations.[r]
+    let queue = ReservationStationQueue()
+    
     let stationAlreadyExecuting(r:ReservationStation) =
         xunits |> Array.forall (fun xunit -> match xunit.Station with Some station -> r.Name <> station.Name | _ -> true) |> not
 
-    let RS(r) = reservationStations.[r]
-    let XUnits(i) = xunits.[i]
+    let trySetXUnit() =
+        let tryFindReadyStation() =
+            reservationStations.TryFind
+                (fun r -> (match fu, queue.Count > 0 with
+                           | :? TrapUnit, true | :? MemoryUnit, true -> 
+                                   r.OperandsAvailable() && (r.Name = queue.Peek().Name)
+                           | _ ->  r.OperandsAvailable()))
 
-    member val ReservationStations = reservationStations
-    member val ExecutionUnits = xunits with get, set
-    member val Queue = ReservationStationQueue()
-    member val BranchValue = 0 with get,set
+        let tryFindAvailableXUnit() = xunits |> Array.tryFindIndex (fun xunit -> xunit.Busy = false)
 
-    member val Stall = false with get, set
-    member val Halt = false with get, set
-    
-    member fu.TryFindEmptyStation() = fu.ReservationStations.TryFindEmpty()
-    member fu.TryFindReadyStation() = 
-        match fu with
-        | :? TrapUnit | :? MemoryUnit ->
-            if      fu.Queue.Count > 0 
-            then    fu.ReservationStations.TryFind (fun r -> r.OperandsAvailable() && (r.Name = fu.Queue.Peek().Name))
-            else    None
-        | _ ->
-            fu.ReservationStations.TryFind (fun r -> r.OperandsAvailable())
-    
-    member fu.TryFindAvailableXUnit() = fu.ExecutionUnits |> Array.tryFindIndex (fun xunit -> xunit.Busy = false)
-    
-    member fu.TrySetXUnit() = 
-        match fu.TryFindAvailableXUnit(), fu.TryFindReadyStation() with
+        match tryFindAvailableXUnit(), tryFindReadyStation() with
         | Some x, Some r -> 
             if not(stationAlreadyExecuting(r)) then
                 match fu with
-                | :? TrapUnit | :? MemoryUnit ->    XUnits(x).Set(fu.Queue.Dequeue())
+                | :? TrapUnit | :? MemoryUnit ->    XUnits(x).Set(queue.Dequeue())
                 | _ ->                              XUnits(x).Set(r)
-         | _ -> ()
+        | _ -> ()
 
-    member fu.TryFindResultReady() = fu.ReservationStations.TryFindResultReady()
-    member fu.Finished() = 
-        (fu.ExecutionUnits |> Array.forall (fun xunit -> not(xunit.Busy))) &&
-        fu.ReservationStations.Finished()
-
-    member fu.Clear() = fu.ReservationStations.Clear()
+    member val ReservationStations = reservationStations
+    member val ExecutionUnits = xunits with get, set
+    member val Queue = queue
+    member val BranchValue = 0 with get,set
+    member val Stall = false with get, set
+    member val Halt = false with get, set
     
-    member fu.Name() = cfg.rsPrefix
-
-    member fu.Dump() = 
-        let active = fu.ExecutionUnits |> Array.filter (fun xunit -> xunit.Busy)
-        if active.Length > 0 
-        then active |> Array.mapi (fun i xunit -> sprintf "%s(%d): %O" cfg.rsPrefix i xunit)
-        else [|""|]
+    member fu.Finished() = 
+        (xunits |> Array.forall (fun xunit -> not(xunit.Busy))) && reservationStations.Finished()
 
     abstract member Compute  : RSMapping -> ReservationStation -> unit
     
@@ -88,7 +72,7 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
             instruction.S2Reg,
             instruction.Immediate
         
-        match fu.TryFindEmptyStation() with
+        match fu.ReservationStations.TryFindEmpty() with
         | Some r -> 
             fu.Queue.Enqueue(r)
             RS(r).Op <- Some(opcode)
@@ -120,11 +104,11 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
                 if xunit.RemainingCycles = 0 && not(station.ResultReady) then
                     fu.Compute RS station; xunit.Reset();
             | None -> ()
-        fu.TrySetXUnit(); xunits |> Array.iter cycle
+        trySetXUnit(); xunits |> Array.iter cycle
 
     member fu.Write() =
         let cdb = CDB.GetInstance
-        match fu.TryFindResultReady() with
+        match fu.ReservationStations.TryFindResultReady() with
         | Some r ->
             RS(r).ResultWritten <- true
             cdb.Result <- RS(r).Result
@@ -177,9 +161,7 @@ and TrapUnit private (cfg, rsg) =
                 | "halt" -> tu.Halt <- true; ""
                 | "dumpGPR" -> RS(r).Vj.ToString()
                 | "dumpFPR" -> Convert.i2f(RS(r).Vj).ToString(".0######")
-                | "dumpSTR" ->
-                    Memory.GetInstance.AsBytes.Skip(RS(r).Vj).TakeWhile((<>) 0uy).ToArray() 
-                    |> Convert.bytes2string
+                | "dumpSTR" -> Memory.GetInstance.FetchString(RS(r).Vj)
                 | s -> failwith (sprintf "(%s) is an invalid trap unit instruction" s)
             | None -> "")
         RS(r).ResultReady <- true; RS(r).ResultWritten <- true
@@ -222,9 +204,12 @@ and MemoryUnit private (cfg, rsg) =
     static let mutable instance = fun rsg -> MemoryUnit(cfg, rsg)
 
     override mu.Compute RS r =
-        match RS(r).Op.Value.Name with
-        | "lw" | "lf" -> RS(r).Result <- Memory.GetInstance.[RS(r).Vj + RS(r).A.Value]
-        | _ -> Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
+        match RS(r).Op with
+        | Some op ->
+            match op.Name with
+            | "lw" | "lf" -> RS(r).Result <- Memory.GetInstance.[RS(r).Vj + RS(r).A.Value]
+            | _ -> Memory.GetInstance.[RS(r).Vj + RS(r).A.Value] <- RS(r).Vk
+        | _ -> failwith "tried to compute with no opcode"
         RS(r).ResultReady <- true
 
     static member GetInstance = instance
@@ -303,15 +288,8 @@ and FunctionalUnits private () =
 
     member fu.UpdateReservationStations = allrs.Update
 
-    member fu.ClearReservationStations() = allfu |> Array.iter (fun u -> u.Clear())
+    member fu.ClearReservationStations() = allfu |> Array.iter (fun funit -> funit.ReservationStations.Clear())
    
-    member fu.DumpRS() = allrs.Dump()
-        
-    member fu.DumpFU() = 
-        (allfu |> Array.map (fun funit -> funit.Dump()) 
-        |> Array.concat |> Array.map ((+) "\n") |> Array.reduce (+))
-            .Trim()
-
     static member GetInstance = instance
     static member Reset() = 
         IntegerUnit.Reset()
