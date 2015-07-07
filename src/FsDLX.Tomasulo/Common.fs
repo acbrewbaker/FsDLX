@@ -57,7 +57,7 @@ module Config =
 
     module Memory =
         let outputLevel = SimulatorOutputLevel.Regular
-        let DefaultMemorySize = 1000
+        let DefaultMemorySize = 1280
 
     module FunctionalUnits =
         let outputLevel = SimulatorOutputLevel.Debug

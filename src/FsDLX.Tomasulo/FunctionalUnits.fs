@@ -116,8 +116,6 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) =
             RS(r).ResultWritten <- true
             cdb.Result <- RS(r).Result
             cdb.Src <- RS(r).Name
-            if RS(r).Name.StartsWith("Branch") then
-                PC.GetInstance.Value <- RS(r).Result
             Some(cdb)
         | None -> None
 
@@ -208,20 +206,75 @@ and BranchUnit private (cfg, rsg) as bu =
     
     let RS(r) = bu.ReservationStations.[r]    
 
+    member val BranchValue = 0 with get, set
+
+    override bu.Issue instruction =
+        let Regs(i) = (Regs.GetInstance instruction.AsInt).[i]
+        let RegisterStat(i) = (RegisterStat.GetInstance instruction.AsInt).[i]
+
+        let opcode, rd, rs, rt, imm =
+            instruction.Opcode,
+            instruction.DstReg,
+            instruction.S1Reg,
+            instruction.S2Reg,
+            instruction.Immediate
+        
+        match bu.TryFindEmptyStation() with
+        | Some r -> 
+            match opcode.Name with
+            | "beqz" | "jalr" | "jr" ->
+                match RegisterStat(rs).Qi with  | Some _->  RS(r).Qj <- RegisterStat(rs).Qi
+                                                | None  ->  RS(r).Vj <- Regs(rs); RS(r).Qj <- None
+            | _ -> ()
+
+            match opcode.Name with
+            | "jal" | "jalr" ->
+                GPR.GetInstance.[31].Qi <- Some(RS(r).Name)
+            | _ -> ()
+
+            RS(r).Op <- Some(opcode)
+            RS(r).Busy <- true
+//            RegisterStat(rd).Qi <- Some(RS(r).Name)
+            RS(r).A <- imm
+
+            bu.Queue.Enqueue(r)
+        | _ -> bu.Stall <- true
+
     override bu.Compute r =
+        let pc = PC.GetInstance.Value
         RS(r).Result <- 
             match RS(r).Op with
             | Some op -> 
                 match op.Name with
-                | "beqz" -> PC.GetInstance.Value + RS(r).A.Value
-                | "j" -> PC.GetInstance.Value + RS(r).A.Value
-                | "jr" -> RS(r).Vj
-                | "jal" -> PC.GetInstance.Value + RS(r).A.Value
-                | "jalr" -> RS(r).Vj + RS(r).A.Value
+                | "beqz" -> 
+                    let bv = pc + RS(r).A.Value
+                    if      RS(r).Vj = 0 
+                    then    bu.BranchValue <- bv; bv
+                    else    bu.BranchValue <- pc; pc
+                | "j" -> bu.BranchValue <- pc + RS(r).A.Value; pc
+                | "jr" -> bu.BranchValue <- RS(r).Vj; pc
+                | "jal" -> bu.BranchValue <- pc + RS(r).A.Value; pc
+                | "jalr" -> 
+                    bu.BranchValue <-
+                        match RS(r).A with
+                        | Some a -> RS(r).Vj + a
+                        | _ -> RS(r).Vj
+                    pc
                 | op -> printfn "%A" op; failwith "invalid branch unit instruction"
             | None -> failwith "tried to compute with no opcode"
-        printfn "Branch Compute Result ====> %A" (RS(r).Result)
+        //printfn "Branch Compute Result ====> %A" (RS(r).Result)
         RS(r).ResultReady <- true
+
+    override bu.Write() =
+        let cdb = CDB.GetInstance
+        match bu.TryFindResultReady() with
+        | Some r ->
+            RS(r).ResultWritten <- true
+            PC.GetInstance.Value <- bu.BranchValue
+            cdb.Result <- RS(r).Result
+            cdb.Src <- RS(r).Name
+            Some(cdb)
+        | _ -> None
 
     static member GetInstance = instance
     static member Reset() = instance <- fun rsg -> BranchUnit(cfg, rsg)
@@ -358,7 +411,9 @@ and FunctionalUnits private () =
             | Memory(_) -> mu.Issue i
             | FloatingPoint(_) -> fpu.Issue i
         fu.Stall()
-        
+    
+    member fu.BranchInBranchUnit() = bu.ReservationStations.ForAll (fun r -> r.Busy = false) |> not
+       
     member fu.Finished() = allfu |> Array.forall (fun fu -> fu.Finished())
 
     member fu.UpdateReservationStations = allrs.Update
