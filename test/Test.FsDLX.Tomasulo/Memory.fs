@@ -47,19 +47,19 @@ let ``step by step load`` () =
     data
     |> List.iteri (fun i e -> printfn "(%s) %A" (Convert.int2hex i) e)
 
-[<Test>]
-let ``simple load`` () =
-    let file = inputdir @@ "intUnit1.hex"
-    let memory = Memory.GetInstance
-    memory.Load file
-    memory.Dump() |> printfn "%A"
+//[<Test>]
+//let ``simple load`` () =
+//    let file = inputdir @@ "intUnit1.hex"
+//    let memory = Memory.GetInstance
+//    memory.Load file
+//    memory.Dump() |> printfn "%A"
 
-[<Test>]
-let ``column dump`` () =
-    let file = inputdir @@ "fpUnit1.hex"
-    let memory = Memory.GetInstance
-    memory.Load file
-    memory.Dump(1) |> printfn "%A"
+//[<Test>]
+//let ``column dump`` () =
+//    let file = inputdir @@ "fpUnit1.hex"
+//    let memory = Memory.GetInstance
+//    memory.Load file
+//    memory.Dump(1) |> printfn "%A"
 
 //
 //type Mem() =

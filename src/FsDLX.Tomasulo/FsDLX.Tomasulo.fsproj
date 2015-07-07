@@ -48,6 +48,7 @@
     <Compile Include="Instructions.fs" />
     <Compile Include="Memory.fs" />
     <Compile Include="FunctionalUnits.fs" />
+    <Compile Include="Display.fs" />
     <Compile Include="Interface.fs" />
     <None Include="Script.fsx" />
   </ItemGroup>

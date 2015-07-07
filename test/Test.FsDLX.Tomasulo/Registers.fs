@@ -25,7 +25,7 @@ let ``gpr set``() =
     printfn "gpr(idx).Contents: %O" (gpr.[idx].Contents)
 
 
-    printfn "gpr.R0toR7():  %O" (gpr.R0toR7())
+//    printfn "gpr.R0toR7():  %O" (gpr.R0toR7())
 
 
 [<Test>]
