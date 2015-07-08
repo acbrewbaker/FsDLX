@@ -3,7 +3,6 @@
 open System
 open System.Collections
 open System.Linq
-open FsDLX.Common
 
 
 type XUnit(maxCycles:int) =

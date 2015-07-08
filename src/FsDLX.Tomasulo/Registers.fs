@@ -1,7 +1,6 @@
 ﻿namespace FsDLX.Tomasulo
 
 open System
-open FsDLX.Common
 
 
 type RegisterFile private () =
