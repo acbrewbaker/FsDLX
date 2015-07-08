@@ -1,12 +1,7 @@
 ﻿namespace FsDLX.Tomasulo
 
 open System.Collections
-open FsDLX.Common
-
-type HALT() =
-    member val Issued = false with get,set
-    member val Fetched = false with get,set
-    override h.ToString() = sprintf "HALT - Issued(%A), Fetched(%A)" (h.Issued) (h.Fetched)
+open Config
 
 type Simulator(input:string, verbose:bool) =
     let cdb : CDB option ref = ref None
@@ -16,15 +11,15 @@ type Simulator(input:string, verbose:bool) =
     let Mem = Memory.GetInstance
     let FunctionalUnits = FunctionalUnits.Reset(); FunctionalUnits.GetInstance
     
-    let getDisplayStrings () =
-        let memStr = if Clock.Cycles = 0 then Mem.ToString() else ""
-        [[
-            sprintf "%O" Clock
-            sprintf "%O" FunctionalUnits
-            CDB.Opt2String !cdb        
-            sprintf "%O" RegisterFile
-            memStr        
-        ] |> List.choose (fun s -> if s.Length > 1 then Some s else None) ]
+//    let getDisplayStrings () =
+//        let memStr = if Clock.Cycles = 0 then Mem.ToString() else ""
+//        [[
+//            sprintf "%O" Clock
+//            sprintf "%O" FunctionalUnits
+//            CDB.Opt2String !cdb        
+//            sprintf "%O" RegisterFile
+//            memStr        
+//        ] |> List.choose (fun s -> if s.Length > 1 then Some s else None) ]
     
     let output = ref List.empty<string list>
     
@@ -34,7 +29,7 @@ type Simulator(input:string, verbose:bool) =
         FunctionalUnits.UpdateReservationStations(cdb)
         RegisterFile.Update(cdb)
         FunctionalUnits.ClearReservationStations()
-        output := !output @ getDisplayStrings()
+//        output := !output @ getDisplayStrings()
 
     let branchInBranchUnit() = FunctionalUnits.BranchInBranchUnit()
 

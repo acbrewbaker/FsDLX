@@ -1,13 +1,13 @@
 ﻿namespace FsDLX.Tomasulo
 
 open System.Collections.Generic
-open FsDLX.Common
+
 
 type RSGroup = RSGroup of ReservationStation[] with
-    member rsg.Length = (RSGroup.Value rsg) |> Array.length
+    //member rsg.Length = (RSGroup.Value rsg) |> Array.length
     member rsg.Iter f = (RSGroup.Value rsg) |> Array.iter f
-    member rsg.Iteri f = (RSGroup.Value rsg) |> Array.iteri f
-    member rsg.Map f = (RSGroup.Value rsg) |> Array.map f
+    //member rsg.Iteri f = (RSGroup.Value rsg) |> Array.iteri f
+    //member rsg.Map f = (RSGroup.Value rsg) |> Array.map f
     member rsg.ForAll f = (RSGroup.Value rsg) |> Array.forall f
     member rsg.TryFind f = (RSGroup.Value rsg) |> Array.tryFind f
     member rsg.TryPick f = (RSGroup.Value rsg) |> Array.tryPick f
@@ -46,31 +46,11 @@ type RSGroup = RSGroup of ReservationStation[] with
                                             | _ -> ())
         | _ -> ()
     
-    member private rsg.DumpActive() = 
-        let active = rsg.BusyOnly 
-        if      active.Length > 0 
-        then    active |> Array.map (fun r -> r.Dump())
-        else    [|""|]
-
-    member rsg.Dump() = 
-        let active = rsg.BusyOnly 
-        if active.Length > 0 then 
-            [|  [|ReservationStation.Headers()|]; 
-                active |> Array.map (fun r -> r.Dump()) |]
-            |> Array.concat |> Array.map ((+) "\n") |> Array.reduce (+)
-        else    ""
-    
     static member Value (RSGroup rsg) = rsg
     static member Init cfg = cfg |> ReservationStation.ArrayInit |> RSGroup
 
     static member InitAll =
         Config.FunctionalUnit.All |> Array.map ReservationStation.ArrayInit |> Array.concat |> RSGroup
-
-    static member IntUnitInit() = RSGroup.Init Config.FunctionalUnit.IntegerUnit
-    static member TrapUnitInit() = RSGroup.Init Config.FunctionalUnit.TrapUnit
-    static member MemoryUnitInit() = RSGroup.Init Config.FunctionalUnit.MemoryUnit
-    static member BranchUnitInit() = RSGroup.Init Config.FunctionalUnit.BranchUnit
-    static member FloatingPointUnitInit() = RSGroup.Init Config.FunctionalUnit.FloatingPointUnit
 
 // The ReservationStation class contains the fields of an individual reservation station: 
 // name, busy, opcode, Vj, Vk, Qj, Qk, A, result, resultReady, resultWritten.  It also 
@@ -115,32 +95,6 @@ and ReservationStation =
         rs.Qj   = None          &&
         rs.Qk   = None          &&
         rs.A    = None
-
-    static member private Format(name,busy,opcode,vj,vk,qj,qk,a,rr,rw,r) =
-        System.String.Format("{0,10}{1,10}{2,10}{3,10}{4,10}{5,10}{6,10}{7,10}{8,10}{9,10}{10,10}",
-            name,busy,opcode,vj,vk,qj,qk,a,rr,rw,r)
-
-    static member Headers() = 
-        ReservationStation.Format("Name", "Busy", "Opcode", "Vj", "Vk", "Qj", "Qk", "A", "R.Ready", "R.Written", "Result")
-    
-    member rs.Dump() =
-        ReservationStation.Format(
-            rs.Name, rs.Busy, (Opcode.Opt2String(rs.Op)),
-            (Convert.int2hex rs.Vj),
-            (Convert.int2hex rs.Vk), 
-            (Convert.strOption2str(rs.Qj)), (Convert.strOption2str(rs.Qk)),
-            (Convert.intOption2str rs.A),
-            rs.ResultReady,
-            rs.ResultWritten,
-            rs.Result)
-
-    override rs.ToString() =
-        System.String.Format("{0,10}{1,10}{2,10}{3,10}{4,10}{5,10}{6,10}{7,10}",
-            rs.Name, rs.Busy, (Opcode.Opt2String(rs.Op)),
-            (Convert.int2hex rs.Vj),
-            (Convert.int2hex rs.Vk), 
-            (Convert.strOption2str(rs.Qj)), (Convert.strOption2str(rs.Qk)),
-            (Convert.intOption2str rs.A))
 
     static member Init name =
         {   Name = name; Busy = false; Op = None; 
