@@ -43,6 +43,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Common.fs" />
+    <Compile Include="Tools.fs" />
+    <Compile Include="Opcodes.fs" />
+    <Compile Include="Types.fs" />
     <Compile Include="ReservationStations.fs" />
     <Compile Include="Registers.fs" />
     <Compile Include="Instructions.fs" />
@@ -51,13 +54,6 @@
     <Compile Include="Display.fs" />
     <Compile Include="Interface.fs" />
     <None Include="Script.fsx" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\FsDLX.Common\FsDLX.Common.fsproj">
-      <Name>FsDLX.Common</Name>
-      <Project>{3548b64c-d96e-4033-88ee-99c87bba4793}</Project>
-      <Private>True</Private>
-    </ProjectReference>
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

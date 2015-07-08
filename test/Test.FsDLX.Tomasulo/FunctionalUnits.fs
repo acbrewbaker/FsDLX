@@ -40,7 +40,7 @@ let run (stopCycle:int) =
         [[
             sprintf "%O" Clock
             sprintf "%O" FunctionalUnits
-            CDB.Opt2String !cdb        
+            //CDB.Opt2String !cdb        
             sprintf "%O" RegisterFile
             memStr        
         ] |> List.choose (fun s -> if s.Length > 1 then Some s else None) ]
