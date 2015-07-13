@@ -2,7 +2,7 @@
 
 open System
 
-let lines2string (lines:string[]) = lines |> Array.map ((+) "\n") |> Array.reduce (+)
+let lines2string = Convert.lines2string >> Some
 
 //module CDB =
 //    let dump() =
@@ -10,10 +10,9 @@ let lines2string (lines:string[]) = lines |> Array.map ((+) "\n") |> Array.reduc
 //        sprintf "CDB: result: %s source: %s" (Convert.int2hex cdb.Result) cdb.Src
 
 
-type SimulatorOutput =
-    {
-        mutable IntegerUnit : string
-    }
+type LogEntry = LogEntry of Cycle * Info
+and Cycle = string
+and Info = string
 
 module Registers =
     let out heading = 
@@ -90,11 +89,32 @@ module ReservationStations =
             else    [|""|]
 
         let dump rsg =
-            [| [|headers10()|]; dumpActive rsg; |] |> Array.concat |> lines2string
+            [| [|headers10()|]; dumpActive rsg; |] |> Array.concat |> Convert.lines2str
 
 module FunctionalUnits =
-    let dump() =
+    module XUnits =
+        let dump (funit:FunctionalUnit) =
+            funit.ExecutionUnits |> Array.map (sprintf "%O") |> Convert.lines2str
+
+    module ReservationStations =
+        let dump (funit:FunctionalUnit) =
+            funit.ReservationStations |> ReservationStations.RSGroup.dump
+
+    let getExecuting() =
         let fu = FunctionalUnits.GetInstance
-        fu.All |> Array.iter (fun funit -> 
-            printfn "%s" funit.Name
-            printfn "%s" (funit.ExecutionUnits |> Array.map (sprintf "%O") |> lines2string))
+        fu.All |> Array.map (fun funit ->
+            funit.ExecutionUnits |> Array.map (fun xunit ->
+                if      xunit.Busy 
+                then    match xunit.Station with Some station -> Some(station.Name) | _ -> None
+                else    None))
+        |> Array.concat |> Array.choose id
+
+    let dumpReservationStations =
+        let fu = FunctionalUnits.GetInstance
+        fu.All |> Array.map ReservationStations.dump 
+        |> Convert.lines2str
+
+    let dumpExecutionUnits() =
+        let fu = FunctionalUnits.GetInstance
+        fu.All |> Array.map (fun funit -> sprintf "%s\n%s" funit.Name (XUnits.dump funit))
+        |> Convert.lines2str
