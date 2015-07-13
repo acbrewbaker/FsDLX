@@ -2,28 +2,9 @@
 
 open System
 
-<<<<<<< HEAD
-let lines2string (lines:string[][]) = 
-    lines |> Array.concat |> Array.map ((+) "\n") |> Array.reduce (+)
-
-module CDB =
-    let dump() =
-        let cdb = CDB.GetInstance
-        sprintf "CDB: result: %s source: %s" (Convert.int2hex cdb.Result) cdb.Src
-
-=======
-let lines2string = Convert.lines2string >> Some
-
-//module CDB =
-//    let dump() =
-//        let cdb = CDB.GetInstance
-//        sprintf "CDB: result: %s source: %s" (Convert.int2hex cdb.Result) cdb.Src
-
-
 type LogEntry = LogEntry of Cycle * Info
 and Cycle = string
 and Info = string
->>>>>>> origin/feature/StudentMachine
 
 module Registers =
     let out heading = 
@@ -100,12 +81,6 @@ module ReservationStations =
             else    [|""|]
 
         let dump rsg =
-<<<<<<< HEAD
-            [| [|headers10()|]; dumpActive rsg; |] |> lines2string
-
-module FunctionalUnits =
-    let dump() = ()
-=======
             [| [|headers10()|]; dumpActive rsg; |] |> Array.concat |> Convert.lines2str
 
 module FunctionalUnits =
@@ -135,4 +110,3 @@ module FunctionalUnits =
         let fu = FunctionalUnits.GetInstance
         fu.All |> Array.map (fun funit -> sprintf "%s\n%s" funit.Name (XUnits.dump funit))
         |> Convert.lines2str
->>>>>>> origin/feature/StudentMachine

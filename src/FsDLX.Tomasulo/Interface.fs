@@ -1,11 +1,6 @@
 ﻿namespace FsDLX.Tomasulo
 
 open System.Collections
-<<<<<<< HEAD
-open Config
-=======
-
->>>>>>> origin/feature/StudentMachine
 
 type Simulator(input:string, verbose:bool) =
     let cdb : CDB option ref = ref None
@@ -103,13 +98,13 @@ and Log() =
 and LogEntry = LogEntry of ReservationStations' * Memory' * Registers' * Instructions' * CDB' with
     override x.ToString() = let rs,m,r,i,cdb = (LogEntry.Value x) in sprintf "%O\n%O\n%O\n%O\n%O" rs m r i cdb
     static member Value (LogEntry(rs,m,r,i,cdb)) = rs,m,r,i,cdb
-    static member MakeEntry =
-        funit.ReservationStations |> ReservationStations'.MakeEntry
+    static member MakeEntry = ()
+        //funit.ReservationStations |> ReservationStations'.MakeEntry
 
 and ReservationStations' = ReservationStations' of Entry with
     override rs.ToString() = match rs with ReservationStations' rs -> rs.ToString()
-    static member MakeEntry =
-        FunctionalUnits.GetInstance.All |> Array.map Display.FunctionalUnits.dumpReservationStations
+    static member MakeEntry = ()
+        //FunctionalUnits.GetInstance.All |> Array.map Display.FunctionalUnits.dumpReservationStations
         //Display.ReservationStations.RSGroup.dump >> Entry.Create
 
 and Memory' = Memory' of Entry with
