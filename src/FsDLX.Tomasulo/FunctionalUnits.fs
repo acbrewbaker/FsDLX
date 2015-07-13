@@ -48,6 +48,7 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) as fu =
                 | _ ->                              XUnits(x).Set(r)
         | _ -> ()
 
+    member val Name = cfg.rsPrefix + "Unit"
     member val ReservationStations = reservationStations
     member val ExecutionUnits = xunits with get, set
     member val Queue = queue
