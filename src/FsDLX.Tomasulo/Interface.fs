@@ -1,7 +1,11 @@
 ﻿namespace FsDLX.Tomasulo
 
 open System.Collections
+<<<<<<< HEAD
 open Config
+=======
+
+>>>>>>> origin/feature/StudentMachine
 
 type Simulator(input:string, verbose:bool) =
     let cdb : CDB option ref = ref None
@@ -59,30 +63,68 @@ type Simulator(input:string, verbose:bool) =
         let mutable stall = false
         
         while (not(halt.Issued) || not(finished())) do
-//        while (not(halt.Issued) || not(finished())) && PC.Value < (Convert.hex2int "00000084") do
             cdb := write()
             execute()
             if not(halt.Issued) && not(branchInBranchUnit()) then
                 stall <- Mem.[PC.Value] |> fetch |> issue
                 if not(halt.Fetched) && not(stall) then PC.Increment()
             update(!cdb)
-            //dump()
             Clock.Tic()
                             
-    let runVerbose() = ()
-    
+    let runVerbose() =
+        Mem.Load(input)
+        let mutable stall = false
+        
+        while (not(halt.Issued) || not(finished())) do
+            cdb := write()
+            execute()
+            if not(halt.Issued) && not(branchInBranchUnit()) then
+                stall <- Mem.[PC.Value] |> fetch |> issue
+                if not(halt.Fetched) && not(stall) then PC.Increment()
+            update(!cdb)
+            Clock.Tic()
+
     let display() = ()
 
     let runDebug() = ()
     
     member s.Run() = 
         match Config.Simulator.outputLevel with
-        | Regular -> runRegular()
-        | Verbose -> runVerbose()
-        | Debug -> runDebug()
+        | Config.SimulatorOutputLevel.Regular -> runRegular()
+        | Config.SimulatorOutputLevel.Verbose -> runVerbose()
+        | Config.SimulatorOutputLevel.Debug -> runDebug()
 
+and Log() =
+    let log = List.empty<LogEntry>
+    member l.AddEntry(?heading:string) = 
+        let heading = defaultArg heading "\n"
+        ()
 
-        
+and LogEntry = LogEntry of ReservationStations' * Memory' * Registers' * Instructions' * CDB' with
+    override x.ToString() = let rs,m,r,i,cdb = (LogEntry.Value x) in sprintf "%O\n%O\n%O\n%O\n%O" rs m r i cdb
+    static member Value (LogEntry(rs,m,r,i,cdb)) = rs,m,r,i,cdb
+    static member MakeEntry =
+        funit.ReservationStations |> ReservationStations'.MakeEntry
 
+and ReservationStations' = ReservationStations' of Entry with
+    override rs.ToString() = match rs with ReservationStations' rs -> rs.ToString()
+    static member MakeEntry =
+        FunctionalUnits.GetInstance.All |> Array.map Display.FunctionalUnits.dumpReservationStations
+        //Display.ReservationStations.RSGroup.dump >> Entry.Create
 
+and Memory' = Memory' of Entry with
+    override m.ToString() = "memory"
+    static member MakeEntry = Display.Memory.dump8 >> Entry.Create >> Memory'
 
+and Registers' = Registers' of Entry with
+    override x.ToString() = "registers"
+
+and Instructions' = Instructions' of Entry with
+    override x.ToString() = "executing instructions"
+
+and CDB' = CDB' of Entry with
+    override x.ToString() = "cdb"
+
+and Entry = Entry of string option with 
+    override e.ToString() = match e with Entry e -> Convert.strOption2str e
+    static member Create = Some >> Entry
