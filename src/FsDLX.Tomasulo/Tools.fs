@@ -142,6 +142,7 @@ module Convert =
 
     let intOption2str (o:int option) = match o with Some o -> int2hex o | None -> sprintf "%s" (int2hex 0)
 
-    let lines2str (lines:string[]) = lines |> Array.map ((+) "\n") |> Array.reduce (+)
+    let lines2str (lines:string[]) = 
+        lines |> Array.map ((+) "\n") |> Array.map (fun s -> if s.Length > 2 then s else "") |> Array.reduce (+)
 
     let lines2strOption = lines2str >> Some

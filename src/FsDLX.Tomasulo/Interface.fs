@@ -67,6 +67,7 @@ type Simulator(input:string, verbose:bool) =
             Clock.Tic()
                             
     let runVerbose() =
+        let log = Log()
         Mem.Load(input)
         let mutable stall = false
         
@@ -77,35 +78,47 @@ type Simulator(input:string, verbose:bool) =
                 stall <- Mem.[PC.Value] |> fetch |> issue
                 if not(halt.Fetched) && not(stall) then PC.Increment()
             update(!cdb)
+            log.AddEntry(sprintf "%O" Clock)
             Clock.Tic()
+        log.Dump()
 
     let display() = ()
 
     let runDebug() = ()
     
     member s.Run() = 
-        match Config.Simulator.outputLevel with
-        | Config.SimulatorOutputLevel.Regular -> runRegular()
-        | Config.SimulatorOutputLevel.Verbose -> runVerbose()
-        | Config.SimulatorOutputLevel.Debug -> runDebug()
+        if      verbose 
+        then    runVerbose()
+        else 
+            match Config.Simulator.outputLevel with
+            | Config.SimulatorOutputLevel.Regular -> runRegular()
+            | Config.SimulatorOutputLevel.Verbose -> runVerbose()
+            | Config.SimulatorOutputLevel.Debug -> runDebug()
 
 and Log() =
-    let log = List.empty<LogEntry>
+    let mutable log = List.empty<LogEntry>
     member l.AddEntry(?heading:string) = 
         let heading = defaultArg heading "\n"
-        ()
+        log <- log @ [LogEntry.MakeEntry]
+    
+    override l.ToString() =
+        log |> List.map (sprintf "%O") |> Array.ofList |> Convert.lines2str
+    
+    member l.Dump() = printfn "%O" l
 
 and LogEntry = LogEntry of ReservationStations' * Memory' * Registers' * Instructions' * CDB' with
-    override x.ToString() = let rs,m,r,i,cdb = (LogEntry.Value x) in sprintf "%O\n%O\n%O\n%O\n%O" rs m r i cdb
+    override x.ToString() = let rs,m,r,i,cdb = (LogEntry.Value x) in sprintf "\n%O\n%O\n%O\n%O\n%O\n%O" (Clock.GetInstance) rs m r i cdb
     static member Value (LogEntry(rs,m,r,i,cdb)) = rs,m,r,i,cdb
-    static member MakeEntry = ()
-        //funit.ReservationStations |> ReservationStations'.MakeEntry
+    static member MakeEntry =
+        LogEntry(   ReservationStations'.MakeEntry,
+                    Memory'.MakeEntry(),
+                    Registers'.MakeEntry,
+                    Instructions'.MakeEntry,
+                    CDB'.MakeEntry)
 
 and ReservationStations' = ReservationStations' of Entry with
     override rs.ToString() = match rs with ReservationStations' rs -> rs.ToString()
-    static member MakeEntry = ()
-        //FunctionalUnits.GetInstance.All |> Array.map Display.FunctionalUnits.dumpReservationStations
-        //Display.ReservationStations.RSGroup.dump >> Entry.Create
+    static member MakeEntry = Display.FunctionalUnits.dumpReservationStations |> Entry.Create |> ReservationStations'
 
 and Memory' = Memory' of Entry with
     override m.ToString() = "memory"
@@ -113,12 +126,15 @@ and Memory' = Memory' of Entry with
 
 and Registers' = Registers' of Entry with
     override x.ToString() = "registers"
+    static member MakeEntry = "" |> Entry.Create |> Registers'
 
 and Instructions' = Instructions' of Entry with
     override x.ToString() = "executing instructions"
+    static member MakeEntry = "" |> Entry.Create |> Instructions'
 
 and CDB' = CDB' of Entry with
     override x.ToString() = "cdb"
+    static member MakeEntry = "" |> Entry.Create |> CDB'
 
 and Entry = Entry of string option with 
     override e.ToString() = match e with Entry e -> Convert.strOption2str e

@@ -80,8 +80,7 @@ module ReservationStations =
             then    active |> Array.map dump10
             else    [|""|]
 
-        let dump rsg =
-            [| [|headers10()|]; dumpActive rsg; |] |> Array.concat |> Convert.lines2str
+        let dump = dumpActive >> Convert.lines2str
 
 module FunctionalUnits =
     module XUnits =
@@ -93,8 +92,7 @@ module FunctionalUnits =
             funit.ReservationStations |> ReservationStations.RSGroup.dump
 
     let getExecuting() =
-        let fu = FunctionalUnits.GetInstance
-        fu.All |> Array.map (fun funit ->
+        FunctionalUnits.GetInstance.All |> Array.map (fun funit ->
             funit.ExecutionUnits |> Array.map (fun xunit ->
                 if      xunit.Busy 
                 then    match xunit.Station with Some station -> Some(station.Name) | _ -> None
@@ -102,11 +100,9 @@ module FunctionalUnits =
         |> Array.concat |> Array.choose id
 
     let dumpReservationStations =
-        let fu = FunctionalUnits.GetInstance
-        fu.All |> Array.map ReservationStations.dump 
-        |> Convert.lines2str
+        ReservationStations.headers10() + "\n" +
+        (FunctionalUnits.GetInstance.All |> Array.map ReservationStations.dump |> Convert.lines2str) //.Trim()
 
     let dumpExecutionUnits() =
-        let fu = FunctionalUnits.GetInstance
-        fu.All |> Array.map (fun funit -> sprintf "%s\n%s" funit.Name (XUnits.dump funit))
+        FunctionalUnits.GetInstance.All |> Array.map (fun funit -> sprintf "%s\n%s" funit.Name (XUnits.dump funit))
         |> Convert.lines2str
