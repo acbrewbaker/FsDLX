@@ -36,8 +36,10 @@ type CDB private () =
     static let mutable instance = CDB()
     member val Src = "" with get, set
     member val Result = 0 with get, set
-    override cdb.ToString() =
+    override cdb.ToString() = 
         sprintf "CDB: result: %s station: %s" (Convert.int2hex cdb.Result) cdb.Src
+    static member Opt2String (cdb:CDB option) =
+        match cdb with Some cdb -> sprintf "%O" cdb | None -> ""
     static member GetInstance = instance
     static member Reset() = instance <- CDB()
 

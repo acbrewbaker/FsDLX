@@ -3,12 +3,11 @@
 open System
 open System.Collections.Generic
 
-
+// RSGroup is a single-case discriminated union used to represent / wrap an array of 
+// reservation stations.  The static Array functions used by the simulator have been
+// re-implemented.
 type RSGroup = RSGroup of ReservationStation[] with
-    //member rsg.Length = (RSGroup.Value rsg) |> Array.length
     member rsg.Iter f = (RSGroup.value rsg) |> Array.iter f
-    //member rsg.Iteri f = (RSGroup.Value rsg) |> Array.iteri f
-    //member rsg.Map f = (RSGroup.Value rsg) |> Array.map f
     member rsg.ForAll f = (RSGroup.value rsg) |> Array.forall f
     member rsg.TryFind f = (RSGroup.value rsg) |> Array.tryFind f
     member rsg.TryPick f = (RSGroup.value rsg) |> Array.tryPick f
@@ -49,7 +48,11 @@ type RSGroup = RSGroup of ReservationStation[] with
     
     override rsg.ToString() = 
         let active = rsg.BusyOnly
-        if active.Length > 0 then active |> Array.map (sprintf "%O") |> Convert.lines2str else ""
+        if active.Length > 0 then 
+            "Reservation Station:\n" +
+            ReservationStation.headers() + 
+            (active |> Array.map (sprintf "%O") |> Convert.lines2str)
+        else ""
 
     static member value (RSGroup rsg) = rsg
     static member init (cfg:Config.FunctionalUnit) = cfg |> ReservationStation.init |> RSGroup
@@ -103,7 +106,12 @@ and ReservationStation =
 
     override rs.ToString() = 
         String.Format("{0,10}{1,10}{2,10}{3,10}{4,10}{5,10}{6,10}{7,10}{8,10}{9,10}{10,10}",
-            rs.Name,rs.Busy,rs.Op,rs.Vj,rs.Vk,rs.Qj,rs.Qk,rs.A,rs.ResultReady,rs.ResultWritten,rs.Result)
+            rs.Name, rs.Busy, Opcode.Opt2String rs.Op,
+            Convert.int2hex rs.Vj, 
+            Convert.int2hex rs.Vk, 
+            Convert.strOption2null rs.Qj, Convert.strOption2null rs.Qk, 
+            Convert.intOption2str rs.A,
+            rs.ResultReady, rs.ResultWritten, rs.Result)
 
     static member init (name:string) =
         {   Name = name; Busy = false; Op = None; 

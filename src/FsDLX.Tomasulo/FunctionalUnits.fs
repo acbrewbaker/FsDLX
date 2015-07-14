@@ -4,7 +4,7 @@ open System
 open System.Collections
 open System.Linq
 
-
+// A single execution unit which handles the execution of one instruction
 type XUnit(maxCycles:int) =
     member val MaxCycles = maxCycles with get
     member val RemainingCycles = maxCycles with get, set
@@ -27,17 +27,21 @@ type FunctionalUnit (cfg:Config.FunctionalUnit, rsg:RSGroup) as fu =
     let RS(r) = reservationStations.[r]
     let queue = ReservationStationQueue()
     
+    // check to make sure we assign the same instruction to multiple execution units
     let stationAlreadyExecuting(r:ReservationStation) =
         xunits |> Array.forall (fun xunit -> match xunit.Station with Some station -> r.Name <> station.Name | _ -> true) |> not
 
+    // Attempt to assign a new instruction (the reservation station serving it) to an available execution unit
     let trySetXUnit() =
         let tryFindReadyStation() =
             reservationStations.TryFind
                 (fun r -> (match fu, queue.Count > 0 with
+                            // If this type is the Trap or Memory unit then we need to check the queue in
+                            // addition to the operands
                            | :? TrapUnit, true | :? MemoryUnit, true -> 
                                    r.OperandsAvailable() && (r.Name = queue.Peek().Name)
                            | _ ->  r.OperandsAvailable()))
-
+        
         let tryFindAvailableXUnit() = xunits |> Array.tryFindIndex (fun xunit -> xunit.Busy = false)
 
         match tryFindAvailableXUnit(), tryFindReadyStation() with
@@ -221,6 +225,8 @@ and FloatingPointUnit private (cfg, rsg) =
     static let mutable instance = fun rsg -> FloatingPointUnit(cfg, rsg)
 
     override fpu.Compute RS r =
+        // convert ints x and y to floats, apply binary operation g to x and y,
+        // then convert the result back to an integer
         let f g x y = (Convert.i2f x, Convert.i2f y) ||> g |> Convert.f2i
         RS(r).Result <-
             match RS(r).Op with
@@ -248,7 +254,7 @@ and FloatingPointUnit private (cfg, rsg) =
 and FunctionalUnits private () =
     static let mutable instance = FunctionalUnits()
 
-    let allrs = RSGroup.InitAll
+    let allrs = RSGroup.initAll()
 
     let iu, tu, bu, mu, fpu =
         IntegerUnit.GetInstance allrs,
@@ -289,7 +295,16 @@ and FunctionalUnits private () =
     member fu.UpdateReservationStations = allrs.Update
 
     member fu.ClearReservationStations() = allfu |> Array.iter (fun funit -> funit.ReservationStations.Clear())
-   
+    
+    override fu.ToString() =
+        let xunits = 
+            let busy = allfu |> Array.collect (fun funit -> funit.ExecutionUnits) |> Array.filter (fun xunit -> xunit.Busy)
+            if      busy.Length > 0 
+            then    "\nExcution Units:" + (busy |> Array.map (sprintf "%O") |> Convert.lines2str)
+            else    ""
+        fu.ReservationStations.ToString() +
+        xunits
+
     static member GetInstance = instance
     static member Reset() = 
         IntegerUnit.Reset()
