@@ -136,8 +136,10 @@ module Convert =
     let f2i (x:float32) = BitConverter.ToInt32(BitConverter.GetBytes(x),0)
     let i2f (x:int) = BitConverter.ToSingle(BitConverter.GetBytes(x),0)
 
-    let strOption2str (o:string option) = match o with Some o -> sprintf "%s" o | None -> sprintf "%O" o
+    let strOption2str (o:string option) = match o with Some o -> sprintf "%s" o | None -> ""
 
+    let strOption2null (o:string option) = match o with Some o -> sprintf "%s" o | None -> "<null>"
+    
     let str2strOption (s:string) = if s.Length > 1 then Some s else None
 
     let intOption2str (o:int option) = match o with Some o -> int2hex o | None -> sprintf "%s" (int2hex 0)

@@ -4,12 +4,19 @@ open System
 
 type RegisterFile private () =
     static let mutable instance = RegisterFile()
+    // An array of RegCount Registers (default is 64)
     let regs = Array.init Config.Registers.RegCount Register.init
-    
+    let mutable info : string option = None
+
+    // The indexing function is implemented to enable the use of indexing syntax
+    // with objects of type RegisterFile.
     member rf.Item
         with    get i = regs.[i]
         and     set i v = regs.[i].Contents <- v
     
+    // The GetSlice functions are implemented to enable the use of slicing syntax
+    // with the indexer function. e.g. myarr.[0..9], which returns an array consisting
+    // of the elements from indices 0 through 9 of the array named myarr
     member rf.GetSlice(a:int option, b:int option) = 
         let a = match a with Some a -> a | _ -> 0
         let b = match b with Some b -> b | _ -> regs.Length - 1
@@ -18,12 +25,23 @@ type RegisterFile private () =
     member rf.GetSlice(a:int, b:int) = rf.GetSlice(Some a, Some b)
 
     member rf.Length = regs.Length
-
-    member rf.Update(cdb) = regs |> Array.iter (fun reg -> reg.Update(cdb))
     
+    // Used for output
+    member rf.UpdateInfo() = info <- sprintf "%O\n%O" (GPR.GetInstance) (FPR.GetInstance) |> Some
+
+    // Updates all registers. If cdb is some, then update the info string.
+    member rf.Update(cdb) =
+        regs |> Array.iter (fun reg -> reg.Update(cdb))
+        match cdb with
+        | Some _-> rf.UpdateInfo()
+        | None -> info <- None
+
+    override rf.ToString() = Convert.strOption2str info
+
     static member GetInstance = instance
     static member Reset() = instance <- RegisterFile()
 
+// GPR represents the General Purpose Registers - indices 0-31 of the register file
 and GPR private () =
     static let mutable instance = GPR()
 
@@ -60,11 +78,10 @@ and GPR private () =
     static member GetInstance = instance
     static member Reset() = instance <- GPR()
 
+// FPR represents the Floating Point Registers - indices 34-63 of the register file
 and FPR private () =
     static let mutable instance = FPR()
-    static let out heading = 
-        Array.map (sprintf "%O") >> Array.fold (fun s r -> s + " " + r) (sprintf "%s: " heading)
-
+    
     member fpr.Item
         with get i = 
             if i > 31 then failwith "invalid FPR index"
@@ -94,12 +111,17 @@ and FPR private () =
 
     static member GetInstance = instance
     static member Reset() = instance <- FPR()
-    
-
+   
+// The RegisterStat and Regs types are designed in such a way that when accessed from within the
+// functional unit code, the code itself closely resembles the psuedo code shown on p180 of the
+// architecture book
+ 
+// Represents the register status (see p180)
 and RegisterStat private (instruction:int) =
     static let mutable instance = fun i -> RegisterStat(i)
     let reg s = Convert.int2bits2reg instruction s
 
+    // Enable indexing syntax via OperandReg, an inner type of the Instruction type
     member rstat.Item
         with get (oreg:OperandReg) = oreg |> function
             | OperandReg.NONE -> Register.init(0)
@@ -109,11 +131,14 @@ and RegisterStat private (instruction:int) =
     static member GetInstance = instance
     static member Reset() = instance <- fun i -> RegisterStat(i)
 
+// see Regs[x] in explanation on p180
 and Regs private (instruction:int) =
     static let mutable instance = fun i -> Regs(i)
 
     let reg s = Convert.int2bits2reg instruction s
 
+    // Enable indexing syntax via OperandReg, an inner type of the Instruction type.
+    // Unlike the RegisterStat type, this is designed to return the contents of the register
     member regs.Item
         with get oreg = oreg |> function
             | OperandReg.NONE   -> Register.init(0).Contents
@@ -122,7 +147,7 @@ and Regs private (instruction:int) =
 
     static member GetInstance = instance
     static member Reset() = instance <- fun i -> Regs(i)
-      
+   
 and Register =
     {
         mutable Qi          : string option
@@ -144,7 +169,10 @@ and Register =
         | _ -> sprintf "%s" (Convert.int2hex r.Contents)
     
     static member init _ = { Qi = None; Contents = 0 }
-    
+
+// This type is used to wrap Register arrays and alter their printed output with regard
+// to the contents of the array.  If all Registers in the given array are empty, then
+// and invocation of ToString will return an empty string. 
 and RegisterSet(heading:string, regs:Register[]) =
     do if regs.Length <> 8 then failwith "register set must be length 8"
     
