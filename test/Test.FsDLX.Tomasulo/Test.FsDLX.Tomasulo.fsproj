@@ -73,6 +73,7 @@
     <Compile Include="Interface.MemoryUnit.fs" />
     <Compile Include="Interface.FloatingPointUnit.fs" />
     <Compile Include="Interface.BranchUnit.fs" />
+    <Compile Include="Interface.VerboseOutput.fs" />
     <Compile Include="Program.fs" />
     <None Include="CodeGen.fsx" />
     <None Include="TestGen.fsx" />

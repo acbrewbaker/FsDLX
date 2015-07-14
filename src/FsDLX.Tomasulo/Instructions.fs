@@ -2,7 +2,6 @@
 
 open System
 open System.Collections
-open FsDLX.Common
 
 type Instruction =
     | Integer of InstructionInt * InstructionInfo
@@ -34,7 +33,7 @@ type Instruction =
     member ins.DstReg = let _,_,rd,_,_,_ = ins.AsInfo in rd
     member ins.S1Reg = let _,_,_,rs,_,_ = ins.AsInfo in rs
     member ins.S2Reg = let _,_,_,_,rt,_ = ins.AsInfo in rt
-    member ins.Immediate = let _,_,_,_,_,imm = ins.AsInfo in imm.GetImmVal ins
+    member ins.Immediate = let _,_,_,_,_,imm = ins.AsInfo in imm.GetImmVal ins.AsInt
 
     override ins.ToString() = sprintf "%s" ins.AsHex
 
@@ -84,60 +83,40 @@ type Instruction =
 
     static member OfInstructionInt(i:int) =
         match Opcode.OfInstructionInt(i).Name with
-        | "addi" -> Instruction.Integer(i, Instruction.ADDI)
-        | "nop" -> Instruction.Integer(i, Instruction.NOP)
-        | "add" -> Instruction.Integer(i, Instruction.ADD)
-        | "sub" -> Instruction.Integer(i, Instruction.SUB)
-        | "and" -> Instruction.Integer(i, Instruction.AND)
-        | "or" -> Instruction.Integer(i, Instruction.OR)
-        | "xor" -> Instruction.Integer(i, Instruction.XOR)
-        | "movf" -> Instruction.Integer(i, Instruction.MOVF)
-        | "movfp2i" -> Instruction.Integer(i, Instruction.MOVFP2I)
-        | "movi2fp" -> Instruction.Integer(i, Instruction.MOVI2FP)
+        | "addi" -> Integer(i, Instruction.ADDI)
+        | "nop" -> Integer(i, Instruction.NOP)
+        | "add" -> Integer(i, Instruction.ADD)
+        | "sub" -> Integer(i, Instruction.SUB)
+        | "and" -> Integer(i, Instruction.AND)
+        | "or" -> Integer(i, Instruction.OR)
+        | "xor" -> Integer(i, Instruction.XOR)
+        | "movf" -> Integer(i, Instruction.MOVF)
+        | "movfp2i" -> Integer(i, Instruction.MOVFP2I)
+        | "movi2fp" -> Integer(i, Instruction.MOVI2FP)
 
-        | "halt" -> Instruction.Trap(i, Instruction.HALT)
-        | "dumpGPR"-> Instruction.Trap(i, Instruction.DUMPGPR)
-        | "dumpFPR" -> Instruction.Trap(i, Instruction.DUMPFPR)
-        | "dumpSTR" -> Instruction.Trap(i, Instruction.DUMPSTR)
+        | "halt" -> Trap(i, Instruction.HALT)
+        | "dumpGPR"-> Trap(i, Instruction.DUMPGPR)
+        | "dumpFPR" -> Trap(i, Instruction.DUMPFPR)
+        | "dumpSTR" -> Trap(i, Instruction.DUMPSTR)
         
-        | "beqz" -> Instruction.Branch(i, Instruction.BEQZ)
-        | "j" -> Instruction.Branch(i, Instruction.J)
-        | "jr" -> Instruction.Branch(i, Instruction.JR)
-        | "jal" -> Instruction.Branch(i, Instruction.JAL)
-        | "jalr" -> Instruction.Branch(i, Instruction.JALR)
+        | "beqz" -> Branch(i, Instruction.BEQZ)
+        | "j" -> Branch(i, Instruction.J)
+        | "jr" -> Branch(i, Instruction.JR)
+        | "jal" -> Branch(i, Instruction.JAL)
+        | "jalr" -> Branch(i, Instruction.JALR)
         
-        | "lw" -> Instruction.Memory(i, Instruction.LW)
-        | "lf" -> Instruction.Memory(i, Instruction.LF)
-        | "sw" -> Instruction.Memory(i, Instruction.SW)
-        | "sf" -> Instruction.Memory(i, Instruction.SF)
+        | "lw" -> Memory(i, Instruction.LW)
+        | "lf" -> Memory(i, Instruction.LF)
+        | "sw" -> Memory(i, Instruction.SW)
+        | "sf" -> Memory(i, Instruction.SF)
         
-        | "addf" -> Instruction.FloatingPoint(i, Instruction.ADDF)
-        | "subf" -> Instruction.FloatingPoint(i, Instruction.SUBF)
-        | "multf" -> Instruction.FloatingPoint(i, Instruction.MULTF)
-        | "divf" -> Instruction.FloatingPoint(i, Instruction.DIVF)
-        | "mult" -> Instruction.FloatingPoint(i, Instruction.MULT)
-        | "div" -> Instruction.FloatingPoint(i, Instruction.DIV)
-        | "cvtf2i" -> Instruction.FloatingPoint(i, Instruction.CVTF2I)
-        | "cvti2f" -> Instruction.FloatingPoint(i, Instruction.CVTI2F)
+        | "addf" -> FloatingPoint(i, Instruction.ADDF)
+        | "subf" -> FloatingPoint(i, Instruction.SUBF)
+        | "multf" -> FloatingPoint(i, Instruction.MULTF)
+        | "divf" -> FloatingPoint(i, Instruction.DIVF)
+        | "mult" -> FloatingPoint(i, Instruction.MULT)
+        | "div" -> FloatingPoint(i, Instruction.DIV)
+        | "cvtf2i" -> FloatingPoint(i, Instruction.CVTF2I)
+        | "cvti2f" -> FloatingPoint(i, Instruction.CVTI2F)
         
         | op -> failwith (sprintf "opcode <%s> not supported" op)
-
-and InstructionInt = int
-and InstructionInfo = Opcode * FuncCode * DstReg * S1Reg * S2Reg * Imm
-and FuncCode =
-    | NONE = -1
-    | HALT = 0
-    | DUMPGPR = 1
-    | DUMPFPR = 2
-    | DUMPSTR = 3
-and DstReg  = OperandReg
-and S1Reg   = OperandReg
-and S2Reg   = OperandReg
-and Imm     = | NONE  | A of (int * int) with
-    member this.GetImmVal(i:Instruction) =
-        match this with
-        | NONE -> None
-        | A imm -> 
-            let a = imm ||> Convert.int2bits (i.AsInt)
-            Convert.ToInt32(a.PadLeft(32,a.[0]),2)
-            |> Some
