@@ -1,18 +1,19 @@
 ﻿namespace FsDLX.Tomasulo
 
+open System
 open System.Collections.Generic
 
 
 type RSGroup = RSGroup of ReservationStation[] with
     //member rsg.Length = (RSGroup.Value rsg) |> Array.length
-    member rsg.Iter f = (RSGroup.Value rsg) |> Array.iter f
+    member rsg.Iter f = (RSGroup.value rsg) |> Array.iter f
     //member rsg.Iteri f = (RSGroup.Value rsg) |> Array.iteri f
     //member rsg.Map f = (RSGroup.Value rsg) |> Array.map f
-    member rsg.ForAll f = (RSGroup.Value rsg) |> Array.forall f
-    member rsg.TryFind f = (RSGroup.Value rsg) |> Array.tryFind f
-    member rsg.TryPick f = (RSGroup.Value rsg) |> Array.tryPick f
-    member rsg.Fold f s = (RSGroup.Value rsg) |> Array.fold f s
-    member rsg.Filter f = (RSGroup.Value rsg) |> Array.filter f
+    member rsg.ForAll f = (RSGroup.value rsg) |> Array.forall f
+    member rsg.TryFind f = (RSGroup.value rsg) |> Array.tryFind f
+    member rsg.TryPick f = (RSGroup.value rsg) |> Array.tryPick f
+    member rsg.Fold f s = (RSGroup.value rsg) |> Array.fold f s
+    member rsg.Filter f = (RSGroup.value rsg) |> Array.filter f
     member rsg.BusyOnly = rsg.Filter (fun r -> r.Busy)
     
     member rsg.TryFindEmpty() = rsg.TryFind (fun r -> r.IsEmpty())
@@ -27,7 +28,7 @@ type RSGroup = RSGroup of ReservationStation[] with
 
     member private rsg.GetMap() =
         let kvp (r:ReservationStation) = (r.Name, r)
-        rsg |> RSGroup.Value |> Array.map kvp |> Map.ofArray
+        rsg |> RSGroup.value |> Array.map kvp |> Map.ofArray
 
     member rsg.Item with get(r:ReservationStation) = rsg.GetMap().[r.Name]
 
@@ -46,11 +47,15 @@ type RSGroup = RSGroup of ReservationStation[] with
                                             | _ -> ())
         | _ -> ()
     
-    static member Value (RSGroup rsg) = rsg
-    static member Init cfg = cfg |> ReservationStation.ArrayInit |> RSGroup
+    override rsg.ToString() = 
+        let active = rsg.BusyOnly
+        if active.Length > 0 then active |> Array.map (sprintf "%O") |> Convert.lines2str else ""
 
-    static member InitAll =
-        Config.FunctionalUnit.All |> Array.map ReservationStation.ArrayInit |> Array.concat |> RSGroup
+    static member value (RSGroup rsg) = rsg
+    static member init (cfg:Config.FunctionalUnit) = cfg |> ReservationStation.init |> RSGroup
+
+    static member initAll() =
+        Config.FunctionalUnit.All |> Array.map ReservationStation.init |> Array.concat |> RSGroup
 
 // The ReservationStation class contains the fields of an individual reservation station: 
 // name, busy, opcode, Vj, Vk, Qj, Qk, A, result, resultReady, resultWritten.  It also 
@@ -96,16 +101,25 @@ and ReservationStation =
         rs.Qk   = None          &&
         rs.A    = None
 
-    static member Init name =
+    override rs.ToString() = 
+        String.Format("{0,10}{1,10}{2,10}{3,10}{4,10}{5,10}{6,10}{7,10}{8,10}{9,10}{10,10}",
+            rs.Name,rs.Busy,rs.Op,rs.Vj,rs.Vk,rs.Qj,rs.Qk,rs.A,rs.ResultReady,rs.ResultWritten,rs.Result)
+
+    static member init (name:string) =
         {   Name = name; Busy = false; Op = None; 
             Vj = 0; Vk = 0; Qj = None; Qk = None; A = None
             ResultReady = false;
             ResultWritten = false;
             Result = 0 }
 
-    static member ArrayInit (cfg:Config.FunctionalUnit) =
+    static member init (cfg:Config.FunctionalUnit) =
         let name pfx i = sprintf "%sUnit%d" pfx i
-        Array.init cfg.rsCount (fun i -> ReservationStation.Init (name cfg.rsPrefix i))
+        Array.init cfg.rsCount (fun i -> ReservationStation.init (name cfg.rsPrefix i))
+
+    static member headers() =
+        String.Format("{0,10}{1,10}{2,10}{3,10}{4,10}{5,10}{6,10}{7,10}{8,10}{9,10}{10,10}",
+            "Name","Busy","Opcode","Vj","Vk","Qj","Qk","A","R.Ready","R.Written","Result")
+
 
 and ReservationStationQueue = Queue<ReservationStation>
 and RSMapping = ReservationStation -> ReservationStation
