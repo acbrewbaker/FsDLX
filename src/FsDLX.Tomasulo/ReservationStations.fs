@@ -1,18 +1,18 @@
 ﻿namespace FsDLX.Tomasulo
 
+open System
 open System.Collections.Generic
-open FsDLX.Common
 
+// RSGroup is a single-case discriminated union used to represent / wrap an array of 
+// reservation stations.  The static Array functions used by the simulator have been
+// re-implemented.
 type RSGroup = RSGroup of ReservationStation[] with
-    member rsg.Length = (RSGroup.Value rsg) |> Array.length
-    member rsg.Iter f = (RSGroup.Value rsg) |> Array.iter f
-    member rsg.Iteri f = (RSGroup.Value rsg) |> Array.iteri f
-    member rsg.Map f = (RSGroup.Value rsg) |> Array.map f
-    member rsg.ForAll f = (RSGroup.Value rsg) |> Array.forall f
-    member rsg.TryFind f = (RSGroup.Value rsg) |> Array.tryFind f
-    member rsg.TryPick f = (RSGroup.Value rsg) |> Array.tryPick f
-    member rsg.Fold f s = (RSGroup.Value rsg) |> Array.fold f s
-    member rsg.Filter f = (RSGroup.Value rsg) |> Array.filter f
+    member rsg.Iter f = (RSGroup.value rsg) |> Array.iter f
+    member rsg.ForAll f = (RSGroup.value rsg) |> Array.forall f
+    member rsg.TryFind f = (RSGroup.value rsg) |> Array.tryFind f
+    member rsg.TryPick f = (RSGroup.value rsg) |> Array.tryPick f
+    member rsg.Fold f s = (RSGroup.value rsg) |> Array.fold f s
+    member rsg.Filter f = (RSGroup.value rsg) |> Array.filter f
     member rsg.BusyOnly = rsg.Filter (fun r -> r.Busy)
     
     member rsg.TryFindEmpty() = rsg.TryFind (fun r -> r.IsEmpty())
@@ -27,7 +27,7 @@ type RSGroup = RSGroup of ReservationStation[] with
 
     member private rsg.GetMap() =
         let kvp (r:ReservationStation) = (r.Name, r)
-        rsg |> RSGroup.Value |> Array.map kvp |> Map.ofArray
+        rsg |> RSGroup.value |> Array.map kvp |> Map.ofArray
 
     member rsg.Item with get(r:ReservationStation) = rsg.GetMap().[r.Name]
 
@@ -46,31 +46,19 @@ type RSGroup = RSGroup of ReservationStation[] with
                                             | _ -> ())
         | _ -> ()
     
-    member private rsg.DumpActive() = 
-        let active = rsg.BusyOnly 
-        if      active.Length > 0 
-        then    active |> Array.map (fun r -> r.Dump())
-        else    [|""|]
-
-    member rsg.Dump() = 
-        let active = rsg.BusyOnly 
+    override rsg.ToString() = 
+        let active = rsg.BusyOnly
         if active.Length > 0 then 
-            [|  [|ReservationStation.Headers()|]; 
-                active |> Array.map (fun r -> r.Dump()) |]
-            |> Array.concat |> Array.map ((+) "\n") |> Array.reduce (+)
-        else    ""
-    
-    static member Value (RSGroup rsg) = rsg
-    static member Init cfg = cfg |> ReservationStation.ArrayInit |> RSGroup
+            "Reservation Station:\n" +
+            ReservationStation.headers() + 
+            (active |> Array.map (sprintf "%O") |> Convert.lines2str)
+        else ""
 
-    static member InitAll =
-        Config.FunctionalUnit.All |> Array.map ReservationStation.ArrayInit |> Array.concat |> RSGroup
+    static member value (RSGroup rsg) = rsg
+    static member init (cfg:Config.FunctionalUnit) = cfg |> ReservationStation.init |> RSGroup
 
-    static member IntUnitInit() = RSGroup.Init Config.FunctionalUnit.IntegerUnit
-    static member TrapUnitInit() = RSGroup.Init Config.FunctionalUnit.TrapUnit
-    static member MemoryUnitInit() = RSGroup.Init Config.FunctionalUnit.MemoryUnit
-    static member BranchUnitInit() = RSGroup.Init Config.FunctionalUnit.BranchUnit
-    static member FloatingPointUnitInit() = RSGroup.Init Config.FunctionalUnit.FloatingPointUnit
+    static member initAll() =
+        Config.FunctionalUnit.All |> Array.map ReservationStation.init |> Array.concat |> RSGroup
 
 // The ReservationStation class contains the fields of an individual reservation station: 
 // name, busy, opcode, Vj, Vk, Qj, Qk, A, result, resultReady, resultWritten.  It also 
@@ -116,42 +104,30 @@ and ReservationStation =
         rs.Qk   = None          &&
         rs.A    = None
 
-    static member private Format(name,busy,opcode,vj,vk,qj,qk,a,rr,rw,r) =
-        System.String.Format("{0,10}{1,10}{2,10}{3,10}{4,10}{5,10}{6,10}{7,10}{8,10}{9,10}{10,10}",
-            name,busy,opcode,vj,vk,qj,qk,a,rr,rw,r)
+    override rs.ToString() = 
+        String.Format("{0,10}{1,10}{2,10}{3,10}{4,10}{5,10}{6,10}{7,10}{8,10}{9,10}{10,10}",
+            rs.Name, rs.Busy, Opcode.Opt2String rs.Op,
+            Convert.int2hex rs.Vj, 
+            Convert.int2hex rs.Vk, 
+            Convert.strOption2null rs.Qj, Convert.strOption2null rs.Qk, 
+            Convert.intOption2str rs.A,
+            rs.ResultReady, rs.ResultWritten, rs.Result)
 
-    static member Headers() = 
-        ReservationStation.Format("Name", "Busy", "Opcode", "Vj", "Vk", "Qj", "Qk", "A", "R.Ready", "R.Written", "Result")
-    
-    member rs.Dump() =
-        ReservationStation.Format(
-            rs.Name, rs.Busy, (Opcode.Opt2String(rs.Op)),
-            (Convert.int2hex rs.Vj),
-            (Convert.int2hex rs.Vk), 
-            (Convert.strOption2str(rs.Qj)), (Convert.strOption2str(rs.Qk)),
-            (Convert.intOption2str rs.A),
-            rs.ResultReady,
-            rs.ResultWritten,
-            rs.Result)
-
-    override rs.ToString() =
-        System.String.Format("{0,10}{1,10}{2,10}{3,10}{4,10}{5,10}{6,10}{7,10}",
-            rs.Name, rs.Busy, (Opcode.Opt2String(rs.Op)),
-            (Convert.int2hex rs.Vj),
-            (Convert.int2hex rs.Vk), 
-            (Convert.strOption2str(rs.Qj)), (Convert.strOption2str(rs.Qk)),
-            (Convert.intOption2str rs.A))
-
-    static member Init name =
+    static member init (name:string) =
         {   Name = name; Busy = false; Op = None; 
             Vj = 0; Vk = 0; Qj = None; Qk = None; A = None
             ResultReady = false;
             ResultWritten = false;
             Result = 0 }
 
-    static member ArrayInit (cfg:Config.FunctionalUnit) =
+    static member init (cfg:Config.FunctionalUnit) =
         let name pfx i = sprintf "%sUnit%d" pfx i
-        Array.init cfg.rsCount (fun i -> ReservationStation.Init (name cfg.rsPrefix i))
+        Array.init cfg.rsCount (fun i -> ReservationStation.init (name cfg.rsPrefix i))
+
+    static member headers() =
+        String.Format("{0,10}{1,10}{2,10}{3,10}{4,10}{5,10}{6,10}{7,10}{8,10}{9,10}{10,10}",
+            "Name","Busy","Opcode","Vj","Vk","Qj","Qk","A","R.Ready","R.Written","Result")
+
 
 and ReservationStationQueue = Queue<ReservationStation>
 and RSMapping = ReservationStation -> ReservationStation
