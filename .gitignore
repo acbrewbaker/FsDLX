@@ -5,3 +5,5 @@ packages
 /*.suo
 *.ncrunchsolution
 *.ncrunchsolution.user
+*.sln.DotSettings.user
+*.suo

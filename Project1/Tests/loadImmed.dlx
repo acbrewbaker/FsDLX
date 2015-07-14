@@ -1,2 +1,0 @@
-label:	lhi r3, 3
-	lhi r31, 65535
