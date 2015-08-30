@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Project1", "Project1", "{DACEB980-8600-477F-86A3-B8905B385D31}"
 	ProjectSection(SolutionItems) = preProject
@@ -25,7 +25,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Inputs", "Inputs", "{FE3D70F6-8BCC-4DA0-A7AD-41451955CB62}"
 	ProjectSection(SolutionItems) = preProject
 		Project1\Inputs\align.dlx = Project1\Inputs\align.dlx
-		Project1\Inputs\align.dlx.hex = Project1\Inputs\align.dlx.hex
 		Project1\Inputs\align.hex = Project1\Inputs\align.hex
 		Project1\Inputs\arithImmed.dlx = Project1\Inputs\arithImmed.dlx
 		Project1\Inputs\arithImmed.hex = Project1\Inputs\arithImmed.hex
